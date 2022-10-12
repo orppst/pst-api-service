@@ -11,6 +11,18 @@ You can run your application in dev mode that enables live coding using:
 ./gradlew quarkusDev
 ```
 
+## Deploying into minikube
+
+some [hints](http://www.mastertheboss.com/soa-cloud/quarkus/how-to-run-quarkus-applications-on-kubernetes/)
+
+```
+eval $(minikube -p minikube docker-env)
+export TESTCONTAINERS_RYUK_DISABLED=true
+quarkus build -Dquarkus.kubernetes.deploy=true
+
+```
+
+
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
 
 ## Packaging and running the application

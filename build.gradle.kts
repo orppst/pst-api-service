@@ -13,6 +13,10 @@ val quarkusPlatformArtifactId: String by project
 val quarkusPlatformVersion: String by project
 
 dependencies {
+
+    implementation("io.quarkus:quarkus-container-image-docker") // or perhaps below is better - esp if you do not have docker installed...
+//    implementation("io.quarkus:quarkus-container-image-jib")
+    implementation("io.quarkus:quarkus-minikube")
     implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
     implementation("io.quarkus:quarkus-smallrye-graphql")
     implementation("io.quarkus:quarkus-kafka-streams")
