@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proposals</title>
+
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly.min.css">
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly-additions.min.css">
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="card-body">
+      <h2 class="card-title">Proposals</h2>
+      <button class="btn btn-info" id="query-proposal">Get Proposal</button>
+      <div class="query"></div>
+    </div>
+  </div>
+</div>
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $("#query-proposal").click((event) => {
+        fetch("/api/proposal/query", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<h4 class='col-md-12' id='proposal-div'>Proposal # <i>${qid}</i> | <strong>Pending</strong></h4>`);
+            $(".query").prepend(row);
+        });
+    });
+
+    var source = new EventSource("/api/proposal");
+    source.onmessage = (event) => {
+      $("#proposal-div").html($('#proposal-div').html().replace("Pending", `${event.data}`));
+    };
+</script>
+</html>
