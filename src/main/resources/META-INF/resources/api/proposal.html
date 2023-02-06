@@ -23,17 +23,18 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $("#query-proposal").click((event) => {
-        fetch("/api/proposal/query", {method: "POST"})
+        fetch("/api/proposal/query/SELECT o FROM ObservingProposal o ORDER BY o.code", {method: "POST"})
         .then(res => res.text())
         .then(qid => {
-            var row = $(`<h4 class='col-md-12' id='proposal-div'>Proposal # <i>${qid}</i> | <strong>Pending</strong></h4>`);
+            var row = $(`<pre id='proposal-pre'>Proposal # <i>${qid}</i> | <strong>Pending</strong></pre>`);
             $(".query").prepend(row);
         });
     });
 
     var source = new EventSource("/api/proposal");
     source.onmessage = (event) => {
-      $("#proposal-div").html($('#proposal-div').html().replace("Pending", `${event.data}`));
+      var obj = JSON.parse(`${event.data}`);
+      $("#proposal-pre").html(JSON.stringify(obj, null, 4));
     };
 </script>
 </html>
