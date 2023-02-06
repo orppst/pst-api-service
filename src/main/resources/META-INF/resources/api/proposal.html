@@ -14,7 +14,11 @@
   <div class="card">
     <div class="card-body">
       <h2 class="card-title">Proposals</h2>
-      <button class="btn btn-info" id="query-proposal">Get Proposal</button>
+      <button class="btn btn-info" id="read-by-query">Read-By-Query</button>
+      <button class="btn btn-info" id="read-by-code">Read-By-Code</button>
+      <button class="btn btn-info" id="update">Update</button>
+      <button class="btn btn-info" id="create">Create</button>
+      <button class="btn btn-info" id="delete">Delete</button>
       <div class="query"></div>
     </div>
   </div>
@@ -22,12 +26,48 @@
 </body>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    $("#query-proposal").click((event) => {
+    $("#read-by-query").click((event) => {
         fetch("/api/proposal/query/SELECT o FROM ObservingProposal o ORDER BY o.code", {method: "POST"})
         .then(res => res.text())
         .then(qid => {
-            var row = $(`<pre id='proposal-pre'>Proposal # <i>${qid}</i> | <strong>Pending</strong></pre>`);
-            $(".query").prepend(row);
+            var row = $(`<pre id='proposal-pre'>Read-By-Query pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#read-by-code").click((event) => {
+        fetch("/api/proposal/read/pr1", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Read-By-Code pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#create").click((event) => {
+        fetch("/api/proposal/create/{\"create\": \"data to create a new proposal\"}", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Create pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#update").click((event) => {
+        fetch("/api/proposal/update/{\"update\": \"data to update an existing proposal\"}", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Update pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#delete").click((event) => {
+        fetch("/api/proposal/delete/pr1", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Delete pressed</pre>`);
+            $(".query").html(row);
         });
     });
 
