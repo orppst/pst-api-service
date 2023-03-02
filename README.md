@@ -1,5 +1,18 @@
 # pst-api-service Project
 
+
+This service provides the main API to the proposal store
+
+
+To connect to the dev version of postgres that will run in Docker you need the following
+
+port : 64474
+username : quarkus
+password : quarkus
+
+
+
+
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
