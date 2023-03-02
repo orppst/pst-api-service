@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Proposals</title>
+
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly.min.css">
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/patternfly/3.24.0/css/patternfly-additions.min.css">
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="card-body">
+      <h2 class="card-title">Proposals</h2>
+      <button class="btn btn-info" id="read-by-query">Read-By-Query</button>
+      <button class="btn btn-info" id="read-by-code">Read-By-Code</button>
+      <button class="btn btn-info" id="update">Update</button>
+      <button class="btn btn-info" id="create">Create</button>
+      <button class="btn btn-info" id="delete">Delete</button>
+      <button class="btn btn-info" id="test-getJSON">getJSON</button>
+      <div class="query"></div>
+      <pre id="testGetJson"></pre>
+    </div>
+  </div>
+</div>
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $("#read-by-query").click((event) => {
+        fetch("/api/proposal/query/SELECT o FROM ObservingProposal o ORDER BY o.code", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Read-By-Query pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#read-by-code").click((event) => {
+        fetch("/api/proposal/user/37", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Read-By-Code pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#create").click((event) => {
+        // get the data in the example_proposal.json file
+        $.getJSON("example_proposal.json", function(result) {
+          var op = result.ProposalModel.content[0]["proposal:ObservingProposal"]; //extract the ObservingProposal part
+          op.code = "pr2"; //modify the 'code' field value
+          op.title = "another test proposal";
+
+          // put JSON object in body of the 'POST'
+          fetch("/api/proposal/create", {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(op)
+          })
+          .then(res => res.text())
+          .then(qid => {
+              var row = $(`<pre id='proposal-pre'>Create pressed</pre>`);
+              $(".query").html(row);
+          });
+        });
+    });
+
+    $("#update").click((event) => {
+        fetch("/api/proposal/update/{\"update\": \"data to update an existing proposal\"}", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Update pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#delete").click((event) => {
+        fetch("/api/proposal/delete/pr1", {method: "POST"})
+        .then(res => res.text())
+        .then(qid => {
+            var row = $(`<pre id='proposal-pre'>Delete pressed</pre>`);
+            $(".query").html(row);
+        });
+    });
+
+    $("#test-getJSON").click((event) => {
+        $.getJSON("example_proposal.json", function(result) {
+          var op = result.ProposalModel.content[0]; //extract the ObservingProposal part
+          op["proposal:ObservingProposal"].code = "pr2"; //modify the 'code' field value
+          op["proposal:ObservingProposal"].title = "another test proposal";
+          $("#testGetJson").html(JSON.stringify(op, null, 4)); //display the object
+        });
+    });
+
+    var source = new EventSource("/api/proposal");
+    source.onmessage = (event) => {
+      var obj = JSON.parse(`${event.data}`);
+      $("#proposal-pre").html(JSON.stringify(obj, null, 4));
+    };
+</script>
+</html>
