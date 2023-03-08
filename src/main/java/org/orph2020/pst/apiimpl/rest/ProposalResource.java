@@ -4,7 +4,9 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -14,10 +16,7 @@ import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
+import javax.persistence.*;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
@@ -25,6 +24,8 @@ import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.ext.ExceptionMapper;
+import javax.ws.rs.ext.Provider;
 import java.util.List;
 
 /*
@@ -46,14 +47,13 @@ public class ProposalResource {
 
    --OR--
 
+      @Inject
+   EntityManager em;
+    */
+
    @PersistenceContext
    EntityManager em;  // exists for the application lifetime no need to close
 
-   --OR--
-    */
-
-   @Inject
-   EntityManager em; // as above
 
    @Inject
    ObjectMapper mapper;
@@ -69,6 +69,38 @@ public class ProposalResource {
       em.persist(ex.getCycle());
       em.persist(ex.getProposal());
    }
+
+   //--------------------------------------------------------------------------------
+   // Error Mapper
+   //--------------------------------------------------------------------------------
+   @Provider
+   public static class ErrorMapper implements ExceptionMapper<Exception> {
+
+      private static final Logger LOGGER = Logger.getLogger(ProposalResource.class.getName());
+      @Inject
+      ObjectMapper objectMapper;
+
+      @Override
+      public Response toResponse(Exception e) {
+         LOGGER.error("Failed to handle request", e);
+
+         int code = 500;
+         if (e instanceof WebApplicationException) {
+            code = ((WebApplicationException) e).getResponse().getStatus();
+         }
+
+         ObjectNode exceptionJson = objectMapper.createObjectNode();
+         exceptionJson.put("exceptionType", e.getClass().getName());
+         exceptionJson.put("statusCode", code);
+
+         if (e.getMessage() != null) {
+            exceptionJson.put("error", e.getMessage());
+         }
+
+         return Response.status(code).entity(exceptionJson).build();
+      }
+   }
+
 
    //--------------------------------------------------------------------------------
    // Internal helpers
@@ -110,58 +142,53 @@ public class ProposalResource {
    )
    @Path("/users/{userName}/proposals/{proposalCode}/justifications/{which}")
    @Consumes(MediaType.APPLICATION_JSON)
-   @Transactional(rollbackOn={ProposalToolException.class})
+   @Transactional(rollbackOn={WebApplicationException.class})
    public Response replaceJustification(@PathParam("userName") String userName,
                                         @PathParam("proposalCode") String proposalCode,
                                         @PathParam("which") String which,
                                         String jsonJustification)
-   throws ProposalToolException
+   throws WebApplicationException
    {
-      try
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null)
       {
-         //em.getTransaction().begin();
-
-         ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
-
-         if (proposal == null)
-         {
-            throw new Exception(
-                    String.format("No proposal with code: %s exists in the database", proposalCode)
-            );
-         }
-
-         Justification incoming = mapper.readValue(jsonJustification, Justification.class);
-
-         switch (which)
-         {
-            case "technical":
-            {
-               proposal.setTechnicalJustification(incoming);
-               break;
-            }
-
-            case "scientific":
-            {
-               proposal.setScientificJustification(incoming);
-               break;
-            }
-
-            default:
-            {
-               throw new Exception(String.format("Justifications are either 'technical' or 'scientific', I got %s",
-                       which));
-            }
-         }
-
-         //em.getTransaction().commit();
+         throw new WebApplicationException(
+                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
+         );
       }
-      catch (Exception e)
+
+      Justification incoming = null;
+      try {
+         incoming = mapper.readValue(jsonJustification, Justification.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
+      }
+
+      switch (which)
       {
-         throw new ProposalToolException(e.getMessage());
+         case "technical":
+         {
+            proposal.setTechnicalJustification(incoming);
+            break;
+         }
+
+         case "scientific":
+         {
+            proposal.setScientificJustification(incoming);
+            break;
+         }
+
+         default:
+         {
+            throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got %s", which),
+                    418);
+         }
       }
 
       return Response.ok().entity(
-              String.format("Justification for ObservingProposal %s replaced successfully", proposalCode))
+              String.format("%s Justification for ObservingProposal %s replaced successfully", which, proposalCode))
               .build();
    }
 
@@ -172,35 +199,24 @@ public class ProposalResource {
            description = "change the title of an ObservingProposal"
    )
    @Consumes(MediaType.TEXT_PLAIN)
-   @Transactional(rollbackOn = {ProposalToolException.class})
+   @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("/users/{userName}/proposals/{proposalCode}/title")
    public Response replaceTitle(
            @PathParam("userName") String userName,
            @PathParam("proposalCode") String proposalCode,
            String replacementTitle)
-           throws ProposalToolException
+           throws WebApplicationException
    {
-      try
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null)
       {
-         //transaction begin
-
-         ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
-
-         if (proposal == null)
-         {
-            throw new Exception(
-                    String.format("No proposal with code: %s exists in the database", proposalCode)
-            );
-         }
-
-         proposal.setTitle(replacementTitle);
-
-         //transaction end
+         throw new WebApplicationException(
+                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
+         );
       }
-      catch (Exception e)
-      {
-         throw new ProposalToolException(e.getMessage());
-      }
+
+      proposal.setTitle(replacementTitle);
 
       return Response.ok().entity(
               String.format("Title for ObservingProposal %s replaced successfully", proposalCode))
@@ -215,51 +231,48 @@ public class ProposalResource {
            description = "add a Person as an Investigator to an ObservationProposal"
    )
    @Consumes(MediaType.APPLICATION_JSON)
-   @Transactional(rollbackOn = {ProposalToolException.class})
+   @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("/users/{user}/proposals/{proposalCode}/investigators")
    public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
-           throws ProposalToolException
+           throws WebApplicationException
    {
-      try
+      PersonInvestigator personInvestigator = null;
+      try {
+         personInvestigator = mapper.readValue(jsonPersonInvestigator, PersonInvestigator.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
+      }
+
+      Person person = em.find(Person.class, personInvestigator.personId);
+
+      if (person == null)
       {
-         //transaction begin
+         throw new WebApplicationException(String.format("Person %d not found", personInvestigator.personId), 404);
+      }
 
-         PersonInvestigator personInvestigator = mapper.readValue(jsonPersonInvestigator, PersonInvestigator.class);
+      ObservingProposal proposal = em.find(ObservingProposal.class, code);
 
-         Person person = em.find(Person.class, personInvestigator.personId);
+      if (proposal == null)
+      {
+         throw new WebApplicationException(String.format("ObservingProposal %s not found", code), 404);
+      }
 
-         if (person == null)
-         {
-            throw new Exception(String.format("Person %d not found", personInvestigator.personId));
-         }
-
-         ObservingProposal proposal = em.find(ObservingProposal.class, code);
-
-         if (proposal == null)
-         {
-            throw new Exception(String.format("ObservingProposal %s not found", code));
-         }
-
-         //throws if 'investigatorKind' not one of "COI" or "PI"
+      try {
          Investigator investigator = new Investigator(
                  InvestigatorKind.fromValue(personInvestigator.investigatorKind),
                  personInvestigator.forPhD, person) ;
 
          proposal.addInvestigators(investigator);
-
-         //transaction end
-
-         return Response.ok()
-                 .entity(String.format("Person %s attached as Investigator to proposal %s successfully",
-                         personInvestigator.personId, code))
-                 .build();
-
+      } catch (IllegalArgumentException e) {
+         throw new WebApplicationException(e, 422);
       }
-      catch (Exception e)
-      {
-         logger.info(e.getMessage());
-         throw new ProposalToolException(e.getMessage()); //response code 400 BAD INPUT
-      }
+
+      return Response.ok()
+              .entity(String.format("Person %s attached as Investigator to proposal %s successfully",
+                      personInvestigator.personId, code))
+              .build();
+
+
    }
 
 
@@ -280,6 +293,7 @@ public class ProposalResource {
       TypedQuery<ObservingProposal> query = em.createQuery(queryStr, ObservingProposal.class);
       //query.setParameter("userId", Integer.valueOf(userId));
 
+      // This can be legitimately empty if the user has no proposals
       return query.getResultList();
    }
 
@@ -291,9 +305,16 @@ public class ProposalResource {
    )
    @Path("/users/{user}/proposals/{proposalCode}")
    public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
+           throws WebApplicationException
    {
-      //assume proposalCode has originated from the database i.e., the entity exists
-      return em.find(ObservingProposal.class, proposalCode);
+      ObservingProposal op = em.find(ObservingProposal.class, proposalCode);
+
+      if (op == null)
+      {
+         throw new WebApplicationException("ObservingProposal: %s does not exist", 404);
+      }
+
+      return op;
    }
 
    //--------------------------------------------------------------------------------
@@ -307,28 +328,23 @@ public class ProposalResource {
            description = "create a new Person in the database"
    )
    @Consumes(MediaType.APPLICATION_JSON)
-   @Transactional(rollbackOn = {ProposalToolException.class})
+   @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("/admin/{adminId}/create/person")
    public Response createPerson(@PathParam("adminId") String adminId, String jsonPerson)
-           throws ProposalToolException
+           throws WebApplicationException
    {
-      try
-      {
-         //em.getTransaction().begin();
-
-         //throws if JSON string not valid or cannot build object from the string
-         Person person = mapper.readValue(jsonPerson, Person.class);
-
-
-         //FIXME: we should check that we are not trying to persist an existing person
-
-         em.persist(person);
-
-         //em.getTransaction().commit();
+      //throws if JSON string not valid or cannot build object from the string
+      Person person = null;
+      try {
+         person = mapper.readValue(jsonPerson, Person.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
       }
-      catch (Exception e)
-      {
-         throw new ProposalToolException(e.getMessage()); //response code 400
+
+      try {
+         em.persist(person);
+      } catch (EntityExistsException e) {
+         throw new WebApplicationException(e, 400);
       }
 
       return Response.ok().entity("Person created successfully").build();
