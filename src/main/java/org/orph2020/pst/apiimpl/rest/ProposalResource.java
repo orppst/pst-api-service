@@ -10,16 +10,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.hibernate.Criteria;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.persistence.*;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -158,7 +154,7 @@ public class ProposalResource {
          );
       }
 
-      Justification incoming = null;
+      Justification incoming;
       try {
          incoming = mapper.readValue(jsonJustification, Justification.class);
       } catch (JsonProcessingException e) {
@@ -236,7 +232,7 @@ public class ProposalResource {
    public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
            throws WebApplicationException
    {
-      PersonInvestigator personInvestigator = null;
+      PersonInvestigator personInvestigator;
       try {
          personInvestigator = mapper.readValue(jsonPersonInvestigator, PersonInvestigator.class);
       } catch (JsonProcessingException e) {
@@ -311,7 +307,8 @@ public class ProposalResource {
 
       if (op == null)
       {
-         throw new WebApplicationException("ObservingProposal: %s does not exist", 404);
+         throw new WebApplicationException(
+                 String.format("ObservingProposal: %s does not exist", proposalCode), 404);
       }
 
       return op;
@@ -334,7 +331,7 @@ public class ProposalResource {
            throws WebApplicationException
    {
       //throws if JSON string not valid or cannot build object from the string
-      Person person = null;
+      Person person;
       try {
          person = mapper.readValue(jsonPerson, Person.class);
       } catch (JsonProcessingException e) {

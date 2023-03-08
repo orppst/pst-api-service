@@ -7,7 +7,6 @@ import javax.ws.rs.core.MediaType;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 
 @QuarkusTest
@@ -15,6 +14,7 @@ public class ProposalResourceTest {
 
     @Test
     void testGetObservingProposal() {
+        //valid request
         given()
                 .when()
                 .get("/api/proposal-tool/users/batMan/proposals/pr1")
@@ -22,6 +22,17 @@ public class ProposalResourceTest {
                 .statusCode(200)
                 .body(
                         containsString("\"code\":\"pr1\",")
+                )
+        ;
+
+        //invalid request
+        given()
+                .when()
+                .get("/api/proposal-tool/users/batMan/proposals/not-a-code")
+                .then()
+                .statusCode(404)
+                .body(
+                        containsString("ObservingProposal: not-a-code does not exist")
                 )
         ;
 
