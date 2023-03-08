@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -32,9 +33,9 @@ import java.util.List;
  */
 
 
-@Path("/api/proposal")
+@Path("/api/proposal-tool")
 @ApplicationScoped
-@Tag(name = "proposal")
+@Tag(name = "proposal-tool")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalResource {
    private final Logger logger;
@@ -61,7 +62,6 @@ public class ProposalResource {
       this.logger = logger;
    }
 
-
    @Transactional
    public void initDB() {
       logger.info("initializing Database");
@@ -71,9 +71,19 @@ public class ProposalResource {
    }
 
    //--------------------------------------------------------------------------------
-   // Persistence utilities
+   // Internal helpers
    //--------------------------------------------------------------------------------
 
+   private static class PersonInvestigator {
+     @JsonProperty("investigatorKind")
+      public String investigatorKind; //should be "COI" or "PI" only
+
+     @JsonProperty("forPhD")
+      boolean forPhD;
+
+     @JsonProperty("personId")
+      Long personId; //must match an existing Person in the database
+   }
 
    //--------------------------------------------------------------------------------
    // Principle Investigator API
@@ -150,7 +160,51 @@ public class ProposalResource {
          throw new ProposalToolException(e.getMessage());
       }
 
-      return Response.ok().entity(String.format("Justification replaced successfully")).build();
+      return Response.ok().entity(
+              String.format("Justification for ObservingProposal %s replaced successfully", proposalCode))
+              .build();
+   }
+
+   @PUT
+   @Operation(summary = "change the title of an ObservingProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "change the title of an ObservingProposal"
+   )
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {ProposalToolException.class})
+   @Path("/users/{userName}/proposals/{proposalCode}/title")
+   public Response replaceTitle(
+           @PathParam("userName") String userName,
+           @PathParam("proposalCode") String proposalCode,
+           String replacementTitle)
+           throws ProposalToolException
+   {
+      try
+      {
+         //transaction begin
+
+         ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+         if (proposal == null)
+         {
+            throw new Exception(
+                    String.format("No proposal with code: %s exists in the database", proposalCode)
+            );
+         }
+
+         proposal.setTitle(replacementTitle);
+
+         //transaction end
+      }
+      catch (Exception e)
+      {
+         throw new ProposalToolException(e.getMessage());
+      }
+
+      return Response.ok().entity(
+              String.format("Title for ObservingProposal %s replaced successfully", proposalCode))
+              .build();
    }
 
    // Investigator objects
@@ -158,43 +212,54 @@ public class ProposalResource {
    @Operation(summary = "add an Investigator to an ObservationProposal")
    @APIResponse(
            responseCode = "200",
-           description = "add an Investigator to an ObservationProposal"
+           description = "add a Person as an Investigator to an ObservationProposal"
    )
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {ProposalToolException.class})
    @Path("/users/{user}/proposals/{proposalCode}/investigators")
-   public Response addInvestigator(@PathParam("proposalCode") String code, Long investigatorID)
+   public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
            throws ProposalToolException
    {
       try
       {
-         Person person = em.find(Person.class, investigatorID);
+         //transaction begin
+
+         PersonInvestigator personInvestigator = mapper.readValue(jsonPersonInvestigator, PersonInvestigator.class);
+
+         Person person = em.find(Person.class, personInvestigator.personId);
 
          if (person == null)
          {
-            throw new Exception(String.format("Investigator %d not found", investigatorID));
+            throw new Exception(String.format("Person %d not found", personInvestigator.personId));
          }
 
-         // find the ObservingProposal by code
-         ObservingProposal proposal = em.createNamedQuery("ObservingProposal.findById", ObservingProposal.class)
-                 .setParameter("id", code)
-                 .getSingleResult();
+         ObservingProposal proposal = em.find(ObservingProposal.class, code);
 
-         Investigator investigator = new Investigator(InvestigatorKind.COI, false, person);
+         if (proposal == null)
+         {
+            throw new Exception(String.format("ObservingProposal %s not found", code));
+         }
 
-         // call ObservingProposal.add(Investigator) to attach said investigator to the proposal
+         //throws if 'investigatorKind' not one of "COI" or "PI"
+         Investigator investigator = new Investigator(
+                 InvestigatorKind.fromValue(personInvestigator.investigatorKind),
+                 personInvestigator.forPhD, person) ;
+
          proposal.addInvestigators(investigator);
 
+         //transaction end
+
+         return Response.ok()
+                 .entity(String.format("Person %s attached as Investigator to proposal %s successfully",
+                         personInvestigator.personId, code))
+                 .build();
+
       }
-      catch (Exception e) //response code 400 BAD INPUT
+      catch (Exception e)
       {
          logger.info(e.getMessage());
-         throw new ProposalToolException(e.getMessage());
+         throw new ProposalToolException(e.getMessage()); //response code 400 BAD INPUT
       }
-
-      return Response.ok()
-              .entity(String.format("Investigator %s attached to proposal %s successfully", investigatorID, code))
-              .build();
    }
 
 
@@ -236,15 +301,15 @@ public class ProposalResource {
    //--------------------------------------------------------------------------------
 
    @POST
-   @Operation(summary = "create a new Investigator in the database")
+   @Operation(summary = "create a new Person in the database")
    @APIResponse(
            responseCode = "201",
-           description = "create a new Investigator in the database"
+           description = "create a new Person in the database"
    )
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {ProposalToolException.class})
-   @Path("/admin/{adminId}/create/investigator")
-   public Response createInvestigator(@PathParam("adminId") String adminId, String jsonInvestigator)
+   @Path("/admin/{adminId}/create/person")
+   public Response createPerson(@PathParam("adminId") String adminId, String jsonPerson)
            throws ProposalToolException
    {
       try
@@ -252,19 +317,21 @@ public class ProposalResource {
          //em.getTransaction().begin();
 
          //throws if JSON string not valid or cannot build object from the string
-         Investigator investigator = mapper.readValue(jsonInvestigator, Investigator.class);
+         Person person = mapper.readValue(jsonPerson, Person.class);
 
-         //throws if 'investigator' already persisted
-         em.persist(investigator);
+
+         //FIXME: we should check that we are not trying to persist an existing person
+
+         em.persist(person);
 
          //em.getTransaction().commit();
       }
-      catch (Exception e) //re-throw as a ProposalToolException (response code: 400); could be made more specific
+      catch (Exception e)
       {
-         throw new ProposalToolException(e.getMessage());
+         throw new ProposalToolException(e.getMessage()); //response code 400
       }
 
-      return Response.ok().entity("Investigator created successfully").build();
+      return Response.ok().entity("Person created successfully").build();
    }
 
 
