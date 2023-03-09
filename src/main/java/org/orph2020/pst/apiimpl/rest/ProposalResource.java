@@ -3,86 +3,53 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.EmerlinExample;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
-import org.ivoa.dm.proposal.prop.ProposalModel;
+import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
+import javax.persistence.*;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.ext.ExceptionMapper;
+import javax.ws.rs.ext.Provider;
 import java.util.List;
 
 /*
- Semantics of (public) interface methods (these are all REST Endpoints):
-
-      getUserProposals(user) - gets all proposals associated with the 'user'
-
-      @Path(/{obs_code}/add/X)
-      addX(obs_code, X_id) - adds the existing entity X with key X_id to the specified observing proposal. X_id
-                              passed via the body of POST as a JSON String
-
-      @Path(/{obs_code}/edit/X)
-      editX(obs_code, String X_edit) - edit the X property of the specified observing proposal. X_edit passed via
-                                       the body of a POST
-
-
-      createEntity(String object_X) - creates a persistent entity X in the DB. object_X will be passed in
-                                 the body of a 'POST' operation as a JSON String.
-
-
-      createProposal(new_proposal) - creates a new proposal for the current user. The 'new_proposal' string needs
-                                     to contain any required data e.g., investigator(s), the rest can be blank to
-                                     be filled in at a later date.
-
-      deleteProposal(obs_code) - delete the specified proposal (this will only delete the proposal not the entities
-                                 to which it refers).
-
-  Notes:
-  1. An observation code should uniquely define an observing proposal and should be known to the user.
-     That is, a user logs on to the system that then provides them with a list of observing proposals with which
-     they are associated. Each has a unique "observing proposal code".
-
-  2. The user can add or remove existing entities to an observing proposal with which they are associated
-     (role dependent). Entities can consist of for example, CelestialTargets, People (Principal Investigator,
-     Co-Investigator, ...), TechnicalGoals, and so forth. Basically, any item found in the ProposalModel.
-
-  3. If there is no appropriate entity in the database then it can be created using a 'createEntity' method,
-     subject to verification depending on the type of entity being created (role specific). It is envisaged that
-     this will be used mostly for the creation of scientific and technical justification documents, and any other
-     supporting documents.
-
-  4. Deletion of database entities can only be performed by specific user/admin roles.
-
-  5. Database entities can be updated using the 'editEntity'. For example, an Investigator may have changed
-     organisations, or a CelestialTarget has modified attributes, or a justification document requires modification,
-     or whatever.
-
-  methods to be added: getAllX() - where 'X' refers to any relevant entity of the ProposalModel e.g. Targets,
-  Spectra, TechnicalGoals and so on, though some of these may have to be restricted depending on the role of the
-  user. These are needed so that the user may browse and use items already stored in the database should they suit
-  requirements, or can be used as a template for a new entity with modified fields.
+   For use cases see:
+         https://gitlab.com/opticon-radionet-pilot/proposal-submission-tool/requirements/-/blob/main/UseCases.adoc
  */
 
 
-@Path("/api/proposal")
+@Path("/api/proposal-tool")
 @ApplicationScoped
-@Tag(name = "proposal")
+@Tag(name = "proposal-tool")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalResource {
    private final Logger logger;
 
-   @Inject
+   /*
+   @PersistenceUnit
+   EntityManagerFactory emf // em = emf.createEntityManager(); <persistence stuff>; em.close(); - per call
+
+   --OR--
+
+      @Inject
    EntityManager em;
+    */
+
+   @PersistenceContext
+   EntityManager em;  // exists for the application lifetime no need to close
+
 
    @Inject
    ObjectMapper mapper;
@@ -90,7 +57,6 @@ public class ProposalResource {
    public ProposalResource(Logger logger) {
       this.logger = logger;
    }
-
 
    @Transactional
    public void initDB() {
@@ -101,40 +67,229 @@ public class ProposalResource {
    }
 
    //--------------------------------------------------------------------------------
-   // Persistence utilities
+   // Error Mapper
    //--------------------------------------------------------------------------------
+   @Provider
+   public static class ErrorMapper implements ExceptionMapper<Exception> {
 
-   @Transactional
-   public List<ObservingProposal> findObservingProposalsByQuery(String query) {
-      return em.createQuery(query, ObservingProposal.class).getResultList();
+      private static final Logger LOGGER = Logger.getLogger(ProposalResource.class.getName());
+      @Inject
+      ObjectMapper objectMapper;
+
+      @Override
+      public Response toResponse(Exception e) {
+         LOGGER.error("Failed to handle request", e);
+
+         int code = 500;
+         if (e instanceof WebApplicationException) {
+            code = ((WebApplicationException) e).getResponse().getStatus();
+         }
+
+         ObjectNode exceptionJson = objectMapper.createObjectNode();
+         exceptionJson.put("exceptionType", e.getClass().getName());
+         exceptionJson.put("statusCode", code);
+
+         if (e.getMessage() != null) {
+            exceptionJson.put("error", e.getMessage());
+         }
+
+         return Response.status(code).entity(exceptionJson).build();
+      }
    }
 
-   //TODO: check if Transactional annotation is required
-   @Transactional
-   private ObservingProposal findObservingProposalById(String id) {
-      TypedQuery<ObservingProposal> query = em.createNamedQuery("ObservingProposal.findById",
-              ObservingProposal.class);
-      query.setParameter("id", id);
-      return query.getSingleResult();
+
+   //--------------------------------------------------------------------------------
+   // Internal helpers
+   //--------------------------------------------------------------------------------
+
+   private static class PersonInvestigator {
+     @JsonProperty("investigatorKind")
+      public String investigatorKind; //should be "COI" or "PI" only
+
+     @JsonProperty("forPhD")
+      boolean forPhD;
+
+     @JsonProperty("personId")
+      Long personId; //must match an existing Person in the database
    }
 
    //--------------------------------------------------------------------------------
-   // read content from an ObservationProposal (GET Methods)
+   // Principle Investigator API
    //--------------------------------------------------------------------------------
-   @GET
+
+   //Import a proposal
+
+
+   //Export a proposal
+
+
+   //Submit a proposal
+
+
+   //Create a proposal (from "scratch")
+
+
+   //Edit a proposal
+   @PUT
+   @Operation(summary = "replace a technical or scientific Justification with the data in this request")
+   @APIResponse(
+           responseCode = "200",
+           description = "replace a technical or scientific Justification with the data in this request"
+   )
+   @Path("/users/{userName}/proposals/{proposalCode}/justifications/{which}")
+   @Consumes(MediaType.APPLICATION_JSON)
+   @Transactional(rollbackOn={WebApplicationException.class})
+   public Response replaceJustification(@PathParam("userName") String userName,
+                                        @PathParam("proposalCode") String proposalCode,
+                                        @PathParam("which") String which,
+                                        String jsonJustification)
+   throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null)
+      {
+         throw new WebApplicationException(
+                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
+         );
+      }
+
+      Justification incoming;
+      try {
+         incoming = mapper.readValue(jsonJustification, Justification.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
+      }
+
+      switch (which)
+      {
+         case "technical":
+         {
+            proposal.setTechnicalJustification(incoming);
+            break;
+         }
+
+         case "scientific":
+         {
+            proposal.setScientificJustification(incoming);
+            break;
+         }
+
+         default:
+         {
+            throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got %s", which),
+                    418);
+         }
+      }
+
+      return Response.ok().entity(
+              String.format("%s Justification for ObservingProposal %s replaced successfully", which, proposalCode))
+              .build();
+   }
+
+   @PUT
+   @Operation(summary = "change the title of an ObservingProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "change the title of an ObservingProposal"
+   )
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   @Path("/users/{userName}/proposals/{proposalCode}/title")
+   public Response replaceTitle(
+           @PathParam("userName") String userName,
+           @PathParam("proposalCode") String proposalCode,
+           String replacementTitle)
+           throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null)
+      {
+         throw new WebApplicationException(
+                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
+         );
+      }
+
+      proposal.setTitle(replacementTitle);
+
+      return Response.ok().entity(
+              String.format("Title for ObservingProposal %s replaced successfully", proposalCode))
+              .build();
+   }
+
+   // Investigator objects
+   @POST
+   @Operation(summary = "add an Investigator to an ObservationProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "add a Person as an Investigator to an ObservationProposal"
+   )
+   @Consumes(MediaType.APPLICATION_JSON)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   @Path("/users/{user}/proposals/{proposalCode}/investigators")
+   public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
+           throws WebApplicationException
+   {
+      PersonInvestigator personInvestigator;
+      try {
+         personInvestigator = mapper.readValue(jsonPersonInvestigator, PersonInvestigator.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
+      }
+
+      Person person = em.find(Person.class, personInvestigator.personId);
+
+      if (person == null)
+      {
+         throw new WebApplicationException(String.format("Person %d not found", personInvestigator.personId), 404);
+      }
+
+      ObservingProposal proposal = em.find(ObservingProposal.class, code);
+
+      if (proposal == null)
+      {
+         throw new WebApplicationException(String.format("ObservingProposal %s not found", code), 404);
+      }
+
+      try {
+         Investigator investigator = new Investigator(
+                 InvestigatorKind.fromValue(personInvestigator.investigatorKind),
+                 personInvestigator.forPhD, person) ;
+
+         proposal.addInvestigators(investigator);
+      } catch (IllegalArgumentException e) {
+         throw new WebApplicationException(e, 422);
+      }
+
+      return Response.ok()
+              .entity(String.format("Person %s attached as Investigator to proposal %s successfully",
+                      personInvestigator.personId, code))
+              .build();
+
+
+   }
+
+
+   //post required as we send 'userId' in the body of the request
+   @POST
    @Operation(summary = "get all ObservationProposals associated with the user")
    @APIResponse(
            responseCode = "200",
            description = "get all ObservationProposals associated with the user"
    )
-   @Path("/{user}/proposals")
-   public List<ObservingProposal> getUserProposals(@PathParam("user") String user, String userId)
+   @Consumes(MediaType.APPLICATION_JSON)
+   @Path("/users/{user}/proposals")
+   public  List<ObservingProposal> getUserProposals(@PathParam("user") String user, String userId)
    {
-      //FIXME: query needs to loop over the list of investigators in each ObservingProposal in the DB
-      String queryStr = "SELECT o FROM ObservingProposal o WHERE o.investigators[0] = :userId";
+      //FIXME: query to find all observing proposals associated with the given 'userId'
+      //currently just finds all observing proposals in the database
+      String queryStr = "SELECT o FROM ObservingProposal o ORDER BY o.code";
       TypedQuery<ObservingProposal> query = em.createQuery(queryStr, ObservingProposal.class);
-      query.setParameter("userId", userId);
+      //query.setParameter("userId", Integer.valueOf(userId));
 
+      // This can be legitimately empty if the user has no proposals
       return query.getResultList();
    }
 
@@ -144,141 +299,53 @@ public class ProposalResource {
            responseCode = "200",
            description = "get a single ObservationProposal specified by the code"
    )
-   @Path("/{user}/proposals/{proposalCode}")
-   public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode) {
-      //assume proposalCode has originated from the database i.e., the entity exists
-      return em.find(ObservingProposal.class, proposalCode);
+   @Path("/users/{user}/proposals/{proposalCode}")
+   public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
+           throws WebApplicationException
+   {
+      ObservingProposal op = em.find(ObservingProposal.class, proposalCode);
+
+      if (op == null)
+      {
+         throw new WebApplicationException(
+                 String.format("ObservingProposal: %s does not exist", proposalCode), 404);
+      }
+
+      return op;
    }
 
    //--------------------------------------------------------------------------------
-   // create content for an ObservationProposal (PUT Methods)
+   // Admin API - root path '/api/proposal/admin/{adminID}/
    //--------------------------------------------------------------------------------
 
-
-   //--------------------------------------------------------------------------------
-   // add content to an ObservationProposal (POST Methods)
-   //--------------------------------------------------------------------------------
    @POST
-   @Operation(summary = "add an Investigator to an ObservationProposal")
+   @Operation(summary = "create a new Person in the database")
    @APIResponse(
-           responseCode = "200",
-           description = "add an Investigator to an ObservationProposal"
+           responseCode = "201",
+           description = "create a new Person in the database"
    )
-   @Path("/{proposalCode}/investigators")
    @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String addInvestigator(@PathParam("proposalCode") String code, String investigatorID)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   @Path("/admin/{adminId}/create/person")
+   public Response createPerson(@PathParam("adminId") String adminId, String jsonPerson)
+           throws WebApplicationException
    {
-      String message = String.format("addInvestigator(%s, %s)", code, investigatorID);
-      logger.info(message);
+      //throws if JSON string not valid or cannot build object from the string
+      Person person;
+      try {
+         person = mapper.readValue(jsonPerson, Person.class);
+      } catch (JsonProcessingException e) {
+         throw new WebApplicationException("Invalid JSON input", 422);
+      }
 
-      return message;
+      try {
+         em.persist(person);
+      } catch (EntityExistsException e) {
+         throw new WebApplicationException(e, 400);
+      }
+
+      return Response.ok().entity("Person created successfully").build();
    }
 
-   @POST
-   @Operation(summary = "add a RelatedProposal to an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "add an RelatedProposal to an ObservationProposal"
-   )
-   @Path("/{proposalCode}/relatedProposal")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String addRelatedProposal(@PathParam("proposalCode") String code, String relatedProposalId)
-   {
-      String message = String.format("addRelatedProposal(%s, %s)", code, relatedProposalId);
-      logger.info(message);
-
-      return message;
-   }
-
-   @POST
-   @Operation(summary = "add an Investigator to an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "add an Investigator to an ObservationProposal"
-   )
-   @Path("/{proposalCode}/supportingDocument")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String addSupportingDocument(@PathParam("proposalCode") String code, String supportingDocumentId)
-   {
-      String message = String.format("addSupportingDocument(%s, %s)", code, supportingDocumentId);
-      logger.info(message);
-
-      return message;
-   }
-
-   @POST
-   @Operation(summary = "add an Investigator to an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "add an Investigator to an ObservationProposal"
-   )
-   @Path("/{proposalCode}/observation")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String addObservation(@PathParam("proposalCode") String code, String observationId)
-   {
-      String message = String.format("addSupportingDocument(%s, %s)", code, observationId);
-      logger.info(message);
-
-      return message;
-   }
-
-
-   //--------------------------------------------------------------------------------
-   // edit the content of an ObservationProposal
-   //--------------------------------------------------------------------------------
-   @POST
-   @Operation(summary = "edit the title of an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "edit the title of an ObservationProposal"
-   )
-   @Path("/{proposalCode}/title")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String editTitle(@PathParam("proposalCode") String code, String newTitle)
-   {
-      String message = String.format("editTitle(%s, %s)", code, newTitle);
-      logger.info(message);
-
-      return message;
-   }
-
-   @POST
-   @Operation(summary = "edit the summary of an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "edit the summary of an ObservationProposal"
-   )
-   @Path("/{proposalCode}/summary")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String editSummary(@PathParam("proposalCode") String code, String newSummary)
-   {
-      String message = String.format("editSummary(%s, %s)", code, newSummary);
-      logger.info(message);
-
-      return message;
-   }
-
-   @POST
-   @Operation(summary = "edit the ProposalKind of an ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "edit the ProposalKind of an ObservationProposal"
-   )
-   @Path("/{proposalCode}/proposalKind")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.TEXT_PLAIN)
-   public String editProposalKind(@PathParam("proposalCode") String code, String newProposalKind)
-   {
-      String message = String.format("editProposalKind(%s, %s)", code, newProposalKind);
-      logger.info(message);
-
-      return message;
-   }
 
 }
