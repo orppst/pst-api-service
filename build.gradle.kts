@@ -1,8 +1,10 @@
 plugins {
     id("org.orph2020.pst.common-plugin")
 }
+version = "0.1"
 
 dependencies {
+
 
     implementation("io.quarkus:quarkus-smallrye-graphql")
     implementation("io.quarkus:quarkus-smallrye-openapi")
@@ -14,6 +16,7 @@ dependencies {
     implementation("io.quarkus:quarkus-hibernate-validator")
     implementation("io.quarkus:quarkus-rest-client-jaxb")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
+    implementation("io.quarkus:quarkus-kubernetes-service-binding")
 
     implementation("io.quarkiverse.helm:quarkus-helm:0.1.2")
 
@@ -22,4 +25,4 @@ dependencies {
     testImplementation("io.rest-assured:rest-assured")
 }
 
-version = "0.1"
+
