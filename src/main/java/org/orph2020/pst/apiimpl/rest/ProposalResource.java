@@ -30,7 +30,7 @@ import java.util.List;
  */
 
 
-@Path("/api/proposal-tool")
+@Path("/proposal-tool")
 @ApplicationScoped
 @Tag(name = "proposal-tool")
 @Produces(MediaType.APPLICATION_JSON)
