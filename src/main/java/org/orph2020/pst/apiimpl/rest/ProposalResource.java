@@ -30,7 +30,7 @@ import java.util.List;
  */
 
 
-@Path("/proposal-tool")
+@Path("/proposals")
 @ApplicationScoped
 @Tag(name = "proposal-tool")
 @Produces(MediaType.APPLICATION_JSON)
@@ -136,10 +136,10 @@ public class ProposalResource {
            responseCode = "200",
            description = "replace a technical or scientific Justification with the data in this request"
    )
-   @Path("/users/{userName}/proposals/{proposalCode}/justifications/{which}")
+   @Path("/{proposalCode}/justifications/{which}")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn={WebApplicationException.class})
-   public Response replaceJustification(@PathParam("userName") String userName,
+   public Response replaceJustification(
                                         @PathParam("proposalCode") String proposalCode,
                                         @PathParam("which") String which,
                                         String jsonJustification)
@@ -196,9 +196,8 @@ public class ProposalResource {
    )
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   @Path("/users/{userName}/proposals/{proposalCode}/title")
+   @Path("{proposalCode}/title")
    public Response replaceTitle(
-           @PathParam("userName") String userName,
            @PathParam("proposalCode") String proposalCode,
            String replacementTitle)
            throws WebApplicationException
@@ -228,7 +227,7 @@ public class ProposalResource {
    )
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   @Path("/users/{user}/proposals/{proposalCode}/investigators")
+   @Path("{proposalCode}/investigators")
    public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
            throws WebApplicationException
    {
@@ -272,16 +271,15 @@ public class ProposalResource {
    }
 
 
-   //post required as we send 'userId' in the body of the request
-   @POST
+
+   @GET
    @Operation(summary = "get all ObservationProposals associated with the user")
    @APIResponse(
            responseCode = "200",
            description = "get all ObservationProposals associated with the user"
    )
    @Consumes(MediaType.APPLICATION_JSON)
-   @Path("/users/{user}/proposals")
-   public  List<ObservingProposal> getUserProposals(@PathParam("user") String user, String userId)
+   public  List<ObservingProposal> getUserProposals(@QueryParam("user") String userId)
    {
       //FIXME: query to find all observing proposals associated with the given 'userId'
       //currently just finds all observing proposals in the database
@@ -299,7 +297,7 @@ public class ProposalResource {
            responseCode = "200",
            description = "get a single ObservationProposal specified by the code"
    )
-   @Path("/users/{user}/proposals/{proposalCode}")
+   @Path("/proposals/{proposalCode}")
    public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
            throws WebApplicationException
    {
@@ -314,38 +312,6 @@ public class ProposalResource {
       return op;
    }
 
-   //--------------------------------------------------------------------------------
-   // Admin API - root path '/api/proposal/admin/{adminID}/
-   //--------------------------------------------------------------------------------
-
-   @POST
-   @Operation(summary = "create a new Person in the database")
-   @APIResponse(
-           responseCode = "201",
-           description = "create a new Person in the database"
-   )
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Transactional(rollbackOn = {WebApplicationException.class})
-   @Path("/admin/{adminId}/create/person")
-   public Response createPerson(@PathParam("adminId") String adminId, String jsonPerson)
-           throws WebApplicationException
-   {
-      //throws if JSON string not valid or cannot build object from the string
-      Person person;
-      try {
-         person = mapper.readValue(jsonPerson, Person.class);
-      } catch (JsonProcessingException e) {
-         throw new WebApplicationException("Invalid JSON input", 422);
-      }
-
-      try {
-         em.persist(person);
-      } catch (EntityExistsException e) {
-         throw new WebApplicationException(e, 400);
-      }
-
-      return Response.ok().entity("Person created successfully").build();
-   }
 
 
 }
