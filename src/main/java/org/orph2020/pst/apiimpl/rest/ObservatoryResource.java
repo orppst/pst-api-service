@@ -36,4 +36,5 @@ public class ObservatoryResource {
        return query.getResultList();
     }
 
+
 }
