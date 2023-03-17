@@ -297,7 +297,7 @@ public class ProposalResource {
            responseCode = "200",
            description = "get a single ObservationProposal specified by the code"
    )
-   @Path("/proposals/{proposalCode}")
+   @Path("/{proposalCode}")
    public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
            throws WebApplicationException
    {
