@@ -6,7 +6,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.ivoa.dm.proposal.prop.Observatory;
 import org.ivoa.dm.proposal.prop.Organization;
 
 import javax.inject.Inject;
@@ -20,19 +20,19 @@ import javax.ws.rs.core.MediaType;
 import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
-@Path("organisations")
+@Path("observatories")
 @Tag(name = "proposal-tool")
-public class OrganisationResource {
+public class ObservatoryResource {
    @PersistenceContext
    EntityManager em;  // exists for the application lifetime no need to close
 
    @Inject
    ObjectMapper mapper;
    @GET
-    @Operation(summary = "Get all of the organisations")
-    public List<Organization> getOrganisations(){
-       String queryStr = "SELECT o FROM Organization o ORDER BY o.name";
-       TypedQuery<Organization> query = em.createQuery(queryStr, Organization.class);
+    @Operation(summary = "Get all of the Observatories")
+    public List<Observatory> getObservatories(){
+       String queryStr = "SELECT o FROM Observatory o ORDER BY o.name";
+       TypedQuery<Observatory> query = em.createQuery(queryStr, Observatory.class);
        return query.getResultList();
     }
 

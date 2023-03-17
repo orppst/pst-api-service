@@ -308,7 +308,6 @@ public class ProposalResource {
          throw new WebApplicationException(
                  String.format("ObservingProposal: %s does not exist", proposalCode), 404);
       }
-
       return op;
    }
 
