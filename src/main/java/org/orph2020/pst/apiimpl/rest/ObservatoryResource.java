@@ -5,43 +5,45 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.prop.Observatory;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
 import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observatories")
 @Tag(name = "proposal-tool")
-public class ObservatoryResource {
+public class ObservatoryResource extends ObjectResourceBase {
 
-   @PersistenceContext
-   EntityManager em;  // exists for the application lifetime no need to close
+    @Inject
+    ObjectMapper mapper;
 
-   @Inject
-   ObjectMapper mapper;
-   @GET
+    @GET
     @Operation(summary = "Get all of the Observatories")
+    @APIResponse(
+            responseCode = "200"
+    )
     public List<ObjectIdentifier> getObservatories(){
-       List<ObjectIdentifier> retval = new ArrayList<>();
-       String queryStr = "SELECT  o._id,o.name FROM Observatory o ORDER BY o.name";
-       Query query = em.createQuery(queryStr);
-       List<Object[]> results = query.getResultList();
-       for (Object[] r : results)
-       {
-          retval.add(new ObjectIdentifier((Long) r[0], (String) r[1]));
-       }
+        return super.getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
+    }
 
-      return retval;
+    @GET
+    @Path("/{id}")
+    @Operation(summary = "Get the specified Observatory")
+    public Observatory getObservatory(@PathParam("id") Long id) {
+        Observatory result = em.find(Observatory.class, id);
+        if (result == null)
+        {
+            throw new WebApplicationException(String.format("Observatory with id %d not found", id), 404);
+        }
+        return result;
     }
 
 

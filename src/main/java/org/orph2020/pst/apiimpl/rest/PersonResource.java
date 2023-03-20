@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
+import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.inject.Inject;
 import javax.persistence.EntityExistsException;
@@ -18,18 +19,37 @@ import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.List;
 
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("people")
 @Tag(name = "proposal-tool")
-
-public class PersonResource {
-   @PersistenceContext
-   EntityManager em;  // exists for the application lifetime no need to close
+public class PersonResource extends ObjectResourceBase {
 
    @Inject
    ObjectMapper mapper;
+
+
+   @GET
+   @Operation(summary = "get all People from the database")
+   public List<ObjectIdentifier> getPeople() {
+      return super.getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
+   }
+
+   @GET
+   @Path("{id}")
+   @Operation(summary = "get the specified Person")
+   public Person getPerson(@PathParam("id") Long id) {
+      Person result = em.find(Person.class, id);
+      if (result == null)
+      {
+         throw new WebApplicationException(String.format("Person with id %d not found", id), 404);
+      }
+      return result;
+   }
+
+
    @POST
    @Operation(summary = "create a new Person in the database")
    @APIResponse(

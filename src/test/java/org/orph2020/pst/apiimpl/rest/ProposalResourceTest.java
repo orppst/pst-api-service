@@ -17,7 +17,7 @@ public class ProposalResourceTest {
         //valid request
         given()
                 .when()
-                .get("/api/proposals/pr1")
+                .get("proposals/pr1")
                 .then()
                 .statusCode(200)
                 .body(
@@ -28,7 +28,7 @@ public class ProposalResourceTest {
         //invalid request
         given()
                 .when()
-                .get("/api/proposals/not-a-code")
+                .get("proposals/not-a-code")
                 .then()
                 .statusCode(404)
                 .body(
@@ -48,7 +48,7 @@ public class ProposalResourceTest {
                 .body("{\"text\":\"replacement justification\",\"format\":\"LATEX\"}")
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .put("/api/proposals/pr1/justifications/technical")
+                .put("proposals/pr1/justifications/technical")
                 .then()
                 .statusCode(200)
                 .body(
@@ -59,7 +59,7 @@ public class ProposalResourceTest {
         //check the technical justification text has actually been replaced
         given()
                 .when()
-                .get("/api/proposals/pr1")
+                .get("proposals/pr1")
                 .then()
                 .statusCode(200)
                 .body(
@@ -76,7 +76,7 @@ public class ProposalResourceTest {
                 .body("replacement title")
                 .header("Content-Type", MediaType.TEXT_PLAIN)
                 .when()
-                .put("/api/proposals/pr1/title")
+                .put("proposals/pr1/title")
                 .then()
                 .statusCode(200)
                 .body(
@@ -87,7 +87,7 @@ public class ProposalResourceTest {
         //check the title text has actually been replaced
         given()
                 .when()
-                .get("/api/proposals/pr1")
+                .get("proposals/pr1")
                 .then()
                 .statusCode(200)
                 .body(
@@ -104,7 +104,7 @@ public class ProposalResourceTest {
                 .body("{\"investigatorKind\": \"COI\", \"forPhD\": false, \"personId\": 37}")
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .post("/api/proposals/pr1/investigators")
+                .post("proposals/pr1/investigators")
                 .then()
                 .statusCode(200)
                 .body(
@@ -114,7 +114,7 @@ public class ProposalResourceTest {
 
         given()
                 .when()
-                .get("/api/proposals/pr1")
+                .get("proposals/pr1")
                 .then()
                 .statusCode(200)
                 .body(

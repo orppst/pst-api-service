@@ -6,12 +6,12 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
+import org.orph2020.pst.common.json.ProposalIdentifier;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -20,8 +20,7 @@ import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
-import javax.ws.rs.ext.Provider;
+import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -29,28 +28,12 @@ import java.util.List;
          https://gitlab.com/opticon-radionet-pilot/proposal-submission-tool/requirements/-/blob/main/UseCases.adoc
  */
 
-
-
-@Path("/proposals")
+@Path("proposals")
 @ApplicationScoped
 @Tag(name = "proposal-tool")
 @Produces(MediaType.APPLICATION_JSON)
-public class ProposalResource {
+public class ProposalResource extends ObjectResourceBase {
    private final Logger logger;
-
-   /*
-   @PersistenceUnit
-   EntityManagerFactory emf // em = emf.createEntityManager(); <persistence stuff>; em.close(); - per call
-
-   --OR--
-
-      @Inject
-   EntityManager em;
-    */
-
-   @PersistenceContext
-   EntityManager em;  // exists for the application lifetime no need to close
-
 
    @Inject
    ObjectMapper mapper;
@@ -67,37 +50,41 @@ public class ProposalResource {
       em.persist(ex.getProposal());
    }
 
-   //--------------------------------------------------------------------------------
-   // Error Mapper
-   //--------------------------------------------------------------------------------
-   @Provider
-   public static class ErrorMapper implements ExceptionMapper<Exception> {
-
-      private static final Logger LOGGER = Logger.getLogger(ProposalResource.class.getName());
-      @Inject
-      ObjectMapper objectMapper;
-
-      @Override
-      public Response toResponse(Exception e) {
-         LOGGER.error("Failed to handle request", e);
-
-         int code = 500;
-         if (e instanceof WebApplicationException) {
-            code = ((WebApplicationException) e).getResponse().getStatus();
-         }
-
-         ObjectNode exceptionJson = objectMapper.createObjectNode();
-         exceptionJson.put("exceptionType", e.getClass().getName());
-         exceptionJson.put("statusCode", code);
-
-         if (e.getMessage() != null) {
-            exceptionJson.put("error", e.getMessage());
-         }
-
-         return Response.status(code).entity(exceptionJson).build();
+   @GET
+   @Operation(summary = "Get all the ObservingProposals from the database")
+   public List<ProposalIdentifier> getProposals() {
+      List<ProposalIdentifier> result = new ArrayList<>();
+      String queryStr = "SELECT o.code,o.title FROM ObservingProposal o ORDER BY o.title";
+      Query query = em.createQuery(queryStr);
+      List<Object[]> results = query.getResultList();
+      for (Object[] r : results)
+      {
+         result.add(new ProposalIdentifier((String) r[0], (String) r[1]));
       }
+
+      return result;
    }
 
+
+   @GET
+   @Operation(summary = "get the specified ObservationProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "get a single ObservationProposal specified by the code"
+   )
+   @Path("{proposalCode}")
+   public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
+           throws WebApplicationException
+   {
+      ObservingProposal op = em.find(ObservingProposal.class, proposalCode);
+
+      if (op == null)
+      {
+         throw new WebApplicationException(
+                 String.format("ObservingProposal: %s does not exist", proposalCode), 404);
+      }
+      return op;
+   }
 
    //--------------------------------------------------------------------------------
    // Internal helpers
@@ -137,7 +124,7 @@ public class ProposalResource {
            responseCode = "200",
            description = "replace a technical or scientific Justification with the data in this request"
    )
-   @Path("/{proposalCode}/justifications/{which}")
+   @Path("{proposalCode}/justifications/{which}")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn={WebApplicationException.class})
    public Response replaceJustification(
@@ -272,44 +259,5 @@ public class ProposalResource {
    }
 
 
-   @GET
-   @Operation(summary = "get all ObservationProposals associated with the user")
-   @APIResponse(
-           responseCode = "200",
-           description = "get all ObservationProposals associated with the user"
-   )
-   @Consumes(MediaType.APPLICATION_JSON)
-   public  List<ObservingProposal> getUserProposals(@QueryParam("user") String userId)
-   {
-      //FIXME: query to find all observing proposals associated with the given 'userId'
-      //currently just finds all observing proposals in the database
-      String queryStr = "SELECT o FROM ObservingProposal o ORDER BY o.code";
-      TypedQuery<ObservingProposal> query = em.createQuery(queryStr, ObservingProposal.class);
-      //query.setParameter("userId", Integer.valueOf(userId));
-
-      // This can be legitimately empty if the user has no proposals
-      return query.getResultList();
-   }
-
-
-   @GET
-   @Operation(summary = "get the specified ObservationProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "get a single ObservationProposal specified by the code"
-   )
-   @Path("/{proposalCode}")
-   public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
-           throws WebApplicationException
-   {
-      ObservingProposal op = em.find(ObservingProposal.class, proposalCode);
-
-      if (op == null)
-      {
-         throw new WebApplicationException(
-                 String.format("ObservingProposal: %s does not exist", proposalCode), 404);
-      }
-      return op;
-   }
 
 }
