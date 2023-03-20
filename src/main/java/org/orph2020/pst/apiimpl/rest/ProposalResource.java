@@ -291,7 +291,14 @@ public class ProposalResource {
       return query.getResultList();
    }
 
-   @Path("{proposalCode}")
+
+   @GET
+   @Operation(summary = "get the specified ObservationProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "get a single ObservationProposal specified by the code"
+   )
+   @Path("/{proposalCode}")
    public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
            throws WebApplicationException
    {
@@ -302,7 +309,6 @@ public class ProposalResource {
          throw new WebApplicationException(
                  String.format("ObservingProposal: %s does not exist", proposalCode), 404);
       }
-
       return op;
    }
 
