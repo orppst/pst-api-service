@@ -42,7 +42,7 @@ public class ObservatoryResourceTest {
                 .then()
                 .statusCode(404)
                 .body(
-                        containsString("Observatory with id 999 not found")
+                        containsString("Observatory with id: 999 not found")
                 );
     }
 }

@@ -35,8 +35,8 @@ import java.util.List;
 public class ProposalResource extends ObjectResourceBase {
    private final Logger logger;
 
-   @Inject
-   ObjectMapper mapper;
+   private final String ERR_PROPOSAL_NOT_FOUND = "ObservingProposal with code: %s not found";
+
 
    public ProposalResource(Logger logger) {
       this.logger = logger;
@@ -78,46 +78,98 @@ public class ProposalResource extends ObjectResourceBase {
    {
       ObservingProposal op = em.find(ObservingProposal.class, proposalCode);
 
-      if (op == null)
-      {
+      if (op == null) {
          throw new WebApplicationException(
-                 String.format("ObservingProposal: %s does not exist", proposalCode), 404);
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404);
       }
       return op;
    }
 
-   //--------------------------------------------------------------------------------
-   // Internal helpers
-   //--------------------------------------------------------------------------------
 
-   private static class PersonInvestigator {
-     @JsonProperty("investigatorKind")
-      public String investigatorKind; //should be "COI" or "PI" only
+   //title
+   @PUT
+   @Operation(summary = "change the title of an ObservingProposal")
+   @APIResponse(
+           responseCode = "200",
+           description = "change the title of an ObservingProposal"
+   )
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   @Path("{proposalCode}/title")
+   public Response replaceTitle(
+           @PathParam("proposalCode") String proposalCode,
+           String replacementTitle)
+           throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
 
-     @JsonProperty("forPhD")
-      boolean forPhD;
+      if (proposal == null)
+      {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404
+         );
+      }
 
-     @JsonProperty("personId")
-      Long personId; //must match an existing Person in the database
+      proposal.setTitle(replacementTitle);
+
+      return Response.ok().entity(
+                      String.format(OK_UPDATE, "Title"))
+              .build();
    }
 
-   //--------------------------------------------------------------------------------
-   // Principle Investigator API
-   //--------------------------------------------------------------------------------
+   //summary
+   @PUT
+   @Operation(summary = "replace the summary with the data in this request")
+   @APIResponse(
+           responseCode = "200"
+   )
+   @Path("{proposalCode}/summary")
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response replaceSummary(@PathParam("proposalCode") String proposalCode, String replacementSummary)
+   throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
 
-   //Import a proposal
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404);
+      }
 
+      proposal.setSummary(replacementSummary);
 
-   //Export a proposal
+      return Response.ok().entity(String.format(OK_UPDATE, "ObservingProposal.summary")).build();
+   }
 
+   //kind
+   @PUT
+   @Operation(summary = "change the 'kind' of ObservingProposal: STANDARD, TOO, SURVEY")
+   @APIResponse(
+           responseCode = "200"
+   )
+   @Path("{proposalCode}/kind")
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response changeKind(@PathParam("proposalCode") String proposalCode, String kind)
+      throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
 
-   //Submit a proposal
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404);
+      }
 
+      try{
+         proposal.setKind(ProposalKind.fromValue(kind));
+      } catch (IllegalArgumentException e) {
+         throw new WebApplicationException(e, 422);
+      }
 
-   //Create a proposal (from "scratch")
+      return Response.ok().entity(String.format(OK_UPDATE, "ObservingProposal.kind")).build();
+   }
 
-
-   //Edit a proposal
+   //Justifications
    @PUT
    @Operation(summary = "replace a technical or scientific Justification with the data in this request")
    @APIResponse(
@@ -135,10 +187,9 @@ public class ProposalResource extends ObjectResourceBase {
    {
       ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
 
-      if (proposal == null)
-      {
+      if (proposal == null) {
          throw new WebApplicationException(
-                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404
          );
       }
 
@@ -146,7 +197,7 @@ public class ProposalResource extends ObjectResourceBase {
       try {
          incoming = mapper.readValue(jsonJustification, Justification.class);
       } catch (JsonProcessingException e) {
-         throw new WebApplicationException("Invalid JSON input", 422);
+         throw new WebApplicationException(String.format(ERR_JSON_INPUT, which + "Justification"), 422);
       }
 
       switch (which)
@@ -172,42 +223,24 @@ public class ProposalResource extends ObjectResourceBase {
       }
 
       return Response.ok().entity(
-              String.format("%s Justification for ObservingProposal %s replaced successfully", which, proposalCode))
+              String.format(OK_UPDATE,"ObservingProposal." + which + "Justification"))
               .build();
+   }
+
+
+   // Investigator objects
+   private static class PersonInvestigator {
+      @JsonProperty("investigatorKind")
+      public String investigatorKind; //should be "COI" or "PI" only
+
+      @JsonProperty("forPhD")
+      boolean forPhD;
+
+      @JsonProperty("personId")
+      Long personId; //must match an existing Person in the database
    }
 
    @PUT
-   @Operation(summary = "change the title of an ObservingProposal")
-   @APIResponse(
-           responseCode = "200",
-           description = "change the title of an ObservingProposal"
-   )
-   @Consumes(MediaType.TEXT_PLAIN)
-   @Transactional(rollbackOn = {WebApplicationException.class})
-   @Path("{proposalCode}/title")
-   public Response replaceTitle(
-           @PathParam("proposalCode") String proposalCode,
-           String replacementTitle)
-           throws WebApplicationException
-   {
-      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
-
-      if (proposal == null)
-      {
-         throw new WebApplicationException(
-                 String.format("No proposal with code: %s exists in the database", proposalCode), 404
-         );
-      }
-
-      proposal.setTitle(replacementTitle);
-
-      return Response.ok().entity(
-              String.format("Title for ObservingProposal %s replaced successfully", proposalCode))
-              .build();
-   }
-
-   // Investigator objects
-   @POST
    @Operation(summary = "add an Investigator to an ObservationProposal")
    @APIResponse(
            responseCode = "200",
@@ -216,7 +249,8 @@ public class ProposalResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("{proposalCode}/investigators")
-   public Response addPersonAsInvestigator(@PathParam("proposalCode") String code, String jsonPersonInvestigator)
+   public Response addPersonAsInvestigator(@PathParam("proposalCode") String code,
+                                           String jsonPersonInvestigator)
            throws WebApplicationException
    {
       PersonInvestigator personInvestigator;
@@ -228,16 +262,16 @@ public class ProposalResource extends ObjectResourceBase {
 
       Person person = em.find(Person.class, personInvestigator.personId);
 
-      if (person == null)
-      {
-         throw new WebApplicationException(String.format("Person %d not found", personInvestigator.personId), 404);
+      if (person == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_NOT_FOUND, "Person", personInvestigator.personId), 404);
       }
 
       ObservingProposal proposal = em.find(ObservingProposal.class, code);
 
-      if (proposal == null)
-      {
-         throw new WebApplicationException(String.format("ObservingProposal %s not found", code), 404);
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, code), 404);
       }
 
       try {
@@ -251,13 +285,119 @@ public class ProposalResource extends ObjectResourceBase {
       }
 
       return Response.ok()
-              .entity(String.format("Person %s attached as Investigator to proposal %s successfully",
-                      personInvestigator.personId, code))
+              .entity(String.format(OK_UPDATE, "ObservingProposal.investigators"))
               .build();
-
-
    }
 
+   //relatedProposals
+   @PUT
+   @Operation(summary = "add an ObservingProposal to the list of RelatedProposals")
+   @APIResponse(
+           responseCode = "200"
+   )
+   @Path("{proposalCode}/relatedProposals")
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response addRelatedProposal(@PathParam("proposalCode") String proposalCode,
+                                       String relatedProposalCode)
+      throws WebApplicationException
+   {
+      if (proposalCode.equals(relatedProposalCode)) {
+         throw new WebApplicationException(
+                 "ObservingProposal cannot refer to itself as a RelatedProposal", 418);
+      }
 
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404);
+      }
+
+      ObservingProposal relatedProposal = em.find(ObservingProposal.class, relatedProposalCode);
+
+      if (relatedProposal  == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, relatedProposalCode), 404);
+      }
+
+      proposal.addRelatedProposals(new RelatedProposal(relatedProposal));
+
+      return Response.ok().entity(String.format(OK_UPDATE, "ObservingProposal.relatedProposals")).build();
+   }
+
+   //supporting documents
+   @PUT
+   @Operation(summary = "add a SupportingDocument to an ObservingProposal")
+   @APIResponse(
+           responseCode = "200"
+   )
+   @Path("{proposalCode}/supportingDocuments")
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response addSupportingDocument(@PathParam("proposalCode") String proposalCode,
+                                      Long supportingDocumentId)
+           throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404
+         );
+      }
+
+      SupportingDocument supportingDocument = em.find(SupportingDocument.class, supportingDocumentId);
+
+      if (supportingDocument == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_NOT_FOUND, "SupportingDocument", supportingDocumentId), 404
+         );
+      }
+
+      proposal.addSupportingDocuments(supportingDocument);
+
+      return Response.ok().entity(String.format(OK_UPDATE, "ObservingProposal.supportingDocuments")).build();
+   }
+
+   //observations
+   @PUT
+   @Operation(summary="add an observation to an ObservingProposal")
+   @APIResponse(
+           responseCode = "200"
+   )
+   @Path("{proposalCode}/observations")
+   @Consumes(MediaType.TEXT_PLAIN)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response addObservation(@PathParam("proposalCode") String proposalCode,
+                                  Long observationId)
+      throws WebApplicationException
+   {
+      ObservingProposal proposal = em.find(ObservingProposal.class, proposalCode);
+
+      if (proposal == null) {
+         throw new WebApplicationException(
+                 String.format(ERR_PROPOSAL_NOT_FOUND, proposalCode), 404);
+      }
+
+
+      Observation observation = em.find(Observation.class, observationId);
+      if (observation == null) {
+         throw new WebApplicationException(String.format(ERR_NOT_FOUND, "Observation", observationId), 404);
+      }
+
+      for (Observation o : proposal.getObservations()) {
+         if (o.getId().equals(observationId)) {
+            throw new WebApplicationException(
+                    String.format("Observation with id: %d already added to ObservingProposal %s",
+                            observationId, proposalCode), 418);
+         }
+      }
+
+      proposal.addObservations(observation);
+
+      return Response.ok().entity(String.format(OK_UPDATE, "ObservingProposal.observations")).build();
+
+   }
 
 }

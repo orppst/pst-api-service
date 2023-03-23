@@ -32,7 +32,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(404)
                 .body(
-                        containsString("ObservingProposal: not-a-code does not exist")
+                        containsString("ObservingProposal with code: not-a-code not found")
                 )
         ;
 
@@ -52,7 +52,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("Justification for ObservingProposal pr1 replaced successfully")
+                        containsString("ObservingProposal.technicalJustification updated")
                 )
         ;
 
@@ -80,7 +80,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("Title for ObservingProposal pr1 replaced successfully")
+                        containsString("Title updated")
                 )
         ;
 
@@ -104,11 +104,11 @@ public class ProposalResourceTest {
                 .body("{\"investigatorKind\": \"COI\", \"forPhD\": false, \"personId\": 37}")
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .post("proposals/pr1/investigators")
+                .put("proposals/pr1/investigators")
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("Person 37 attached as Investigator to proposal pr1 successfully")
+                        containsString("ObservingProposal.investigators updated")
                 )
         ;
 
