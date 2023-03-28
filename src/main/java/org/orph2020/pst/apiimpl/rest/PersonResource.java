@@ -7,6 +7,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
+import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.vodml.stdtypes2.StringIdentifier;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
@@ -19,7 +20,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("people")
-@Tag(name = "proposal-tool")
+@Tag(name = "proposal-tool-people")
 public class PersonResource extends ObjectResourceBase {
 
    @GET
@@ -37,16 +38,22 @@ public class PersonResource extends ObjectResourceBase {
 
    @POST
    @Operation(summary = "create a new Person in the database")
-   @APIResponse(
-         responseCode = "201",
-         description = "create a new Person in the database"
-   )
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response createPerson(Person person)
          throws WebApplicationException
    {
       return super.persistObject(person);
+   }
+
+   @DELETE
+   @Path("{id}")
+   @Operation(summary = "delete the Person specified by the 'id' from the database")
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response deletePerson(@PathParam("id") Long id)
+           throws WebApplicationException
+   {
+      return super.removeObject(Person.class, id);
    }
 
    @PUT

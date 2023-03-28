@@ -77,6 +77,14 @@ abstract public class ObjectResourceBase {
         return responseWrapper(object, 201);
     }
 
+    protected <T> Response removeObject(Class<T> type, Long id)
+            throws WebApplicationException
+    {
+        T object = findObject(type, id);
+        em.remove(object);
+        return Response.ok().status(204).build();
+    }
+
 
 
 

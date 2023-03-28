@@ -19,7 +19,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("targets")
-@Tag(name = "proposal-tool")
+@Tag(name = "proposal-tool-targets")
 public class TargetResource extends ObjectResourceBase {
 
     private static final String ERR_NOT_CELESTIAL = "Target %d is not a CelestialTarget";
@@ -48,6 +48,16 @@ public class TargetResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         return super.persistObject(target);
+    }
+
+    @DELETE
+    @Path("{id}")
+    @Operation(summary = "delete the Target specified by the 'id' from the database")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteTarget(@PathParam("id") Long id)
+        throws WebApplicationException
+    {
+        return super.removeObject(Target.class, id);
     }
 
     @PUT

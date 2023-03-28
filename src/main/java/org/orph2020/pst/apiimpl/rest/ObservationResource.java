@@ -16,7 +16,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observations")
-@Tag(name = "proposal-tool")
+@Tag(name = "proposal-tool-observations")
 public class ObservationResource extends ObjectResourceBase {
 
     @GET
@@ -37,15 +37,22 @@ public class ObservationResource extends ObjectResourceBase {
     // Does this require an Observation subtype hint in the jsonString?
     @POST
     @Operation(summary = "create a new Observation in the database")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response createObservation(Observation observation)
             throws WebApplicationException
     {
         return super.persistObject(observation);
+    }
+
+    @DELETE
+    @Path("{id}")
+    @Operation(summary = "delete the Observation specified by the 'id' from the database")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteObservation(@PathParam("id") Long id)
+            throws WebApplicationException
+    {
+        return super.removeObject(Observation.class, id);
     }
 
     @PUT
@@ -104,12 +111,12 @@ public class ObservationResource extends ObjectResourceBase {
     @Operation(summary = "replace the technical goal for the specified Observation")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceTech(@PathParam("id") Long observationId, Long techId)
+    public Response replaceTechnicalGoal(@PathParam("id") Long observationId, Long technicalGoalId)
             throws WebApplicationException
     {
         Observation observation = super.findObject(Observation.class, observationId);
 
-        TechnicalGoal tech = super.findObject(TechnicalGoal.class, techId);
+        TechnicalGoal tech = super.findObject(TechnicalGoal.class, technicalGoalId);
 
         observation.setTech(tech);
 
@@ -119,10 +126,10 @@ public class ObservationResource extends ObjectResourceBase {
     //for use with CalibrationObservation subtype only
     @PUT
     @Path("{id}/intent")
-    @Operation(summary = "replace the intent for the specified CalibrationObservation; one of AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY")
+    @Operation(summary = "update the intent for the specified CalibrationObservation; one of AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceIntent(@PathParam("id") Long observationId, String intentStr)
+    public Response updateIntent(@PathParam("id") Long observationId, String intentStr)
             throws WebApplicationException
     {
         Observation observation = super.findObject(Observation.class, observationId);

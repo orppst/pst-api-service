@@ -24,11 +24,11 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observatories")
-@Tag(name = "proposal-tool")
+@Tag(name = "proposal-tool-observatories")
 public class ObservatoryResource extends ObjectResourceBase {
 
     @GET
-    @Operation(summary = "Get all of the Observatories")
+    @Operation(summary = "get all of the Observatories")
     @APIResponse(
             responseCode = "200"
     )
@@ -38,7 +38,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
     @GET
     @Path("{id}")
-    @Operation(summary = "Get the specified Observatory")
+    @Operation(summary = "get the specified Observatory")
     public Observatory getObservatory(@PathParam("id") Long id)
             throws WebApplicationException
     {
@@ -46,17 +46,24 @@ public class ObservatoryResource extends ObjectResourceBase {
     }
 
     @POST
-    @Operation(summary = "create an Observatory")
-    @APIResponse(
-            responseCode = "201",
-            description = "create a new Observatory in the database"
-    )
+    @Operation(summary = "create a new Observatory in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response createObservatory(Observatory observatory)
             throws WebApplicationException
     {
         return super.persistObject(observatory);
+    }
+
+
+    @DELETE
+    @Path("{id}")
+    @Operation(summary = "delete the Observatory specified by the 'id' from the database")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteObservatory(@PathParam("id") Long id)
+            throws WebApplicationException
+    {
+        return super.removeObject(Observatory.class, id);
     }
 
     @PUT

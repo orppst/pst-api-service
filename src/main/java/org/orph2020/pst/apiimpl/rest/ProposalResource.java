@@ -27,7 +27,7 @@ import java.util.List;
 
 @Path("proposals")
 @ApplicationScoped
-@Tag(name = "proposal-tool")
+@Tag(name = "proposal-tool-proposals")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalResource extends ObjectResourceBase {
    private final Logger logger;
@@ -60,6 +60,25 @@ public class ProposalResource extends ObjectResourceBase {
       return op;
    }
 
+   private Response persistObservingProposal(ObservingProposal op)
+      throws WebApplicationException
+   {
+      try {
+         em.persist(op);
+      } catch (EntityExistsException e) {
+         throw new WebApplicationException(e.getMessage(), 422);
+      }
+      return super.responseWrapper(op, 201);
+   }
+
+   private Response removeObservingProposal(String code)
+      throws WebApplicationException
+   {
+      ObservingProposal op = findProposal(code);
+      em.remove(op);
+      return Response.ok().status(204).build();
+   }
+
    @GET
    @Operation(summary = "Get all the ObservingProposals from the database")
    public List<ProposalIdentifier> getProposals() {
@@ -87,6 +106,26 @@ public class ProposalResource extends ObjectResourceBase {
            throws WebApplicationException
    {
       return findProposal(proposalCode);
+   }
+
+   @POST
+   @Operation(summary = "create a new Telescope in the database")
+   @Consumes(MediaType.APPLICATION_JSON)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response createObservingProposal(ObservingProposal op)
+      throws WebApplicationException
+   {
+      return persistObservingProposal(op);
+   }
+
+   @DELETE
+   @Path("{proposalCode}")
+   @Operation(summary = "remove the Telescope specified by the 'id'")
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response deleteObservingProposal(@PathParam("proposalCode") String code)
+           throws WebApplicationException
+   {
+      return removeObservingProposal(code);
    }
 
 
