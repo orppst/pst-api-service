@@ -39,31 +39,22 @@ public class ProposalResourceTest {
     }
 
 
-
-
     @Test
     void testReplaceJustification() {
         //replace the technical justification text
+
+        String textToCheck = "\"text\":\"replacement justification\",\"format\":\"LATEX\"";
+        String replacementText = "{" + textToCheck + "}";
+
         given()
-                .body("{\"text\":\"replacement justification\",\"format\":\"LATEX\"}")
+                .body(replacementText)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .put("proposals/pr1/justifications/technical")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body(
-                        containsString("ObservingProposal.technicalJustification updated")
-                )
-        ;
-
-        //check the technical justification text has actually been replaced
-        given()
-                .when()
-                .get("proposals/pr1")
-                .then()
-                .statusCode(200)
-                .body(
-                        containsString("{\"text\":\"replacement justification\",\"format\":\"LATEX\"}")
+                        containsString(textToCheck)
                 )
         ;
 
@@ -78,49 +69,33 @@ public class ProposalResourceTest {
                 .when()
                 .put("proposals/pr1/title")
                 .then()
-                .statusCode(200)
-                .body(
-                        containsString("Title updated")
-                )
-        ;
-
-        //check the title text has actually been replaced
-        given()
-                .when()
-                .get("proposals/pr1")
-                .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body(
                         containsString("\"title\":\"replacement title\"")
                 )
         ;
+
     }
 
 
     @Test
     void testAddPersonAsInvestigator() {
         //add a person as an investigator to a proposal
+        String personToAdd = "{\"investigatorKind\":\"COI\",\"forPhD\":false,\"personId\":37}";
+        String textToCheck = "\"type\":\"COI\",\"forPhD\":false,\"investigator\":37";
+
         given()
-                .body("{\"investigatorKind\": \"COI\", \"forPhD\": false, \"personId\": 37}")
+                .body(personToAdd)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .put("proposals/pr1/investigators")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body(
-                        containsString("ObservingProposal.investigators updated")
+                        containsString(textToCheck)
                 )
         ;
 
-        given()
-                .when()
-                .get("proposals/pr1")
-                .then()
-                .statusCode(200)
-                .body(
-                        containsString("\"type\":\"COI\",\"forPhD\":false,\"investigator\":37")
-                )
-        ;
     }
 
 
