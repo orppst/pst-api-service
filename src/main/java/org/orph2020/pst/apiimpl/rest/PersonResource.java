@@ -43,17 +43,14 @@ public class PersonResource extends ObjectResourceBase {
    )
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response createPerson(String jsonPerson)
+   public Response createPerson(Person person)
          throws WebApplicationException
    {
-      return super.persistObject(jsonPerson, Person.class);
+      return super.persistObject(person);
    }
 
    @PUT
    @Operation(summary = "update a Person's full name")
-   @APIResponse(
-           responseCode = "201"
-   )
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/fullName")
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -64,14 +61,11 @@ public class PersonResource extends ObjectResourceBase {
 
       person.setFullName(replacementFullName);
 
-      return Response.ok().entity(String.format(OK_UPDATE, "Person.fullName")).build();
+      return responseWrapper(person, 201);
    }
 
    @PUT
    @Operation(summary = "update a Person's email address")
-   @APIResponse(
-           responseCode = "201"
-   )
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/eMail")
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -82,14 +76,11 @@ public class PersonResource extends ObjectResourceBase {
 
       person.setEMail(replacementEMail);
 
-      return Response.ok().entity(String.format(OK_UPDATE, "Person.eMail")).build();
+      return responseWrapper(person, 201);
    }
 
    @PUT
    @Operation(summary = "update a Person's orcid ID")
-   @APIResponse(
-           responseCode = "201"
-   )
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/orcidId")
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -100,7 +91,7 @@ public class PersonResource extends ObjectResourceBase {
 
       person.setOrcidId(new StringIdentifier(replacementOrcidId));
 
-      return Response.ok().entity(String.format(OK_UPDATE, "Person.orcidId")).build();
+      return responseWrapper(person, 201);
    }
 
 }

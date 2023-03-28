@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.stc.coords.Epoch;
@@ -18,6 +19,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("targets")
+@Tag(name = "proposal-tool")
 public class TargetResource extends ObjectResourceBase {
 
     private static final String ERR_NOT_CELESTIAL = "Target %d is not a CelestialTarget";
@@ -40,23 +42,17 @@ public class TargetResource extends ObjectResourceBase {
     //requires subtype in the json input
     @POST
     @Operation(summary = "create a new Target in the database")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createTarget(String jsonTarget)
+    public Response createTarget(Target target)
         throws WebApplicationException
     {
-        return super.persistObject(jsonTarget, Target.class);
+        return super.persistObject(target);
     }
 
     @PUT
     @Path("{id}/sourceName")
     @Operation(summary = "replace the sourceName of the specified Target")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceSourceName(@PathParam("id") Long id, String replacementSourceName)
@@ -66,18 +62,15 @@ public class TargetResource extends ObjectResourceBase {
 
         target.setSourceName(replacementSourceName);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Target.sourceName")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/sourceCoordinates")
     @Operation(summary = "replace the sourceCoordinates of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceSourceCoordinates(@PathParam("id") Long id, String jsonSourceCoordinates )
+    public Response replaceSourceCoordinates(@PathParam("id") Long id, EquatorialPoint equatorialPoint )
             throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -86,27 +79,17 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        EquatorialPoint equatorialPoint;
-        try {
-            equatorialPoint= mapper.readValue(jsonSourceCoordinates, EquatorialPoint.class);
-        } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, "sourceCoordinate"), 422);
-        }
-
         ((CelestialTarget) target).setSourceCoordinates(equatorialPoint);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.sourceCoordinates")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/positionEpoch")
     @Operation(summary = "replace the positionEpoch of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
-    @Consumes(MediaType.TEXT_PLAIN)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replacePositionEpoch(@PathParam("id") Long id, String replacementPositionEpoch )
+    public Response replacePositionEpoch(@PathParam("id") Long id, Epoch replacementPositionEpoch)
         throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -115,20 +98,17 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        ((CelestialTarget) target).setPositionEpoch(new Epoch(replacementPositionEpoch));
+        ((CelestialTarget) target).setPositionEpoch(replacementPositionEpoch);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.positionEpoch")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/pmRA")
     @Operation(summary = "replace the pmRA (Right Ascension) of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replacePmRA(@PathParam("id") Long id, String jsonPmRA )
+    public Response replacePmRA(@PathParam("id") Long id, RealQuantity replacementPmRA )
             throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -137,27 +117,17 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        RealQuantity replacementPmRA;
-        try {
-            replacementPmRA = mapper.readValue(jsonPmRA, RealQuantity.class);
-        } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, "pmRA"), 422);
-        }
-
         ((CelestialTarget) target).setPmRA(replacementPmRA);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.pmRA")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/pmDec")
     @Operation(summary = "replace the pmDec (Declination) of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replacePmDec(@PathParam("id") Long id, String jsonPmDec )
+    public Response replacePmDec(@PathParam("id") Long id, RealQuantity replacementPmDec )
             throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -166,27 +136,17 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        RealQuantity replacementPmDec;
-        try {
-            replacementPmDec = mapper.readValue(jsonPmDec, RealQuantity.class);
-        } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, "pmDec"), 422);
-        }
-
         ((CelestialTarget) target).setPmDec(replacementPmDec);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.pmDec")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/parallax")
     @Operation(summary = "replace the parallax of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceParallax(@PathParam("id") Long id, String jsonParallax )
+    public Response replaceParallax(@PathParam("id") Long id, RealQuantity replacementParallax )
             throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -195,27 +155,17 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        RealQuantity replacementParallax;
-        try {
-            replacementParallax = mapper.readValue(jsonParallax, RealQuantity.class);
-        } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, "parallax"), 422);
-        }
-
         ((CelestialTarget) target).setParallax(replacementParallax);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.parallax")).build();
+        return responseWrapper(target, 201);
     }
 
     @PUT
     @Path("{id}/sourceVelocity")
     @Operation(summary = "replace the sourceVelocity of the specified CelestialTarget")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceSourceVelocity(@PathParam("id") Long id, String jsonSourceVelocity )
+    public Response replaceSourceVelocity(@PathParam("id") Long id, RealQuantity replacementSourceVelocity )
             throws WebApplicationException
     {
         Target target = super.findObject(Target.class, id);
@@ -224,16 +174,9 @@ public class TargetResource extends ObjectResourceBase {
             throw new WebApplicationException(String.format(ERR_NOT_CELESTIAL, id), 422);
         }
 
-        RealQuantity replacementSourceVelocity;
-        try {
-            replacementSourceVelocity = mapper.readValue(jsonSourceVelocity, RealQuantity.class);
-        } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, "sourceVelocity"), 422);
-        }
-
         ((CelestialTarget) target).setSourceVelocity(replacementSourceVelocity);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CelestialTarget.sourceVelocity")).build();
+        return responseWrapper(target, 201);
     }
 
 }

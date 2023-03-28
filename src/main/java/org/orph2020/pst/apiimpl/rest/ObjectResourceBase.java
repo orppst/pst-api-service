@@ -25,13 +25,6 @@ abstract public class ObjectResourceBase {
     @Inject
     protected ObjectMapper mapper;
 
-    protected final String ERR_NOT_FOUND = "%s with id: %d not found";
-    protected final String ERR_JSON_INPUT = "%s: invalid JSON input";
-    protected final String OK_CREATE = "%s created";
-    protected final String OK_DELETE = "%s deleted";
-    protected final String OK_UPDATE = "%s updated";
-
-
     protected List<ObjectIdentifier> getObjects(String queryStr){
         List<ObjectIdentifier> result = new ArrayList<>();
         Query query = em.createQuery(queryStr);
@@ -49,31 +42,43 @@ abstract public class ObjectResourceBase {
     {
         T object = em.find(type, id);
         if (object == null) {
+            String ERR_NOT_FOUND = "%s with id: %d not found";
             throw new WebApplicationException(String.format(ERR_NOT_FOUND, type.toString(), id), 404);
         }
 
         return object;
     }
 
-
-    protected <T> Response persistObject(String jsonStr, Class<T> type)
+    protected <T> String writeAsJsonString(T object)
             throws WebApplicationException
     {
-        T object;
+        String jsonObject;
         try {
-            object = mapper.readValue(jsonStr, type);
+            jsonObject = mapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new WebApplicationException(String.format(ERR_JSON_INPUT, type.toString()), 422);
+            throw new WebApplicationException(e.getMessage(), 422);
         }
+        return jsonObject;
+    }
 
+    protected <T> Response responseWrapper(T object, int statusCode) {
+        return Response.ok(writeAsJsonString(object)).status(statusCode).build();
+    }
+
+    protected <T> Response persistObject(T object)
+            throws WebApplicationException
+    {
         try {
             em.persist(object);
         } catch (EntityExistsException e) {
-            throw new WebApplicationException(e, 400);
+            throw new WebApplicationException(e.getMessage(), 400);
         }
 
-        return Response.ok().entity(String.format(OK_CREATE, type.toString())).build();
+        return responseWrapper(object, 201);
     }
+
+
+
 
     //--------------------------------------------------------------------------------
     // Error Mapper

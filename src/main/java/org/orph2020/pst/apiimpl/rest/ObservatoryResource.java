@@ -53,17 +53,14 @@ public class ObservatoryResource extends ObjectResourceBase {
     )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createObservatory(String jsonObservatory)
+    public Response createObservatory(Observatory observatory)
             throws WebApplicationException
     {
-        return super.persistObject(jsonObservatory, Observatory.class);
+        return super.persistObject(observatory);
     }
 
     @PUT
     @Operation(summary = "update an Observatory name")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/name")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -74,14 +71,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setName(replacementName);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.name")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "update an Observatory's address")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/address")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -92,14 +86,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setAddress(replacementAddress);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.address")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "update an Observatory's ivoId")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/ivoId")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -110,14 +101,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setIvoid(new Ivorn(replacementIvoId));
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.ivoId")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "update an Observatory's wikiId")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/wikiId")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -128,14 +116,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setWikiId(new WikiDataId(replacementWikiId));
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.wikiId")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "add an Observatory telescope")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/telescope")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -148,14 +133,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addTelescopes(telescope);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.telescopes")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "add an Observatory instrument")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/instrument")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -168,14 +150,11 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addInstruments(instrument);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.instruments")).build();
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
     @Operation(summary = "add an Observatory backend")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/backend")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -188,15 +167,12 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addBackends(backend);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.backends")).build();
+        return responseWrapper(observatory, 201);
     }
 
 
     @PUT
     @Operation(summary = "add an Observatory array")
-    @APIResponse(
-            responseCode = "200"
-    )
     @Path("{id}/array")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -209,7 +185,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addArrays(array);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observatory.arrays")).build();
+        return responseWrapper(observatory, 201);
     }
 
 }

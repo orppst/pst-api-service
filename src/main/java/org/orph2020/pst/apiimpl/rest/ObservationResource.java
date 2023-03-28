@@ -42,18 +42,15 @@ public class ObservationResource extends ObjectResourceBase {
     )
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createObservation(String jsonObservation)
+    public Response createObservation(Observation observation)
             throws WebApplicationException
     {
-        return super.persistObject(jsonObservation, Observation.class);
+        return super.persistObject(observation);
     }
 
     @PUT
     @Path("{id}/constraints")
     @Operation(summary = "add a constraint to the specified Observation")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addConstraint(@PathParam("id") Long observationId, Long constraintId)
@@ -65,15 +62,12 @@ public class ObservationResource extends ObjectResourceBase {
 
         observation.addConstraints(constraint);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observation.constraints")).build();
+        return responseWrapper(observation, 201);
     }
 
     @PUT
     @Path("{id}/target")
     @Operation(summary = "replace the target for the specified Observation")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceTarget(@PathParam("id") Long observationId, Long targetId)
@@ -85,15 +79,12 @@ public class ObservationResource extends ObjectResourceBase {
 
         observation.setTarget(target);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observation.target")).build();
+        return responseWrapper(observation, 201);
     }
 
     @PUT
     @Path("{id}/field")
     @Operation(summary = "replace the field for the specified Observation")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceField(@PathParam("id") Long observationId, Long fieldId)
@@ -105,15 +96,12 @@ public class ObservationResource extends ObjectResourceBase {
 
         observation.setField(field);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observation.field")).build();
+        return responseWrapper(observation, 201);
     }
 
     @PUT
     @Path("{id}/technicalGoal")
     @Operation(summary = "replace the technical goal for the specified Observation")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceTech(@PathParam("id") Long observationId, Long techId)
@@ -125,16 +113,13 @@ public class ObservationResource extends ObjectResourceBase {
 
         observation.setTech(tech);
 
-        return Response.ok().entity(String.format(OK_UPDATE, "Observation.tech")).build();
+        return responseWrapper(observation, 201);
     }
 
     //for use with CalibrationObservation subtype only
     @PUT
     @Path("{id}/intent")
     @Operation(summary = "replace the intent for the specified CalibrationObservation; one of AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY")
-    @APIResponse(
-            responseCode = "201"
-    )
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceIntent(@PathParam("id") Long observationId, String intentStr)
@@ -154,7 +139,7 @@ public class ObservationResource extends ObjectResourceBase {
             throw new WebApplicationException(e, 400);
         }
 
-        return Response.ok().entity(String.format(OK_UPDATE, "CalibrationObservation.intent")).build();
+        return responseWrapper(observation, 201);
     }
 
 }
