@@ -3,6 +3,8 @@ package org.orph2020.pst.apiimpl.rest;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Organization;
+import org.ivoa.dm.proposal.prop.WikiDataId;
+import org.ivoa.vodml.stdtypes2.Ivorn;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;
@@ -49,6 +51,66 @@ public class OrganizationResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         return super.removeObject(Organization.class, id);
+    }
+
+    @PUT
+    @Path("{id}/name")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Operation(summary = "update an Organization's name")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateName(@PathParam("id") Long id, String replacementName)
+        throws WebApplicationException
+    {
+        Organization organization = super.findObject(Organization.class, id);
+
+        organization.setName(replacementName);
+
+        return super.responseWrapper(organization, 201);
+    }
+
+    @PUT
+    @Path("{id}/address")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Operation(summary = "update an Organization's address")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateAddress(@PathParam("id") Long id, String replacementAddress)
+            throws WebApplicationException
+    {
+        Organization organization = super.findObject(Organization.class, id);
+
+        organization.setAddress(replacementAddress);
+
+        return super.responseWrapper(organization, 201);
+    }
+
+    @PUT
+    @Path("{id}/ivoId")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Operation(summary = "update an Organization's ivoId")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateIvoId(@PathParam("id") Long id, String replacementIvoId)
+            throws WebApplicationException
+    {
+        Organization organization = super.findObject(Organization.class, id);
+
+        organization.setIvoid(new Ivorn(replacementIvoId));
+
+        return super.responseWrapper(organization, 201);
+    }
+
+    @PUT
+    @Path("{id}/wikiId")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Operation(summary = "update an Organization's wikiId")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateWikiId(@PathParam("id") Long id, String replacementWikiId)
+            throws WebApplicationException
+    {
+        Organization organization = super.findObject(Organization.class, id);
+
+        organization.setWikiId(new WikiDataId(replacementWikiId));
+
+        return super.responseWrapper(organization, 201);
     }
 
 }
