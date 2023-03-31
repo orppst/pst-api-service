@@ -9,7 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
-import org.orph2020.pst.common.json.ProposalIdentifier;
+import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.persistence.*;
@@ -81,14 +81,14 @@ public class ProposalResource extends ObjectResourceBase {
 
    @GET
    @Operation(summary = "Get all the ObservingProposals from the database")
-   public List<ProposalIdentifier> getProposals() {
-      List<ProposalIdentifier> result = new ArrayList<>();
+   public List<ObjectIdentifier> getProposals() {
+      List<ObjectIdentifier> result = new ArrayList<>();
       String queryStr = "SELECT o.code,o.title FROM ObservingProposal o ORDER BY o.title";
       Query query = em.createQuery(queryStr);
       List<Object[]> results = query.getResultList();
       for (Object[] r : results)
       {
-         result.add(new ProposalIdentifier((String) r[0], (String) r[1]));
+         result.add(new ObjectIdentifier((String) r[0], (String) r[1]));
       }
 
       return result;
@@ -109,7 +109,7 @@ public class ProposalResource extends ObjectResourceBase {
    }
 
    @POST
-   @Operation(summary = "create a new Telescope in the database")
+   @Operation(summary = "create a new ObservingProposal in the database")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response createObservingProposal(ObservingProposal op)
@@ -120,7 +120,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    @DELETE
    @Path("{proposalCode}")
-   @Operation(summary = "remove the Telescope specified by the 'id'")
+   @Operation(summary = "remove the ObservingProposal specified by the 'proposalCode'")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response deleteObservingProposal(@PathParam("proposalCode") String code)
            throws WebApplicationException
@@ -149,7 +149,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //summary
    @PUT
-   @Operation(summary = "replace the summary with the data in this request")
+   @Operation(summary = "replace the summary of an ObservingProposal")
    @Path("{proposalCode}/summary")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -165,7 +165,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //kind
    @PUT
-   @Operation(summary = "change the 'kind' of ObservingProposal: STANDARD, TOO, SURVEY")
+   @Operation(summary = "change the 'kind' of the ObservingProposal specified, one-of: STANDARD, TOO, SURVEY")
    @Path("{proposalCode}/kind")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -185,7 +185,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //Justifications
    @PUT
-   @Operation( summary = "replace a technical or scientific Justification in the specified ObservingProposal")
+   @Operation( summary = "replace a technical or scientific Justification in the ObservingProposal specified")
    @Path("{proposalCode}/justifications/{which}")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn={WebApplicationException.class})
@@ -236,7 +236,7 @@ public class ProposalResource extends ObjectResourceBase {
    }
 
    @PUT
-   @Operation(summary = "add an Investigator to an ObservationProposal")
+   @Operation(summary = "add an Investigator to the ObservationProposal specified")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("{proposalCode}/investigators")
@@ -263,7 +263,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //relatedProposals
    @PUT
-   @Operation(summary = "add an ObservingProposal to the list of RelatedProposals")
+   @Operation(summary = "add another ObservingProposal to the list of RelatedProposals of the ObservingProposal specified")
    @Path("{proposalCode}/relatedProposals")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -287,7 +287,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //supporting documents
    @PUT
-   @Operation(summary = "add a SupportingDocument to an ObservingProposal")
+   @Operation(summary = "add a SupportingDocument to the ObservingProposal specified")
    @Path("{proposalCode}/supportingDocuments")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
@@ -306,7 +306,7 @@ public class ProposalResource extends ObjectResourceBase {
 
    //observations
    @PUT
-   @Operation(summary="add an observation to an ObservingProposal")
+   @Operation(summary="add an observation to the ObservingProposal specified")
    @Path("{proposalCode}/observations")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
