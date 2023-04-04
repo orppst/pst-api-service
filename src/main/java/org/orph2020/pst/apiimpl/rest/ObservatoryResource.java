@@ -9,7 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
-import org.ivoa.vodml.stdtypes2.Ivorn;
+import org.ivoa.dm.ivoa.Ivorn;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.inject.Inject;

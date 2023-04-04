@@ -29,7 +29,7 @@ public class ObservationResourceTest {
 
         given()
                 .when()
-                .get("observations/40")
+                .get("observations/48")
                 .then()
                 .statusCode(200)
                 .body(

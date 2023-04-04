@@ -26,7 +26,6 @@ import java.util.List;
  */
 
 @Path("proposals")
-@ApplicationScoped
 @Tag(name = "proposal-tool-proposals")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalResource extends ObjectResourceBase {
@@ -37,16 +36,8 @@ public class ProposalResource extends ObjectResourceBase {
       this.logger = logger;
    }
 
-   @Transactional
-   public void initDB() {
-      logger.info("initializing Database");
-      EmerlinExample ex = new EmerlinExample();
-      em.persist(ex.getCycle());
-      em.persist(ex.getProposal());
-   }
 
-
-   private ObservingProposal findProposal(String code)
+   private ObservingProposal findProposal(long code)
       throws WebApplicationException
    {
       ObservingProposal op = em.find(ObservingProposal.class, code);
@@ -71,7 +62,7 @@ public class ProposalResource extends ObjectResourceBase {
       return super.responseWrapper(op, 201);
    }
 
-   private Response removeObservingProposal(String code)
+   private Response removeObservingProposal(long code)
       throws WebApplicationException
    {
       ObservingProposal op = findProposal(code);
@@ -83,7 +74,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Operation(summary = "Get all the ObservingProposals from the database")
    public List<ObjectIdentifier> getProposals() {
       List<ObjectIdentifier> result = new ArrayList<>();
-      String queryStr = "SELECT o.code,o.title FROM ObservingProposal o ORDER BY o.title";
+      String queryStr = "SELECT o._id,o.title FROM ObservingProposal o ORDER BY o.title";
       Query query = em.createQuery(queryStr);
       List<Object[]> results = query.getResultList();
       for (Object[] r : results)
@@ -102,7 +93,7 @@ public class ProposalResource extends ObjectResourceBase {
            description = "get a single ObservationProposal specified by the code"
    )
    @Path("{proposalCode}")
-   public ObservingProposal getObservingProposal(@PathParam("proposalCode") String proposalCode)
+   public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
            throws WebApplicationException
    {
       return findProposal(proposalCode);
@@ -122,7 +113,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}")
    @Operation(summary = "remove the ObservingProposal specified by the 'proposalCode'")
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response deleteObservingProposal(@PathParam("proposalCode") String code)
+   public Response deleteObservingProposal(@PathParam("proposalCode") long code)
            throws WebApplicationException
    {
       return removeObservingProposal(code);
@@ -136,7 +127,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("{proposalCode}/title")
    public Response replaceTitle(
-           @PathParam("proposalCode") String proposalCode,
+           @PathParam("proposalCode") long proposalCode,
            String replacementTitle)
            throws WebApplicationException
    {
@@ -153,7 +144,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}/summary")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response replaceSummary(@PathParam("proposalCode") String proposalCode, String replacementSummary)
+   public Response replaceSummary(@PathParam("proposalCode") long proposalCode, String replacementSummary)
    throws WebApplicationException
    {
       ObservingProposal proposal = findProposal(proposalCode);
@@ -169,7 +160,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}/kind")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response changeKind(@PathParam("proposalCode") String proposalCode, String kind)
+   public Response changeKind(@PathParam("proposalCode") long proposalCode, String kind)
       throws WebApplicationException
    {
       ObservingProposal proposal = findProposal(proposalCode);
@@ -190,7 +181,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn={WebApplicationException.class})
    public Response replaceJustification(
-                                        @PathParam("proposalCode") String proposalCode,
+                                        @PathParam("proposalCode") long proposalCode,
                                         @PathParam("which") String which,
                                         Justification incoming )
    throws WebApplicationException
@@ -240,7 +231,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    @Path("{proposalCode}/investigators")
-   public Response addPersonAsInvestigator(@PathParam("proposalCode") String proposalCode,
+   public Response addPersonAsInvestigator(@PathParam("proposalCode") long proposalCode,
                                            PersonInvestigator personInvestigator)
            throws WebApplicationException
    {
@@ -267,8 +258,8 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}/relatedProposals")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response addRelatedProposal(@PathParam("proposalCode") String proposalCode,
-                                       String relatedProposalCode)
+   public Response addRelatedProposal(@PathParam("proposalCode") Long proposalCode,
+                                       Long relatedProposalCode)
       throws WebApplicationException
    {
       if (proposalCode.equals(relatedProposalCode)) {
@@ -291,7 +282,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}/supportingDocuments")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response addSupportingDocument(@PathParam("proposalCode") String proposalCode,
+   public Response addSupportingDocument(@PathParam("proposalCode") Long proposalCode,
                                       Long supportingDocumentId)
            throws WebApplicationException
    {
@@ -310,7 +301,7 @@ public class ProposalResource extends ObjectResourceBase {
    @Path("{proposalCode}/observations")
    @Consumes(MediaType.TEXT_PLAIN)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response addObservation(@PathParam("proposalCode") String proposalCode,
+   public Response addObservation(@PathParam("proposalCode") Long proposalCode,
                                   Long observationId)
       throws WebApplicationException
    {

@@ -6,7 +6,7 @@ import org.ivoa.dm.proposal.prop.Telescope;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.CoordSys;
 import org.ivoa.dm.stc.coords.GeocentricPoint;
-import org.ivoa.vodml.stdtypes2.RealQuantity;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;

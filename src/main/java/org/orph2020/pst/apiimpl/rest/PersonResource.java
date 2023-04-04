@@ -8,7 +8,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.Target;
-import org.ivoa.vodml.stdtypes2.StringIdentifier;
+import org.ivoa.dm.ivoa.StringIdentifier ;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;

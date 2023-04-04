@@ -26,7 +26,7 @@ public class TargetResourceTest {
     void testGetTarget() {
         given()
                 .when()
-                .get("targets/42")
+                .get("targets/50")
                 .then()
                 .statusCode(200)
                 .body (

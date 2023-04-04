@@ -4,7 +4,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.WikiDataId;
-import org.ivoa.vodml.stdtypes2.Ivorn;
+import org.ivoa.dm.ivoa.Ivorn;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;
@@ -21,7 +21,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @GET
     @Operation(summary= "get all Organizations stored in the database")
     public List<ObjectIdentifier> getOrganizations() {
-        return super.getObjects("SELECT o._id,o.name FROM Organization o ORDER BY o.fullName");
+        return super.getObjects("SELECT o._id,o.name FROM Organization o ORDER BY o.name");
     }
 
     @GET

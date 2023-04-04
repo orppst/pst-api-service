@@ -17,11 +17,11 @@ public class ProposalResourceTest {
         //valid request
         given()
                 .when()
-                .get("proposals/pr1")
+                .get("proposals/88")
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("\"code\":\"pr1\",")
+                        containsString("\"title\":\"the proposal title\",")
                 )
         ;
 
@@ -50,7 +50,7 @@ public class ProposalResourceTest {
                 .body(replacementText)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .put("proposals/pr1/justifications/technical")
+                .put("proposals/88/justifications/technical")
                 .then()
                 .statusCode(201)
                 .body(
@@ -67,7 +67,7 @@ public class ProposalResourceTest {
                 .body("replacement title")
                 .header("Content-Type", MediaType.TEXT_PLAIN)
                 .when()
-                .put("proposals/pr1/title")
+                .put("proposals/88/title")
                 .then()
                 .statusCode(201)
                 .body(
@@ -81,14 +81,14 @@ public class ProposalResourceTest {
     @Test
     void testAddPersonAsInvestigator() {
         //add a person as an investigator to a proposal
-        String personToAdd = "{\"investigatorKind\":\"COI\",\"forPhD\":false,\"personId\":37}";
-        String textToCheck = "\"type\":\"COI\",\"forPhD\":false,\"investigator\":37";
+        String personToAdd = "{\"investigatorKind\":\"COI\",\"forPhD\":false,\"personId\":45}";
+        String textToCheck = "\"type\":\"COI\",\"forPhD\":false,\"investigator\":45";
 
         given()
                 .body(personToAdd)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .put("proposals/pr1/investigators")
+                .put("proposals/88/investigators")
                 .then()
                 .statusCode(201)
                 .body(

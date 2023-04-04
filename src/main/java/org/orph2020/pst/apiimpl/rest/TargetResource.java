@@ -8,7 +8,7 @@ import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
-import org.ivoa.vodml.stdtypes2.RealQuantity;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;

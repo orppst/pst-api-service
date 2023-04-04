@@ -26,11 +26,11 @@ public class PersonResourceTest {
     void testGetPerson() {
         given()
                 .when()
-                .get("people/37")
+                .get("people/45")
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("\"_id\":37")
+                        containsString("\"fullName\":\"PI\"")
                 );
     }
 }
