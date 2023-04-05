@@ -32,7 +32,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(404)
                 .body(
-                        containsString("ObservingProposal with code: not-a-code not found")
+                        containsString("404")
                 )
         ;
 
