@@ -4,6 +4,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
+import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -14,7 +15,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
-@Path("targets/celestialTargets")
+@Path("celestialTargets")
 @Tag(name="proposal-tool-targets-celestial")
 @Produces(MediaType.APPLICATION_JSON)
 public class CelestialTargetResource extends ObjectResourceBase{
@@ -37,7 +38,9 @@ public class CelestialTargetResource extends ObjectResourceBase{
     @POST
     @Operation(summary = "create a new CelestialTarget in the database")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response createCelestialTarget(CelestialTarget celestialTarget) {
+    public Response createCelestialTarget(CelestialTarget celestialTarget)
+            throws WebApplicationException
+    {
         return super.persistObject(celestialTarget);
     }
 
@@ -137,6 +140,21 @@ public class CelestialTargetResource extends ObjectResourceBase{
         CelestialTarget target = super.findObject(CelestialTarget.class, id);
 
         target.setSourceVelocity(replacementSourceVelocity);
+
+        return responseWrapper(target, 201);
+    }
+
+    @PUT
+    @Path("{id}/sourceName")
+    @Operation(summary = "replace the sourceName of the specified CelestialTarget")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceSourceName(@PathParam("id") Long id, String replacementSourceName)
+            throws WebApplicationException
+    {
+        CelestialTarget target = super.findObject(CelestialTarget.class, id);
+
+        target.setSourceName(replacementSourceName);
 
         return responseWrapper(target, 201);
     }

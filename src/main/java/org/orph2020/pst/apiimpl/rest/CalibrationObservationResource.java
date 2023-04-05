@@ -1,45 +1,40 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.persistence.EntityExistsException;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
+@Path("calibrationObservations")
+@Tag(name = "proposal-tool-observations-calibration")
 @Produces(MediaType.APPLICATION_JSON)
-@Path("observations")
-@Tag(name = "proposal-tool-observations")
-public class ObservationResource extends ObjectResourceBase {
+public class CalibrationObservationResource extends ObjectResourceBase{
 
     @GET
-    @Operation(summary = "get all the Observations stored in the database")
-    public List<ObjectIdentifier> getObservations() {
-        return super.getObjects("SELECT o._id,o.target.sourceName FROM Observation o ORDER BY o.target.sourceName");
+    @Operation(summary = "get all CalibrationObservations from the database")
+    public List<ObjectIdentifier> getCalibrationObservations() {
+        return super.getObjects("SELECT o._id,o.target.sourceName FROM CalibrationObservation o ORDER BY o.target.sourceName");
     }
+
 
     @GET
     @Path("{id}")
-    @Operation(summary = "get the specified Observation")
-    public Observation getObservation(@PathParam("id") Long id)
-            throws WebApplicationException
-    {
-        return super.findObject(Observation.class, id);
+    @Operation(summary = "get the CalibrationObservation specified by the 'id'")
+    public CalibrationObservation getTargetObservation(@PathParam("id") Long id) {
+        return super.findObject(CalibrationObservation.class, id);
     }
 
-    // Does this require an Observation subtype hint in the jsonString?
     @POST
-    @Operation(summary = "create a new Observation in the database")
+    @Operation(summary = "create a new CalibrationObservation in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createObservation(Observation observation)
+    public Response createObservation(CalibrationObservation observation)
             throws WebApplicationException
     {
         return super.persistObject(observation);
@@ -47,23 +42,23 @@ public class ObservationResource extends ObjectResourceBase {
 
     @DELETE
     @Path("{id}")
-    @Operation(summary = "delete the Observation specified by the 'id' from the database")
+    @Operation(summary = "delete the CalibrationObservation specified by the 'id' from the database")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response deleteObservation(@PathParam("id") Long id)
             throws WebApplicationException
     {
-        return super.removeObject(Observation.class, id);
+        return super.removeObject(CalibrationObservation.class, id);
     }
 
     @PUT
     @Path("{id}/constraints")
-    @Operation(summary = "add a constraint to the specified Observation")
+    @Operation(summary = "add a constraint to the specified CalibrationObservation")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addConstraint(@PathParam("id") Long observationId, Long constraintId)
-        throws WebApplicationException
+            throws WebApplicationException
     {
-        Observation observation = super.findObject(Observation.class, observationId);
+        CalibrationObservation observation = super.findObject(CalibrationObservation.class, observationId);
 
         Constraint constraint = super.findObject(Constraint.class, constraintId);
 
@@ -74,13 +69,13 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Path("{id}/target")
-    @Operation(summary = "replace the target for the specified Observation")
+    @Operation(summary = "replace the target for the specified CalibrationObservation")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceTarget(@PathParam("id") Long observationId, Long targetId)
             throws WebApplicationException
     {
-        Observation observation = super.findObject(Observation.class, observationId);
+        CalibrationObservation observation = super.findObject(CalibrationObservation.class, observationId);
 
         Target target = super.findObject(Target.class, targetId);
 
@@ -91,13 +86,13 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Path("{id}/field")
-    @Operation(summary = "replace the field for the specified Observation")
+    @Operation(summary = "replace the field for the specified CalibrationObservation")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceField(@PathParam("id") Long observationId, Long fieldId)
             throws WebApplicationException
     {
-        Observation observation = super.findObject(Observation.class, observationId);
+        CalibrationObservation observation = super.findObject(CalibrationObservation.class, observationId);
 
         Field field = super.findObject(Field.class, fieldId);
 
@@ -108,13 +103,13 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Path("{id}/technicalGoal")
-    @Operation(summary = "replace the technical goal for the specified Observation")
+    @Operation(summary = "replace the technical goal for the specified CalibrationObservation")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceTechnicalGoal(@PathParam("id") Long observationId, Long technicalGoalId)
             throws WebApplicationException
     {
-        Observation observation = super.findObject(Observation.class, observationId);
+        CalibrationObservation observation = super.findObject(CalibrationObservation.class, observationId);
 
         TechnicalGoal tech = super.findObject(TechnicalGoal.class, technicalGoalId);
 
@@ -123,7 +118,6 @@ public class ObservationResource extends ObjectResourceBase {
         return responseWrapper(observation, 201);
     }
 
-    //for use with CalibrationObservation subtype only
     @PUT
     @Path("{id}/intent")
     @Operation(summary = "update the intent for the specified CalibrationObservation; one of AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY")
@@ -132,21 +126,14 @@ public class ObservationResource extends ObjectResourceBase {
     public Response updateIntent(@PathParam("id") Long observationId, String intentStr)
             throws WebApplicationException
     {
-        Observation observation = super.findObject(Observation.class, observationId);
-
-        if (!observation.getClass().equals(CalibrationObservation.class)) {
-            throw new WebApplicationException(
-                    String.format("Observation %d is not a CalibrationObservation", observationId), 422
-            );
-        }
+        CalibrationObservation observation = super.findObject(CalibrationObservation.class, observationId);
 
         try {
-            ((CalibrationObservation) observation).setIntent(CalibrationTarget_intendedUse.fromValue(intentStr));
+            observation.setIntent(CalibrationTarget_intendedUse.fromValue(intentStr));
         } catch (IllegalArgumentException e) {
             throw new WebApplicationException(e, 400);
         }
 
         return responseWrapper(observation, 201);
     }
-
 }

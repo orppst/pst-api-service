@@ -8,13 +8,13 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
 
 @QuarkusTest
-public class TargetResourceTest {
+public class CelestialTargetResourceTest {
 
     @Test
     void testGetTargets() {
         given()
                 .when()
-                .get("targets")
+                .get("celestialTargets")
                 .then()
                 .statusCode(200)
                 .body(
@@ -26,7 +26,7 @@ public class TargetResourceTest {
     void testGetTarget() {
         given()
                 .when()
-                .get("targets/50")
+                .get("celestialTargets/50")
                 .then()
                 .statusCode(200)
                 .body (
