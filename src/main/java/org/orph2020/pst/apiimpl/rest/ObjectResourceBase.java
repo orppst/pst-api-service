@@ -85,6 +85,14 @@ abstract public class ObjectResourceBase {
         return Response.ok().status(204).build();
     }
 
+    protected <T> Response mergeObject(T object)
+        throws IllegalArgumentException
+    {
+        em.merge(object); //throws IllegalArgumentException if object is not valid for merging
+
+        return responseWrapper(object, 201);
+    }
+
 
 
 

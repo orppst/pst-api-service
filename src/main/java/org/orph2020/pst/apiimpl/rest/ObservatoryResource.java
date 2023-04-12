@@ -127,7 +127,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     }
 
     @PUT
-    @Operation(summary = "add an Observatory telescope")
+    @Operation(summary = "add an existing Telescope to the Observatory specified by the 'id'")
     @Path("{id}/telescope")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -143,8 +143,29 @@ public class ObservatoryResource extends ObjectResourceBase {
         return responseWrapper(observatory, 201);
     }
 
+    @POST
+    @Operation(summary = "create a Telescope in the database and add it to the Observatory specified by the 'id'")
+    @Path("{id}/telescope")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createAndAddTelescope(@PathParam("id") Long observatoryId, Telescope telescope)
+        throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+
+        for (Telescope t : observatory.getTelescopes()) {
+            if (t.equals(telescope)) {
+                throw new WebApplicationException("Telescope already added to Observatory", 400);
+            }
+        }
+
+        observatory.addTelescopes(telescope);
+
+        return super.mergeObject(observatory);
+    }
+
     @PUT
-    @Operation(summary = "add an Observatory instrument")
+    @Operation(summary = "add an existing Instrument to the Observatory specified by the 'id'")
     @Path("{id}/instrument")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -160,10 +181,31 @@ public class ObservatoryResource extends ObjectResourceBase {
         return responseWrapper(observatory, 201);
     }
 
+    @POST
+    @Operation(summary = "create an Instrument in the database and add it to the Observatory specified by the 'id'")
+    @Path("{id}/instrument")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createAndAddInstrument(@PathParam("id") Long observatoryId, Instrument instrument)
+            throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+
+        for (Instrument i : observatory.getInstruments()) {
+            if (i.equals(instrument)) {
+                throw new WebApplicationException("Instrument already added to Observatory", 400);
+            }
+        }
+
+        observatory.addInstruments(instrument);
+
+        return super.mergeObject(observatory);
+    }
+
     @PUT
     @Operation(summary = "add an Observatory backend")
     @Path("{id}/backend")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addBackend(@PathParam("id") Long id, Long backendId)
             throws WebApplicationException
@@ -177,11 +219,32 @@ public class ObservatoryResource extends ObjectResourceBase {
         return responseWrapper(observatory, 201);
     }
 
+    @POST
+    @Operation(summary = "create a Backend in the database and add it to the Observatory specified by the 'id'")
+    @Path("{id}/backend")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createAndAddBackend(@PathParam("id") Long observatoryId, Backend backend)
+            throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+
+        for (Backend b : observatory.getBackends()) {
+            if (b.equals(backend)) {
+                throw new WebApplicationException("Backend already added to Observatory", 400);
+            }
+        }
+
+        observatory.addBackends(backend);
+
+        return super.mergeObject(observatory);
+    }
+
 
     @PUT
     @Operation(summary = "add an Observatory array")
     @Path("{id}/array")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addArray(@PathParam("id") Long id, Long telescopeArrayId )
             throws WebApplicationException
@@ -193,6 +256,27 @@ public class ObservatoryResource extends ObjectResourceBase {
         observatory.addArrays(array);
 
         return responseWrapper(observatory, 201);
+    }
+
+    @POST
+    @Operation(summary = "create a TelescopeArray in the database and add it to the Observatory specified by the 'id'")
+    @Path("{id}/array")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createAndAddArray(@PathParam("id") Long observatoryId, TelescopeArray telescopeArray)
+            throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+
+        for (TelescopeArray t : observatory.getArrays()) {
+            if (t.equals(telescopeArray)) {
+                throw new WebApplicationException("TelescopeArray already added to Observatory", 400);
+            }
+        }
+
+        observatory.addArrays(telescopeArray);
+
+        return super.mergeObject(observatory);
     }
 
 }

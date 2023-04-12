@@ -19,7 +19,7 @@ public class TargetObservationResource extends ObjectResourceBase {
     @GET
     @Operation(summary = "get all TargetObservations in the database")
     public List<ObjectIdentifier> getTargetObservations() {
-        return super.getObjects("SELECT o._id,o.target.sourceName FROM TargetObservations o ORDER BY o.target.sourceName");
+        return super.getObjects("SELECT o._id,o.target.sourceName FROM TargetObservation o ORDER BY o.target.sourceName");
     }
 
     @GET
