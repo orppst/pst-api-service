@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
@@ -49,6 +50,13 @@ abstract public class ObjectResourceBase {
         return object;
     }
 
+    protected XmlIdManagement findObjectInList(Long id, List<? extends XmlIdManagement> objects) {
+        return objects.stream()
+                .filter(o -> String.valueOf(id).equals(o.getXmlId()))
+                .findAny()
+                .orElse(null);
+    }
+
     protected <T> String writeAsJsonString(T object)
             throws WebApplicationException
     {
@@ -92,8 +100,6 @@ abstract public class ObjectResourceBase {
 
         return responseWrapper(object, 201);
     }
-
-
 
 
     //--------------------------------------------------------------------------------

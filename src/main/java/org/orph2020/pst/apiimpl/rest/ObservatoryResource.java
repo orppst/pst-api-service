@@ -3,19 +3,14 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.ivoa.Ivorn;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.inject.Inject;
-import javax.persistence.EntityExistsException;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -26,6 +21,9 @@ import java.util.List;
 @Path("observatories")
 @Tag(name = "proposal-tool-observatories")
 public class ObservatoryResource extends ObjectResourceBase {
+
+    private static final String NON_ASSOCIATE =
+            "%s with id: %d is not associated to the Observatory with id: %d";
 
     @GET
     @Operation(summary = "get all of the Observatories")
@@ -78,7 +76,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setName(replacementName);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -93,7 +91,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setAddress(replacementAddress);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -108,7 +106,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setIvoid(new Ivorn(replacementIvoId));
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -123,8 +121,10 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.setWikiId(new WikiDataId(replacementWikiId));
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
+
+    //TELESCOPE **********************************************************************************
 
     @PUT
     @Operation(summary = "add an existing Telescope to the Observatory specified by the 'id'")
@@ -140,7 +140,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addTelescopes(telescope);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @POST
@@ -165,6 +165,115 @@ public class ObservatoryResource extends ObjectResourceBase {
     }
 
     @PUT
+    @Path("{id}/telescope/{subId}/name")
+    @Operation(summary = "replace the name of the Telescope specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTelescopeName(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                         String replacementName) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
+
+        if (telescope == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+        }
+
+        telescope.setName(replacementName);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/telescope/{subId}/location/xyz")
+    @Operation(summary = "replace the xyz coordinates of the Telescope specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTelescopeXYZ(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                         List<RealQuantity> xyz) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
+
+        if (telescope == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+        }
+
+        telescope.getLocation().setX(xyz.get(0));
+        telescope.getLocation().setY(xyz.get(1));
+        telescope.getLocation().setZ(xyz.get(2));
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/telescope/{subId}/location/x")
+    @Operation(summary = "replace the x coordinate of the Telescope specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTelescopeX(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                        RealQuantity updateX) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
+
+        if (telescope == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+        }
+
+        telescope.getLocation().setX(updateX);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/telescope/{subId}/location/y")
+    @Operation(summary = "replace the y coordinate of the Telescope specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTelescopeY(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                        RealQuantity updateY) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
+
+        if (telescope == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+        }
+
+        telescope.getLocation().setY(updateY);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/telescope/{subId}/location/z")
+    @Operation(summary = "replace the z coordinate of the Telescope specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTelescopeZ(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                        RealQuantity updateZ) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
+
+        if (telescope == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+        }
+
+        telescope.getLocation().setZ(updateZ);
+
+        return super.mergeObject(observatory);
+    }
+
+    //INSTRUMENT *************************************************************************************
+
+    @PUT
     @Operation(summary = "add an existing Instrument to the Observatory specified by the 'id'")
     @Path("{id}/instrument")
     @Consumes(MediaType.TEXT_PLAIN)
@@ -178,7 +287,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addInstruments(instrument);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @POST
@@ -203,6 +312,141 @@ public class ObservatoryResource extends ObjectResourceBase {
     }
 
     @PUT
+    @Path("{id}/instrument/{subId}/name")
+    @Operation(summary = "replace the name of the Instrument specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentName(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                         String replacementName) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        instrument.setName(replacementName);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/instrument/{subId}/description")
+    @Operation(summary = "replace the description of the Instrument specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentDescription(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                          String replacementDescription) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        instrument.setDescription(replacementDescription);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/instrument/{subId}/wikiId")
+    @Operation(summary = "replace the wikiId of the Instrument specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentWikiId(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                                 String replacementWikiId) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        instrument.setWikiId(new WikiDataId(replacementWikiId));
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/instrument/{subId}/reference")
+    @Operation(summary = "replace the reference (external URL) of the Instrument specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentReference(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                            String replacementReference) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        instrument.setReference(replacementReference);
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/instrument/{subId}/kind")
+    @Operation(summary = "replace the 'kind' of the Instrument specified by the 'subId'; one-of CONTINUUM, SPECTROSCOPIC")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentKind(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                               String replacementKind) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        try {
+            instrument.setKind(InstrumentKind.fromValue(replacementKind));
+        } catch (IllegalArgumentException e) {
+            throw new WebApplicationException(e.getMessage(), 400);
+        }
+
+        return super.mergeObject(observatory);
+    }
+
+    @PUT
+    @Path("{id}/instrument/{subId}/frequencyCoverage")
+    @Operation(summary = "replace the frequencyCoverage of the Instrument specified by the 'subId'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceInstrumentFrequencyCoverage(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                          SpectralWindowSetup replacementFrequencyCoverage)
+            throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
+
+        if (instrument == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+        }
+
+        instrument.setFrequencyCoverage(replacementFrequencyCoverage);
+
+        return super.mergeObject(observatory);
+    }
+
+
+
+    //BACKEND **************************************************************************************
+
+    @PUT
     @Operation(summary = "add an Observatory backend")
     @Path("{id}/backend")
     @Consumes(MediaType.TEXT_PLAIN)
@@ -216,7 +460,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addBackends(backend);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @POST
@@ -240,9 +484,52 @@ public class ObservatoryResource extends ObjectResourceBase {
         return super.mergeObject(observatory);
     }
 
+    @PUT
+    @Path("{id}/backend/{subId}/name")
+    @Operation(summary = "replace the name of the Backend specified by the 'subId'")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceBackendName(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                          String replacementName) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
+
+        if (backend == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+        }
+
+        backend.setName(replacementName);
+
+        return super.mergeObject(observatory);
+    }
 
     @PUT
-    @Operation(summary = "add an Observatory array")
+    @Path("{id}/backend/{subId}/parallel")
+    @Operation(summary = "update the 'parallel' status (true/false) of the Backend specified by the 'subId'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateBackendParallel(@PathParam("id") Long id, @PathParam("subId") Long subId,
+                                       Boolean updateParallel) throws WebApplicationException
+    {
+        Observatory observatory = super.findObject(Observatory.class, id);
+
+        Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
+
+        if (backend == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+        }
+
+        backend.setParallel(updateParallel);
+
+        return super.mergeObject(observatory);
+    }
+
+    //TELESCOPE ARRAY *****************************************************************************
+
+    @PUT
+    @Operation(summary = "add an existing TelescopeArray to the Observatory")
     @Path("{id}/array")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -255,7 +542,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addArrays(array);
 
-        return responseWrapper(observatory, 201);
+        return super.responseWrapper(observatory, 201);
     }
 
     @POST
