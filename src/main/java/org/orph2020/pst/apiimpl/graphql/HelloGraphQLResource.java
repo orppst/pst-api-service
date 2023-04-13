@@ -1,4 +1,4 @@
-package org.orph2020.pst;
+package org.orph2020.pst.apiimpl.graphql;
 
 import org.eclipse.microprofile.graphql.DefaultValue;
 import org.eclipse.microprofile.graphql.Description;

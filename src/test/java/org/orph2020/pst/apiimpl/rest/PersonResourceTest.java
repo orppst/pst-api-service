@@ -4,8 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 public class PersonResourceTest {
@@ -21,9 +20,21 @@ public class PersonResourceTest {
                         "$.size()", greaterThan(0)
                 );
     }
+   @Test
+   void testFilterPeople() {
+      given()
+            .when()
+            .param("name","PI")
+            .get("people")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(1)
+            );
+   }
 
     @Test
-    void testGetPerson() {
+    void testGetPerson()  {
         given()
                 .when()
                 .get("people/45")

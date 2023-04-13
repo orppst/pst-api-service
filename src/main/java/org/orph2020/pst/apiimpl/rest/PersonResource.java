@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.ivoa.StringIdentifier ;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;
@@ -24,9 +25,12 @@ import java.util.List;
 public class PersonResource extends ObjectResourceBase {
 
    @GET
-   @Operation(summary = "get all People from the database")
-   public List<ObjectIdentifier> getPeople() {
-      return super.getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
+   @Operation(summary = "get People from the database")
+   public List<ObjectIdentifier> getPeople(@RestQuery String name) {
+      if(name == null)
+         return super.getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
+      else
+         return super.getObjects("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
    }
 
    @GET
