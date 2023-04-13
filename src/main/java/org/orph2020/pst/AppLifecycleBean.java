@@ -6,15 +6,15 @@ package org.orph2020.pst;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 import org.ivoa.dm.proposal.prop.EmerlinExample;
+import org.ivoa.dm.proposal.prop.Person;
 import org.jboss.logging.Logger;
-import org.orph2020.pst.apiimpl.rest.ProposalResource;
+import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
-import javax.inject.Inject;
 import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
 import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 
 @ApplicationScoped
@@ -37,6 +37,18 @@ public class AppLifecycleBean {
             em.persist(ex.getCycle());
             em.persist(ex.getProposal());
         }
+
+        TypedQuery<Person> pq = em.createQuery("select o from Person o", Person.class);
+        for (Person p : pq.getResultList())
+        {
+            switch (p.getEMail()) {
+                case "pi@unreal.not.email":
+                    SubjectMap m = new SubjectMap(p, "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec");
+                    em.persist(m);
+            }
+
+        }
+
 
     }
 
