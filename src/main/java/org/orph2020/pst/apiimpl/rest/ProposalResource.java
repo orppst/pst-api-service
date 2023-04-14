@@ -18,6 +18,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /*
@@ -45,7 +46,7 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "get the specified ObservationProposal")
+    @Operation(summary = "get the ObservationProposal specified by the 'proposalCode'")
     @APIResponse(
             responseCode = "200",
             description = "get a single ObservationProposal specified by the code"
@@ -64,7 +65,136 @@ public class ProposalResource extends ObjectResourceBase {
     public Response createObservingProposal(ObservingProposal op)
             throws WebApplicationException
     {
-        return super.persistObject(op);
+        //work-around: ObservingProposal get<LIST> methods return an unmodifiableList
+        //which ultimately throws a NullPointerException if the corresponding LIST is empty
+
+        ObservingProposal minimumProposal = new ObservingProposal()
+                .withTitle(op.getTitle())
+                .withKind(op.getKind())
+                .withSummary(op.getSummary());
+
+        Long scientificId = op.getScientificJustification().getId();
+        if (scientificId == 0) {
+            minimumProposal.setScientificJustification(op.getScientificJustification());
+        }
+
+        Long technicalId = op.getTechnicalJustification().getId();
+        if (technicalId == 0) {
+            minimumProposal.setTechnicalJustification(op.getTechnicalJustification());
+        }
+
+        try {
+            for (Investigator i : op.getInvestigators()) {
+                if (i.getId() == 0) {
+                    Long personId = i.getInvestigator().getId();
+                    if (personId == 0) {
+                        minimumProposal.addInvestigators(i);
+                    }
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (RelatedProposal r : op.getRelatedProposals()) {
+                if (r.getId() == 0) {
+                    throw new WebApplicationException(
+                            "RelatedProposal must exist before being attached to a new ObservingProposal", 400);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (SupportingDocument s: op.getSupportingDocuments()) {
+                if (s.getId() == 0) {
+                    minimumProposal.addSupportingDocuments(s);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (Observation o : op.getObservations()) {
+                if (o.getId() == 0) {
+                    //likely we'll need more logic here to deal with Observation sub-objects
+                    minimumProposal.addObservations(o);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            em.persist(minimumProposal);
+        } catch (EntityExistsException e) {
+            throw new WebApplicationException(e.getMessage(), 400);
+        }
+
+        //add existing stuff to the proposal now it is persisted
+        try {
+            for (Investigator i : op.getInvestigators()) {
+                Long investigatorId = i.getId();
+                if (investigatorId == 0) {
+                    Long personId = i.getInvestigator().getId();
+                    if (personId > 0) {
+                        Person person = super.findObject(Person.class, personId);
+                        Investigator investigator = new Investigator()
+                                .withForPhD(i.getForPhD())
+                                .withType(i.getType());
+                        investigator.setInvestigator(person);
+                        minimumProposal.addInvestigators(investigator);
+                    }
+                } else {
+                    Investigator investigator =
+                            super.findObject(Investigator.class, investigatorId);
+                    minimumProposal.addInvestigators(investigator);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (RelatedProposal r : op.getRelatedProposals()) {
+                RelatedProposal relatedProposal =
+                        findObject(RelatedProposal.class, r.getId());
+                minimumProposal.addRelatedProposals(relatedProposal);
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (SupportingDocument s: op.getSupportingDocuments()) {
+                Long supportingId = s.getId();
+                if (supportingId > 0) {
+                    SupportingDocument supportingDocument =
+                            super.findObject(SupportingDocument.class, supportingId);
+                    minimumProposal.addSupportingDocuments(supportingDocument);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        try {
+            for (Observation o : op.getObservations()) {
+                Long observationId = o.getId();
+                if (observationId > 0) {
+                    Observation observation =
+                            super.findObject(Observation.class, observationId);
+                    minimumProposal.addObservations(observation);
+                }
+            }
+        } catch (NullPointerException e) {
+            //work-around: Okay, list is empty
+        }
+
+        return responseWrapper(minimumProposal, 201);
     }
 
     @DELETE
