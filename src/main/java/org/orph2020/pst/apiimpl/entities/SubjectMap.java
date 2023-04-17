@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.entities;
  * Created on 12/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import com.fasterxml.jackson.annotation.JsonIdentityReference;
 import org.ivoa.dm.proposal.prop.Person;
 
 import javax.persistence.*;
@@ -21,6 +22,8 @@ public class SubjectMap {
 
     @OneToOne
     @JoinColumn(name = "person_id")
+    //TODO the below annotation is trying to express the fact that a whole person or just the person id is returned - this does not work https://github.com/eclipse/microprofile-open-api/blob/master/spec/src/main/asciidoc/microprofile-openapi-spec.asciidoc#filter might allow
+    @org.eclipse.microprofile.openapi.annotations.media.Schema(description="the person here",oneOf = {Person.class, Integer.class},allOf = {})
     public Person person;
 
    public SubjectMap(Person person, String uid) {
