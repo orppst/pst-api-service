@@ -5,7 +5,9 @@ package org.orph2020.pst;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.prop.EmerlinExample;
+import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Person;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
@@ -34,8 +36,12 @@ public class AppLifecycleBean {
         Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
             EmerlinExample ex = new EmerlinExample();
-            em.persist(ex.getCycle());
-            em.persist(ex.getProposal());
+            ProposalCycle cy = ex.getCycle();
+            cy.persistRefs(em);
+            em.persist(cy);
+            ObservingProposal pr = ex.getProposal();
+            pr.persistRefs(em);
+            em.persist(pr);
         }
 
         TypedQuery<Person> pq = em.createQuery("select o from Person o", Person.class);
