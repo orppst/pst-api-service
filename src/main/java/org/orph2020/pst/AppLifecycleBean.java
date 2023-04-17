@@ -49,8 +49,20 @@ public class AppLifecycleBean {
         {
             switch (p.getEMail()) {
                 case "pi@unreal.not.email":
-                    SubjectMap m = new SubjectMap(p, "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec");
-                    em.persist(m);
+                    em.persist(new SubjectMap(p, "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec"));
+                    break;
+                case "reviewer@unreal.not.email":
+                    em.persist(new SubjectMap(p, "dda2fd0b-8bb4-4dd1-a216-f75087f3d946"));
+                    break;
+                case "tacchair@unreal.not.email":
+                    em.persist(new SubjectMap(p, "b0f7b98e-ec1e-4cf9-844c-e9f192c97745"));
+                    break;
+                case "coi@unreal.not.email":
+                    em.persist(new SubjectMap(p, "33767eee-35a1-4fef-b32a-f9b6fa6b36e6"));
+                    break;
+                default:
+                    //do nothing
+                    break;
             }
 
         }
