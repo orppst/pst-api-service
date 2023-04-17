@@ -65,9 +65,6 @@ public class ProposalResource extends ObjectResourceBase {
     public Response createObservingProposal(ObservingProposal op)
             throws WebApplicationException
     {
-        //work-around: ObservingProposal get<LIST> methods return an unmodifiableList
-        //which ultimately throws a NullPointerException if the corresponding LIST is empty
-
         ObservingProposal minimumProposal = new ObservingProposal()
                 .withTitle(op.getTitle())
                 .withKind(op.getKind())
@@ -83,50 +80,71 @@ public class ProposalResource extends ObjectResourceBase {
             minimumProposal.setTechnicalJustification(op.getTechnicalJustification());
         }
 
+        //*************** -- WORK AROUND START-- ************************
+        //ObservingProposal get<LIST> methods return an unmodifiableList which ultimately
+        //throws a NullPointerException if the corresponding LIST has yet to be initialised
+        //
+        List<Investigator> investigators = new ArrayList<>();
         try {
-            for (Investigator i : op.getInvestigators()) {
-                if (i.getId() == 0) {
-                    Long personId = i.getInvestigator().getId();
-                    if (personId == 0) {
-                        minimumProposal.addInvestigators(i);
-                    }
-                }
-            }
+            investigators = op.getInvestigators();
         } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
+            //okay list is empty
         }
 
+        //work-around
+        List<Observation> observations = new ArrayList<>();
         try {
-            for (RelatedProposal r : op.getRelatedProposals()) {
-                if (r.getId() == 0) {
-                    throw new WebApplicationException(
-                            "RelatedProposal must exist before being attached to a new ObservingProposal", 400);
-                }
-            }
+            observations = op.getObservations();
         } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
+            //okay list is empty
         }
 
+        //work-around
+        List<RelatedProposal> relatedProposals = new ArrayList<>();
         try {
-            for (SupportingDocument s: op.getSupportingDocuments()) {
-                if (s.getId() == 0) {
-                    minimumProposal.addSupportingDocuments(s);
-                }
-            }
+            relatedProposals = op.getRelatedProposals();
         } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
+            //okay list is empty
         }
 
+        //work-around
+        List<SupportingDocument> supportingDocuments = new ArrayList<>();
         try {
-            for (Observation o : op.getObservations()) {
-                if (o.getId() == 0) {
-                    //likely we'll need more logic here to deal with Observation sub-objects
-                    minimumProposal.addObservations(o);
+            supportingDocuments = op.getSupportingDocuments();
+        } catch (NullPointerException e) {
+            //okay list is empty
+        }
+        //*************** -- WORK AROUND END -- ************************
+
+        for (Investigator i : investigators) {
+            if (i.getId() == 0) {
+                Long personId = i.getInvestigator().getId();
+                if (personId == 0) {
+                    minimumProposal.addInvestigators(i);
                 }
             }
-        } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
         }
+
+        for (RelatedProposal r : relatedProposals) {
+            if (r.getId() == 0) {
+                throw new WebApplicationException(
+                        "RelatedProposal must exist before being attached to a new ObservingProposal", 400);
+            }
+        }
+
+        for (SupportingDocument s: supportingDocuments) {
+            if (s.getId() == 0) {
+                minimumProposal.addSupportingDocuments(s);
+            }
+        }
+
+        for (Observation o : observations) {
+            if (o.getId() == 0) {
+                //TODO: add code to deal with sub-objects of an Observation that may exist
+                minimumProposal.addObservations(o);
+            }
+        }
+
 
         try {
             em.persist(minimumProposal);
@@ -135,63 +153,50 @@ public class ProposalResource extends ObjectResourceBase {
         }
 
         //add existing stuff to the proposal now it is persisted
-        try {
-            for (Investigator i : op.getInvestigators()) {
-                Long investigatorId = i.getId();
-                if (investigatorId == 0) {
-                    Long personId = i.getInvestigator().getId();
-                    if (personId > 0) {
-                        Person person = super.findObject(Person.class, personId);
-                        Investigator investigator = new Investigator()
-                                .withForPhD(i.getForPhD())
-                                .withType(i.getType());
-                        investigator.setInvestigator(person);
-                        minimumProposal.addInvestigators(investigator);
-                    }
-                } else {
-                    Investigator investigator =
-                            super.findObject(Investigator.class, investigatorId);
+
+        for (Investigator i : investigators) {
+            Long investigatorId = i.getId();
+            if (investigatorId == 0) {
+                Long personId = i.getInvestigator().getId();
+                if (personId > 0) {
+                    Person person = super.findObject(Person.class, personId);
+                    Investigator investigator = new Investigator()
+                            .withForPhD(i.getForPhD())
+                            .withType(i.getType());
+                    investigator.setInvestigator(person);
                     minimumProposal.addInvestigators(investigator);
                 }
+            } else {
+                Investigator investigator =
+                        super.findObject(Investigator.class, investigatorId);
+                minimumProposal.addInvestigators(investigator);
             }
-        } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
         }
 
-        try {
-            for (RelatedProposal r : op.getRelatedProposals()) {
-                RelatedProposal relatedProposal =
-                        findObject(RelatedProposal.class, r.getId());
-                minimumProposal.addRelatedProposals(relatedProposal);
-            }
-        } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
+
+        for (RelatedProposal r : relatedProposals) {
+            RelatedProposal relatedProposal =
+                    findObject(RelatedProposal.class, r.getId());
+            minimumProposal.addRelatedProposals(relatedProposal);
         }
 
-        try {
-            for (SupportingDocument s: op.getSupportingDocuments()) {
-                Long supportingId = s.getId();
-                if (supportingId > 0) {
-                    SupportingDocument supportingDocument =
-                            super.findObject(SupportingDocument.class, supportingId);
-                    minimumProposal.addSupportingDocuments(supportingDocument);
-                }
+
+        for (SupportingDocument s: supportingDocuments) {
+            Long supportingId = s.getId();
+            if (supportingId > 0) {
+                SupportingDocument supportingDocument =
+                        super.findObject(SupportingDocument.class, supportingId);
+                minimumProposal.addSupportingDocuments(supportingDocument);
             }
-        } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
         }
 
-        try {
-            for (Observation o : op.getObservations()) {
-                Long observationId = o.getId();
-                if (observationId > 0) {
-                    Observation observation =
-                            super.findObject(Observation.class, observationId);
-                    minimumProposal.addObservations(observation);
-                }
-            }
-        } catch (NullPointerException e) {
-            //work-around: Okay, list is empty
+        for (Observation o : observations) {
+            Long observationId = o.getId();
+            if (observationId > 0) {
+                Observation observation =
+                        super.findObject(Observation.class, observationId);
+                minimumProposal.addObservations(observation);
+            } //TODO: else clause where the Observation is new but uses existing sub-objects
         }
 
         return responseWrapper(minimumProposal, 201);
