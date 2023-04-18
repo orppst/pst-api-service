@@ -451,6 +451,30 @@ public class ObservatoryResource extends ObjectResourceBase {
 
     //BACKEND **************************************************************************************
 
+    @GET
+    @Path("{id}/backend")
+    @Operation(summary = "get all the Backends associated with the Observatory specified by the 'id'")
+    public List<Backend> getObservatoryBackends(@PathParam("id") Long id)
+        throws WebApplicationException
+    {
+        return super.findObject(Observatory.class, id).getBackends();
+    }
+
+    @GET
+    @Path("{id}/backend/{subId}")
+    @Operation(summary = "get the specific Backend associated with the Observatory")
+    public Backend getObservatoryBackend(@PathParam("id") Long id, @PathParam("subId") Long subId)
+        throws WebApplicationException
+    {
+        Backend backend =
+                (Backend) findObjectInList(subId, super.findObject(Observatory.class, id).getBackends());
+        if (backend == null) {
+            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+        }
+
+        return backend;
+    }
+
     @PUT
     @Operation(summary = "add an Observatory backend")
     @Path("{id}/backend")
