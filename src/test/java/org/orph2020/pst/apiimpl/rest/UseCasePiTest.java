@@ -94,6 +94,46 @@ public class UseCasePiTest {
                 .extract().response()
                 ;
         System.out.println(response.asString());
+
+        Integer coiPersonId =
+                given()
+                    .when()
+                    .param("name","CO-I")
+                    .get("people")
+                    .then()
+                    .statusCode(200)
+                    .body(
+                            "$.size()", equalTo(1)
+                    )
+                    .extract().jsonPath().getInt("[0].dbid");
+
+        Person coiPerson =
+                given()
+                    .when()
+                    .get("people/"+coiPersonId)
+                    .then()
+                    .statusCode(200)
+                    .body(
+                            "fullName", equalTo("CO-I")
+                    ).extract().as(Person.class, raObjectMapper);
+
+        Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, coiPerson);
+
+        String jsonCoiInvestigator = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(coiInvestigator);
+
+        Response response1 =
+                given()
+                        .body(jsonCoiInvestigator)
+                        .contentType("application/json; charset=UTF-16")
+                        .when()
+                        .put("proposals/"+proposalid+"/investigators")
+                        .then()
+                        .contentType(JSON)
+                        .body(containsString("COI"))
+                        .extract().response();
+
+        System.out.println(response1);
+
     }
 
 

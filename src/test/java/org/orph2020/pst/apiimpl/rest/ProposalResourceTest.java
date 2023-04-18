@@ -80,21 +80,7 @@ public class ProposalResourceTest {
 
     @Test
     void testAddPersonAsInvestigator() {
-        //add a person as an investigator to a proposal
-        String personToAdd = "{\"investigatorKind\":\"COI\",\"forPhD\":false,\"personId\":45}";
-        String textToCheck = "\"type\":\"COI\",\"forPhD\":false,\"investigator\":45";
 
-        given()
-                .body(personToAdd)
-                .header("Content-Type", MediaType.APPLICATION_JSON)
-                .when()
-                .put("proposals/88/investigators")
-                .then()
-                .statusCode(201)
-                .body(
-                        containsString(textToCheck)
-                )
-        ;
 
     }
 

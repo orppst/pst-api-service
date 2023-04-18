@@ -7,6 +7,7 @@ import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.CoordSys;
 import org.ivoa.dm.stc.coords.GeocentricPoint;
 import org.ivoa.dm.ivoa.RealQuantity;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;
@@ -21,9 +22,14 @@ import java.util.List;
 public class TelescopeResource extends ObjectResourceBase{
 
     @GET
-    @Operation(summary = "get all the Telescopes stored in the database")
-    public List<ObjectIdentifier> getTelescopes() {
-        return super.getObjects("SELECT o._id,o.name FROM Telescope o ORDER BY o.name");
+    @Operation(summary = "get all Telescope identifiers, optionally provide a name to find the specific Telescope")
+    public List<ObjectIdentifier> getTelescopes(@RestQuery String name) {
+        if (name == null) {
+            return super.getObjects("SELECT o._id,o.name FROM Telescope o ORDER BY o.name");
+        } else {
+            return super.getObjects("SELECT o._id,o.name FROM Telescope o WHERE o.name like '"+name+"' ORDER BY o.name");
+        }
+
     }
 
     @GET

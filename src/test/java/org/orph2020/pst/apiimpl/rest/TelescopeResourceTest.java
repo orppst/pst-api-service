@@ -6,8 +6,7 @@ import org.junit.jupiter.api.Test;
 import javax.ws.rs.core.MediaType;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 public class TelescopeResourceTest {
@@ -26,13 +25,35 @@ public class TelescopeResourceTest {
 
     @Test
     void testGetTelescope() {
+
+        Integer telescopeId =
+                given()
+                        .when()
+                        .param("name", "Lovell")
+                        .get("telescopes")
+                        .then()
+                        .statusCode(200)
+                        .body(
+                                "$.size()", equalTo(1)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
         given()
                 .when()
-                .get("telescopes/8")
+                .get("telescopes/"+telescopeId)
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("\"_id\":8")
+                        "name", equalTo("Lovell")
+                );
+
+        given()
+                .when()
+                .get("telescopes/0")
+                .then()
+                .statusCode(404)
+                .body(
+                        containsString("Telescope with id: 0 not found")
                 );
     }
 
@@ -40,11 +61,25 @@ public class TelescopeResourceTest {
     void testUpdateTelescopeName() {
         String replacementName = "Beowulf";
 
+        Integer telescopeId =
+            given()
+                    .when()
+                    .get("telescopes")
+                    .then()
+                    .statusCode(200)
+                    .body(
+                            "$.size()", greaterThan(0)
+                    )
+                    .extract().jsonPath().getInt("[0].dbid");
+
+
+
+
         given()
                 .body(replacementName)
                 .header("Content-Type", MediaType.TEXT_PLAIN)
                 .when()
-                .put("telescopes/8/name")
+                .put("telescopes/"+telescopeId+"/name")
                 .then()
                 .statusCode(201)
                 .body(
@@ -59,11 +94,22 @@ public class TelescopeResourceTest {
 
         String textToCheck = "\"x\":{\"unit\":{\"value\":\"ft\"},\"value\":42.0}";
 
+        Integer telescopeId =
+                given()
+                        .when()
+                        .get("telescopes")
+                        .then()
+                        .statusCode(200)
+                        .body(
+                                "$.size()", greaterThan(0)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
         given()
                 .body(replacementLocationXYZ)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .put("telescopes/8/location/xyz")
+                .put("telescopes/"+telescopeId+"/location/xyz")
                 .then()
                 .statusCode(201)
                 .body(

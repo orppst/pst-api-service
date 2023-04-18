@@ -25,7 +25,7 @@ import java.util.List;
 public class PersonResource extends ObjectResourceBase {
 
    @GET
-   @Operation(summary = "get People from the database")
+   @Operation(summary = "get People from the database, optionally provide a name to find all the people with that name")
    public List<ObjectIdentifier> getPeople(@RestQuery String name) {
       if(name == null)
          return super.getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");

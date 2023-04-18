@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.ivoa.Ivorn;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.transaction.Transactional;
@@ -26,12 +27,16 @@ public class ObservatoryResource extends ObjectResourceBase {
             "%s with id: %d is not associated to the Observatory with id: %d";
 
     @GET
-    @Operation(summary = "get all of the Observatories")
+    @Operation(summary = "get all of the Observatories, optionally provide a name to find the specific Observatory")
     @APIResponse(
             responseCode = "200"
     )
-    public List<ObjectIdentifier> getObservatories(){
-        return super.getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
+    public List<ObjectIdentifier> getObservatories(@RestQuery String name){
+        if (name == null) {
+            return super.getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
+        } else {
+            return super.getObjects("SELECT o._id,o.name FROM Observatory o WHERE o.name like '" +name+ "'ORDER BY o.name");
+        }
     }
 
     @GET

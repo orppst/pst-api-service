@@ -213,7 +213,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
 
-    //title
+    //********************** TITLE ***************************
     @PUT
     @Operation(summary = "change the title of an ObservingProposal")
     @Consumes(MediaType.TEXT_PLAIN)
@@ -231,7 +231,7 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal, 201);
     }
 
-    //summary
+    //********************** SUMMARY ***************************
     @PUT
     @Operation(summary = "replace the summary of an ObservingProposal")
     @Path("{proposalCode}/summary")
@@ -247,7 +247,7 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal, 201);
     }
 
-    //kind
+    //********************** KIND ***************************
     @PUT
     @Operation(summary = "change the 'kind' of the ObservingProposal specified, one-of: STANDARD, TOO, SURVEY")
     @Path("{proposalCode}/kind")
@@ -267,7 +267,7 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal, 201);
     }
 
-    //Justifications
+    //********************** JUSTIFICATIONS ***************************
     @PUT
     @Operation( summary = "replace a technical or scientific Justification in the ObservingProposal specified")
     @Path("{proposalCode}/justifications/{which}")
@@ -307,17 +307,8 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
 
-    // Investigator objects
-    private static class PersonInvestigator {
-        @JsonProperty("investigatorKind")
-        public String investigatorKind; //should be "COI" or "PI" only
+    //********************** INVESTIGATORS ***************************
 
-        @JsonProperty("forPhD")
-        boolean forPhD;
-
-        @JsonProperty("personId")
-        Long personId; //must match an existing Person in the database
-    }
 
     @PUT
     @Operation(summary = "add an Investigator to the ObservationProposal specified")
@@ -325,27 +316,22 @@ public class ProposalResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     @Path("{proposalCode}/investigators")
     public Response addPersonAsInvestigator(@PathParam("proposalCode") long proposalCode,
-                                            PersonInvestigator personInvestigator)
+                                            Investigator investigator)
             throws WebApplicationException
     {
-        Person person = findObject(Person.class, personInvestigator.personId);
-
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
-        try {
-            Investigator investigator = new Investigator(
-                    InvestigatorKind.fromValue(personInvestigator.investigatorKind),
-                    personInvestigator.forPhD, person) ;
-
-            proposal.addInvestigators(investigator);
-        } catch (IllegalArgumentException e) {
-            throw new WebApplicationException(e, 422);
+        if (investigator.getInvestigator().getId() == 0) {
+            throw new WebApplicationException(
+                    "Please create a new person at 'proposals/people' before trying to add them as an Investigator",
+                    400
+            );
         }
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        proposal.addInvestigators(investigator);
 
-        return responseWrapper(proposal, 201);
+        return super.mergeObject(proposal);
     }
 
-    //relatedProposals
+    //********************** RELATED PROPOSALS ***************************
     @PUT
     @Operation(summary = "add another ObservingProposal to the list of RelatedProposals of the ObservingProposal specified")
     @Path("{proposalCode}/relatedProposals")
@@ -369,7 +355,7 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal, 201);
     }
 
-    //supporting documents
+    //********************** SUPPORTING DOCUMENTS ***************************
     @PUT
     @Operation(summary = "add a SupportingDocument to the ObservingProposal specified")
     @Path("{proposalCode}/supportingDocuments")
@@ -388,7 +374,7 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal, 201);
     }
 
-    //observations
+    //********************** OBSERVATIONS ***************************
     @PUT
     @Operation(summary="add an observation to the ObservingProposal specified")
     @Path("{proposalCode}/observations")
