@@ -52,10 +52,10 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "get the ObservationProposal specified by the 'proposalCode'")
+    @Operation(summary = "get the Proposal specified by the 'proposalCode'")
     @APIResponse(
             responseCode = "200",
-            description = "get a single ObservationProposal specified by the code"
+            description = "get a single Proposal specified by the code"
     )
     @Path(proposalsRoot)
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
@@ -65,7 +65,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     @POST
-    @Operation(summary = "create a new ObservingProposal in the database")
+    @Operation(summary = "create a new Proposal in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response createObservingProposal(ObservingProposal op)

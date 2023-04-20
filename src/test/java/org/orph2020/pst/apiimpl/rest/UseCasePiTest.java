@@ -46,6 +46,19 @@ public class UseCasePiTest {
             return mapper;
         }));
 
+
+        // che4ck initial conditions
+        given()
+              .when()
+              .get("proposals")
+              .then()
+              .statusCode(200)
+              .body(
+                    "$.size()", equalTo(1)
+              );
+
+
+
         //IMPL the principalInvestigator would usually be the logged-in person....
         //find the PI
         Integer personid = given()
@@ -69,6 +82,9 @@ public class UseCasePiTest {
                 .body(
                         "fullName", equalTo("PI")
                 ).extract().as(Person.class, raObjectMapper);
+
+
+
         ObservingProposal prop = new ObservingProposal().withTitle("My New Proposal")
                 .withKind(ProposalKind.STANDARD)
                 .withSummary("search for something new")
@@ -82,7 +98,7 @@ public class UseCasePiTest {
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
         Integer proposalid =
                 given()
-                        .contentType(JSON_UTF16)
+                        .contentType("application/json; charset=UTF-16")
                         .body(propjson)
                         .when()
                         .post("/proposals")
@@ -95,17 +111,13 @@ public class UseCasePiTest {
         System.out.println("proposalCode="+proposalid);
 
         Response response = given().when()
-                .get("/proposals/"+proposalid)
+                .get("/proposals/"+String.valueOf(proposalid))
                 .then()
                 .statusCode(200)
                 .body("title", equalTo("My New Proposal"))
                 .extract().response()
                 ;
-        System.out.println(response.asString()); // readable output - can be removed later
-
-        //Add a person as COI Investigator
-
-        //find CO-I id
+        System.out.println(response.asString());
 
         Integer coiPersonId =
                 given()
@@ -148,39 +160,14 @@ public class UseCasePiTest {
                         .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
                         .extract().response();
 
-        System.out.println(response1.asString()); // readable output - can be removed later
 
-        //change the 'forPhD' field of the newly added COI Investigator to false
 
-        //first get the DB id of the newly added COI Investigator
-        Integer coiInvestigatorId =
-                given()
-                        .when()
-                        .param("fullName", "CO-I")
-                        .get("proposals/"+proposalid+"/investigators")
-                        .then()
-                        .body(
-                                "$.size()", equalTo(1)
-                        )
-                        .extract().jsonPath().getInt("[0].dbid");
 
-        Response response2 =
-                given()
-                        .body(false)
-                        .contentType(JSON_UTF16)
-                        .when()
-                        .put("proposals/"+proposalid+"/investigators/"+coiInvestigatorId+"/forPhD")
-                        .then()
-                        .contentType(JSON)
-                        .body(
-                                containsString("\"type\":\"COI\",\"forPhD\":false")
-                        )
-                        .extract().response();
-
-        System.out.println(response2.asString()); // readable output - can be removed later
 
 
         //add a new SupportingDocument to the proposal
+       //FIXME real use case here will actually upload the document to the document store with http POST form multipart
+
         SupportingDocument supportingDocument = new SupportingDocument(randomText1,
                 "void://fake/path/to/nonexistent/file");
 
@@ -200,7 +187,6 @@ public class UseCasePiTest {
                         )
                         .extract().response();
 
-        System.out.println(response3.asString()); // readable output - can be removed later
 
         Integer supportingDocumentId =
                 given()
@@ -213,22 +199,71 @@ public class UseCasePiTest {
                         )
                         .extract().jsonPath().getInt("[0].dbid");
 
-        //change the title of the supporting document
-        Response response4 =
-                given()
-                        .body(randomText2)
-                        .contentType(TEXT)
-                        .put("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId+"/title")
-                        .then()
-                        .body(
-                                containsString(randomText2)
-                        )
-                        .extract().response();
 
-        System.out.println(response4.asString()); // readable output - can be removed later
+        // take a look at what is there now
+
+       given().when().get("proposals").then().log().body();
+
+
+        // add a related proposal.
+        Integer relatedProposalId =
+              given()
+                    .when()
+                    .param("title","%title%") // note only searching for title in part as other tests change this
+                    .get("proposals")
+                    .then()
+                    .statusCode(200)
+                    .body("$.size()", equalTo(1))
+                    .extract().jsonPath().getInt("[0].dbid");
+
+
+
+        ObservingProposal otherProposal =
+              given()
+                    .when()
+                    .get("proposals/"+relatedProposalId)
+                    .then()
+                    .statusCode(200)
+                    .extract().as(ObservingProposal.class, raObjectMapper);
+        RelatedProposal relatedProposal = new RelatedProposal(otherProposal);
+
+
+        given()
+              .contentType("text/plain")
+              .body(relatedProposalId) //IMPL - just sending the ID - however, when the related proposal contains more fields then this will need some JSON...
+              .when()
+              .put("/proposals/"+String.valueOf(proposalid)+"/relatedProposals")
+              .then()
+              .statusCode(201)
+              ;
+
+
+       //FIXME continue manipulating the proposal  add Observations
+
+       //finally submit the proposal.
+
+       Integer cycleId = given()
+             .when()
+             .get("proposalCycles")
+             .then()
+             .statusCode(200)
+             .body(
+                   "$.size()", equalTo(1)
+             )
+             .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
+
+       given()
+             .contentType("text/plain")
+             .body(proposalid)
+             .when()
+             .put("/proposalCycles/"+String.valueOf(cycleId)+"/submittedProposals")
+             .then()
+             .statusCode(201)
+       ;
+
 
     }
 
 
-    //TODO: continue manipulating the proposal - add Observations,... submit
+
 }
