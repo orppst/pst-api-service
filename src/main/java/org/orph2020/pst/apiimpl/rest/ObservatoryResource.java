@@ -23,9 +23,6 @@ import java.util.List;
 @Tag(name = "proposal-tool-observatories")
 public class ObservatoryResource extends ObjectResourceBase {
 
-    private static final String NON_ASSOCIATE =
-            "%s with id: %d is not associated to the Observatory with id: %d";
-
     @GET
     @Operation(summary = "get all of the Observatories, optionally provide a name to find the specific Observatory")
     @APIResponse(
@@ -182,7 +179,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
+                    422);
         }
 
         telescope.setName(replacementName);
@@ -203,7 +201,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
+                    422);
         }
 
         telescope.getLocation().setX(xyz.get(0));
@@ -226,7 +225,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
+                    422);
         }
 
         telescope.getLocation().setX(updateX);
@@ -247,7 +247,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
+                    422);
         }
 
         telescope.getLocation().setY(updateY);
@@ -268,7 +269,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
+                    422);
         }
 
         telescope.getLocation().setZ(updateZ);
@@ -329,7 +331,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         instrument.setName(replacementName);
@@ -350,7 +353,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         instrument.setDescription(replacementDescription);
@@ -371,7 +375,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         instrument.setWikiId(new WikiDataId(replacementWikiId));
@@ -392,7 +397,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         instrument.setReference(replacementReference);
@@ -413,7 +419,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         try {
@@ -439,7 +446,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
+                    422);
         }
 
         instrument.setFrequencyCoverage(replacementFrequencyCoverage);
@@ -469,7 +477,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend =
                 (Backend) findObjectInList(subId, super.findObject(Observatory.class, id).getBackends());
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
+                    422);
         }
 
         return backend;
@@ -526,7 +535,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
+                    422);
         }
 
         backend.setName(replacementName);
@@ -547,7 +557,8 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, id), 422);
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
+                    422);
         }
 
         backend.setParallel(updateParallel);

@@ -18,6 +18,7 @@ import java.util.Arrays;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static io.restassured.http.ContentType.TEXT;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -32,6 +33,13 @@ public class UseCasePiTest {
     protected ObjectMapper mapper;
     @Test
     void testCreateProposal() throws JsonProcessingException {
+
+        String JSON_UTF16 = "application/json; charset=UTF-16";
+
+        String randomText1 = "Spiderman likes cats";
+        String randomText2 = "Batman prefers dogs";
+        String randomText3 = "Wonderwoman drinks pints";
+        String randomText4 = "Superman licks windows";
 
 
         io.restassured.mapper.ObjectMapper raObjectMapper = new Jackson2Mapper(((type, charset) -> {
@@ -74,7 +82,7 @@ public class UseCasePiTest {
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
         Integer proposalid =
                 given()
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType(JSON_UTF16)
                         .body(propjson)
                         .when()
                         .post("/proposals")
@@ -87,13 +95,17 @@ public class UseCasePiTest {
         System.out.println("proposalCode="+proposalid);
 
         Response response = given().when()
-                .get("/proposals/"+String.valueOf(proposalid))
+                .get("/proposals/"+proposalid)
                 .then()
                 .statusCode(200)
                 .body("title", equalTo("My New Proposal"))
                 .extract().response()
                 ;
-        System.out.println(response.asString());
+        System.out.println(response.asString()); // readable output - can be removed later
+
+        //Add a person as COI Investigator
+
+        //find CO-I id
 
         Integer coiPersonId =
                 given()
@@ -107,6 +119,7 @@ public class UseCasePiTest {
                     )
                     .extract().jsonPath().getInt("[0].dbid");
 
+        //get the Person object
         Person coiPerson =
                 given()
                     .when()
@@ -117,25 +130,105 @@ public class UseCasePiTest {
                             "fullName", equalTo("CO-I")
                     ).extract().as(Person.class, raObjectMapper);
 
+        //create a new Investigator
         Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, coiPerson);
 
+        //convert to a JSON string
         String jsonCoiInvestigator = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(coiInvestigator);
 
+        //add new COI Investigator to the proposal
         Response response1 =
                 given()
                         .body(jsonCoiInvestigator)
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType(JSON_UTF16)
                         .when()
                         .put("proposals/"+proposalid+"/investigators")
                         .then()
                         .contentType(JSON)
-                        .body(containsString("COI"))
+                        .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
                         .extract().response();
 
-        System.out.println(response1);
+        System.out.println(response1.asString()); // readable output - can be removed later
+
+        //change the 'forPhD' field of the newly added COI Investigator to false
+
+        //first get the DB id of the newly added COI Investigator
+        Integer coiInvestigatorId =
+                given()
+                        .when()
+                        .param("fullName", "CO-I")
+                        .get("proposals/"+proposalid+"/investigators")
+                        .then()
+                        .body(
+                                "$.size()", equalTo(1)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
+        Response response2 =
+                given()
+                        .body(false)
+                        .contentType(JSON_UTF16)
+                        .when()
+                        .put("proposals/"+proposalid+"/investigators/"+coiInvestigatorId+"/forPhD")
+                        .then()
+                        .contentType(JSON)
+                        .body(
+                                containsString("\"type\":\"COI\",\"forPhD\":false")
+                        )
+                        .extract().response();
+
+        System.out.println(response2.asString()); // readable output - can be removed later
+
+
+        //add a new SupportingDocument to the proposal
+        SupportingDocument supportingDocument = new SupportingDocument(randomText1,
+                "void://fake/path/to/nonexistent/file");
+
+        String jsonSupportingDocument =
+                mapper.writerWithDefaultPrettyPrinter().writeValueAsString(supportingDocument);
+
+        Response response3 =
+                given()
+                        .body(jsonSupportingDocument)
+                        .contentType(JSON_UTF16)
+                        .when()
+                        .post("proposals/"+proposalid+"/supportingDocuments")
+                        .then()
+                        .contentType(JSON)
+                        .body(
+                                containsString(randomText1)
+                        )
+                        .extract().response();
+
+        System.out.println(response3.asString()); // readable output - can be removed later
+
+        Integer supportingDocumentId =
+                given()
+                        .when()
+                        .param("title", randomText1)
+                        .get("proposals/"+proposalid+"/supportingDocuments")
+                        .then()
+                        .body(
+                                "$.size()", equalTo(1)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
+        //change the title of the supporting document
+        Response response4 =
+                given()
+                        .body(randomText2)
+                        .contentType(TEXT)
+                        .put("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId+"/title")
+                        .then()
+                        .body(
+                                containsString(randomText2)
+                        )
+                        .extract().response();
+
+        System.out.println(response4.asString()); // readable output - can be removed later
 
     }
 
 
-    //FIXME continue manipulating the proposal - add COI, add Observations,... submit
+    //TODO: continue manipulating the proposal - add Observations,... submit
 }

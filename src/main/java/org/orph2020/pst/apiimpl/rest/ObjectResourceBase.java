@@ -26,6 +26,13 @@ abstract public class ObjectResourceBase {
     @Inject
     protected ObjectMapper mapper;
 
+
+    protected static final String NON_ASSOCIATE_ID =
+            "%s with id: %d is not associated with the %s with id: %d";
+
+    protected static final String NON_ASSOCIATE_NAME =
+            "%s with identifier: %s is not associated with the %s with id: %d";
+
     protected List<ObjectIdentifier> getObjects(String queryStr){
         List<ObjectIdentifier> result = new ArrayList<>();
         Query query = em.createQuery(queryStr);
