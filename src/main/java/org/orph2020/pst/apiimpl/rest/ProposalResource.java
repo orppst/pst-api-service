@@ -7,8 +7,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.hibernate.validator.constraints.pl.REGON;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -39,9 +41,13 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "Get all the ObservingProposals from the database")
-    public List<ObjectIdentifier> getProposals() {
-        return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o ORDER BY o.title");
+    @Operation(summary = "Get all ObservingProposals identifiers, optionally get the ObservingProposal identifier for the named proposal")
+    public List<ObjectIdentifier> getProposals(@RestQuery String title) {
+        if (title == null) {
+            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o ORDER BY o.title");
+        } else {
+            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE o.title like '"+title+"' ORDER BY o.title");
+        }
     }
 
 
@@ -65,141 +71,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response createObservingProposal(ObservingProposal op)
             throws WebApplicationException
     {
-        ObservingProposal minimumProposal = new ObservingProposal()
-                .withTitle(op.getTitle())
-                .withKind(op.getKind())
-                .withSummary(op.getSummary());
-
-        Long scientificId = op.getScientificJustification().getId();
-        if (scientificId == 0) {
-            minimumProposal.setScientificJustification(op.getScientificJustification());
-        }
-
-        Long technicalId = op.getTechnicalJustification().getId();
-        if (technicalId == 0) {
-            minimumProposal.setTechnicalJustification(op.getTechnicalJustification());
-        }
-
-        //*************** -- WORK AROUND START-- ************************
-        //ObservingProposal get<LIST> methods return an unmodifiableList which ultimately
-        //throws a NullPointerException if the corresponding LIST has yet to be initialised
-        //
-        List<Investigator> investigators = new ArrayList<>();
-        try {
-            investigators = op.getInvestigators();
-        } catch (NullPointerException e) {
-            //okay list is empty
-        }
-
-        //work-around
-        List<Observation> observations = new ArrayList<>();
-        try {
-            observations = op.getObservations();
-        } catch (NullPointerException e) {
-            //okay list is empty
-        }
-
-        //work-around
-        List<RelatedProposal> relatedProposals = new ArrayList<>();
-        try {
-            relatedProposals = op.getRelatedProposals();
-        } catch (NullPointerException e) {
-            //okay list is empty
-        }
-
-        //work-around
-        List<SupportingDocument> supportingDocuments = new ArrayList<>();
-        try {
-            supportingDocuments = op.getSupportingDocuments();
-        } catch (NullPointerException e) {
-            //okay list is empty
-        }
-        //*************** -- WORK AROUND END -- ************************
-
-        for (Investigator i : investigators) {
-            if (i.getId() == 0) {
-                Long personId = i.getInvestigator().getId();
-                if (personId == 0) {
-                    minimumProposal.addInvestigators(i);
-                }
-            }
-        }
-
-        for (RelatedProposal r : relatedProposals) {
-            if (r.getId() == 0) {
-                throw new WebApplicationException(
-                        "RelatedProposal must exist before being attached to a new ObservingProposal", 400);
-            }
-        }
-
-        for (SupportingDocument s: supportingDocuments) {
-            if (s.getId() == 0) {
-                minimumProposal.addSupportingDocuments(s);
-            }
-        }
-
-        for (Observation o : observations) {
-            if (o.getId() == 0) {
-                //TODO: add code to deal with sub-objects of an Observation that may exist
-                minimumProposal.addObservations(o);
-            }
-        }
-
-
-        try {
-            em.persist(minimumProposal);
-        } catch (EntityExistsException e) {
-            throw new WebApplicationException(e.getMessage(), 400);
-        }
-
-        //add existing stuff to the proposal now it is persisted
-
-        for (Investigator i : investigators) {
-            Long investigatorId = i.getId();
-            if (investigatorId == 0) {
-                Long personId = i.getInvestigator().getId();
-                if (personId > 0) {
-                    Person person = super.findObject(Person.class, personId);
-                    Investigator investigator = new Investigator()
-                            .withForPhD(i.getForPhD())
-                            .withType(i.getType());
-                    investigator.setInvestigator(person);
-                    minimumProposal.addInvestigators(investigator);
-                }
-            } else {
-                Investigator investigator =
-                        super.findObject(Investigator.class, investigatorId);
-                minimumProposal.addInvestigators(investigator);
-            }
-        }
-
-
-        for (RelatedProposal r : relatedProposals) {
-            RelatedProposal relatedProposal =
-                    findObject(RelatedProposal.class, r.getId());
-            minimumProposal.addRelatedProposals(relatedProposal);
-        }
-
-
-        for (SupportingDocument s: supportingDocuments) {
-            Long supportingId = s.getId();
-            if (supportingId > 0) {
-                SupportingDocument supportingDocument =
-                        super.findObject(SupportingDocument.class, supportingId);
-                minimumProposal.addSupportingDocuments(supportingDocument);
-            }
-        }
-
-        for (Observation o : observations) {
-            Long observationId = o.getId();
-            if (observationId > 0) {
-                Observation observation =
-                        super.findObject(Observation.class, observationId);
-                minimumProposal.addObservations(observation);
-            } //TODO: else clause where the Observation is new but uses existing sub-objects
-        }
-
-        return responseWrapper(minimumProposal, 201);
+        return super.persistObject(op);
     }
 
     @DELETE
@@ -268,12 +140,44 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     //********************** JUSTIFICATIONS ***************************
+
+    @GET
+    @Path("{proposalCode}/justifications/{which}")
+    @Operation(summary = "get the technical or scientific justification associated with the ObservingProposal specified by 'proposalCode'")
+    public Justification getJustification(@PathParam("proposalCode") Long proposalCode,
+                                          @PathParam("which") String which)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        switch (which) {
+            case "technical":
+            {
+                return observingProposal.getTechnicalJustification();
+            }
+
+            case "scientific":
+            {
+                return observingProposal.getScientificJustification();
+            }
+
+            default:
+            {
+                throw new WebApplicationException(
+                        String.format("Justifications are either 'technical' or 'scientific', I got %s", which),
+                        400
+                );
+            }
+        }
+    }
+
+
     @PUT
-    @Operation( summary = "replace a technical or scientific Justification in the ObservingProposal specified")
+    @Operation( summary = "update a technical or scientific Justification in the ObservingProposal specified by the 'proposalCode'")
     @Path("{proposalCode}/justifications/{which}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
-    public Response replaceJustification(
+    public Response updateJustification(
             @PathParam("proposalCode") long proposalCode,
             @PathParam("which") String which,
             Justification incoming )
@@ -303,15 +207,71 @@ public class ProposalResource extends ObjectResourceBase {
             }
         }
 
-        return responseWrapper(proposal, 201);
+        return super.mergeObject(proposal);
     }
 
 
     //********************** INVESTIGATORS ***************************
 
+    private Investigator findInvestigator(List<Investigator> investigators, Long id, Long proposalCode) {
+        Investigator investigator = investigators
+                .stream().filter(o -> id.equals(o.getId())).findAny().orElseThrow(()->
+                    new WebApplicationException(
+                            String.format(NON_ASSOCIATE, "Investigator", id, "ObservingProposal", proposalCode),
+                            422
+                    )
+                );
+        return investigator;
+    }
+
+    @GET
+    @Path("{proposalCode}/investigators")
+    @Operation(summary = "get the list of ObjectIdentifiers for the Investigators associated with the given ObservingProposal, optionally provide a name as a query to get that particular Investigator's identifier")
+    public List<ObjectIdentifier> getInvestigators(@PathParam("proposalCode") Long proposalCode,
+                                                   @RestQuery String fullName)
+        throws WebApplicationException
+    {
+        List<Investigator> investigators = super.findObject(ObservingProposal.class, proposalCode)
+                .getInvestigators();
+
+        List<ObjectIdentifier> response = new ArrayList<>();
+        if (fullName == null) {
+
+            for (Investigator i : investigators) {
+                response.add(new ObjectIdentifier(i.getId(), i.getInvestigator().getFullName()));
+            }
+
+        } else {
+
+            //search the list of Investigators for the queried personName
+            Investigator investigator = investigators
+                    .stream().filter(o -> fullName.equals(o.getInvestigator()
+                            .getFullName())).findAny()
+                    .orElseThrow(() -> new WebApplicationException(
+                            String.format("Investigator with name: %s not associated with ObservingProposal: %d",
+                                    fullName, proposalCode), 422
+                    ));
+
+            //return value is a list of ObjectIdentifiers with one element
+            response.add(new ObjectIdentifier(investigator.getId(), investigator.getInvestigator().getFullName()));
+        }
+        return response;
+    }
+
+    @GET
+    @Path("{proposalCode}/investigators/{id}")
+    @Operation(summary = "get the Investigator specified by the 'id' associated with the given ObservingProposal")
+    public Investigator getInvestigator(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id)
+            throws WebApplicationException
+    {
+        return findInvestigator(
+                super.findObject(ObservingProposal.class, proposalCode).getInvestigators(), id, proposalCode
+        );
+    }
+
 
     @PUT
-    @Operation(summary = "add an Investigator to the ObservationProposal specified")
+    @Operation(summary = "add an Investigator, using an existing Person, to the ObservationProposal specified")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     @Path("{proposalCode}/investigators")
@@ -328,12 +288,62 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         proposal.addInvestigators(investigator);
 
-        return super.mergeObject(proposal);
+        return super.mergeObject(proposal); //merge as we have a "new" Investigator to persist
     }
+
+    @DELETE
+    @Path("{proposalCode}/investigators/{id}")
+    @Operation(summary = "remove the Investigator specified by 'id' from the ObservingProposal identified by 'proposalCode'")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeInvestigator(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        Investigator investigator = findInvestigator(observingProposal.getInvestigators(), id, proposalCode);
+
+        observingProposal.removeInvestigators(investigator);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+
+    @PUT
+    @Path("{proposalCode}/investigators/{id}/kind")
+    @Operation(summary = "change the 'kind' ('PI' or 'COI') of the Investigator specified by the 'id'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response changeInvestigatorKind(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                            InvestigatorKind replacementKind)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        findInvestigator(observingProposal.getInvestigators(), id, proposalCode).setType(replacementKind);
+
+        return super.responseWrapper(observingProposal, 201);
+    }
+
+    @PUT
+    @Path("{proposalCode}/investigators/{id}/forPhD")
+    @Operation(summary = "change the 'forPhD' status of the Investigator specified by the 'id'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response changeInvestigatorForPhD(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                            Boolean replacementForPhD)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        findInvestigator(observingProposal.getInvestigators(), id, proposalCode).setForPhD(replacementForPhD);
+
+        return super.responseWrapper(observingProposal, 201);
+    }
+
 
     //********************** RELATED PROPOSALS ***************************
     @PUT
-    @Operation(summary = "add another ObservingProposal to the list of RelatedProposals of the ObservingProposal specified")
+    @Operation(summary = "add a RelatedProposal to the ObservingProposal specified by the 'proposalCode'")
     @Path("{proposalCode}/relatedProposals")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})

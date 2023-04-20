@@ -87,13 +87,17 @@ public class UseCasePiTest {
         System.out.println("proposalCode="+proposalid);
 
         Response response = given().when()
-                .get("/proposals/"+String.valueOf(proposalid))
+                .get("/proposals/"+proposalid)
                 .then()
                 .statusCode(200)
                 .body("title", equalTo("My New Proposal"))
                 .extract().response()
                 ;
-        System.out.println(response.asString());
+        System.out.println(response.asString()); // readable output - can be removed later
+
+        //Add a person as COI Investigator
+
+        //find CO-I id
 
         Integer coiPersonId =
                 given()
@@ -107,6 +111,7 @@ public class UseCasePiTest {
                     )
                     .extract().jsonPath().getInt("[0].dbid");
 
+        //get the Person object
         Person coiPerson =
                 given()
                     .when()
@@ -117,10 +122,13 @@ public class UseCasePiTest {
                             "fullName", equalTo("CO-I")
                     ).extract().as(Person.class, raObjectMapper);
 
+        //create a new Investigator
         Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, coiPerson);
 
+        //convert to a JSON string
         String jsonCoiInvestigator = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(coiInvestigator);
 
+        //add new COI Investigator to the proposal
         Response response1 =
                 given()
                         .body(jsonCoiInvestigator)
@@ -129,13 +137,43 @@ public class UseCasePiTest {
                         .put("proposals/"+proposalid+"/investigators")
                         .then()
                         .contentType(JSON)
-                        .body(containsString("COI"))
+                        .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
                         .extract().response();
 
-        System.out.println(response1);
+        System.out.println(response1.asString()); // readable output - can be removed later
+
+        //change the 'forPhD' field of the newly added COI Investigator to false
+
+        //first get the DB id of the newly added COI Investigator
+        Integer coiInvestigatorId =
+                given()
+                        .when()
+                        .param("fullName", "CO-I")
+                        .get("proposals/"+proposalid+"/investigators")
+                        .then()
+                        .body(
+                                "$.size()", equalTo(1)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
+        Response response2 =
+                given()
+                        .body(false)
+                        .contentType("application/json; charset=UTF-16")
+                        .when()
+                        .put("proposals/"+proposalid+"/investigators/"+coiInvestigatorId+"/forPhD")
+                        .then()
+                        .contentType(JSON)
+                        .body(
+                                containsString("\"type\":\"COI\",\"forPhD\":false")
+                        )
+                        .extract().response();
+
+        System.out.println(response2.asString()); // readable output - can be removed later
+
 
     }
 
 
-    //FIXME continue manipulating the proposal - add COI, add Observations,... submit
+    //TODO: continue manipulating the proposal - add Observations,... submit
 }
