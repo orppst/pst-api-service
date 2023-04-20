@@ -18,6 +18,7 @@ import java.util.Arrays;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static io.restassured.http.ContentType.TEXT;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -32,6 +33,13 @@ public class UseCasePiTest {
     protected ObjectMapper mapper;
     @Test
     void testCreateProposal() throws JsonProcessingException {
+
+        String JSON_UTF16 = "application/json; charset=UTF-16";
+
+        String randomText1 = "Spiderman likes cats";
+        String randomText2 = "Batman prefers dogs";
+        String randomText3 = "Wonderwoman drinks pints";
+        String randomText4 = "Superman licks windows";
 
 
         io.restassured.mapper.ObjectMapper raObjectMapper = new Jackson2Mapper(((type, charset) -> {
@@ -74,7 +82,7 @@ public class UseCasePiTest {
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
         Integer proposalid =
                 given()
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType(JSON_UTF16)
                         .body(propjson)
                         .when()
                         .post("/proposals")
@@ -132,7 +140,7 @@ public class UseCasePiTest {
         Response response1 =
                 given()
                         .body(jsonCoiInvestigator)
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType(JSON_UTF16)
                         .when()
                         .put("proposals/"+proposalid+"/investigators")
                         .then()
@@ -159,7 +167,7 @@ public class UseCasePiTest {
         Response response2 =
                 given()
                         .body(false)
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType(JSON_UTF16)
                         .when()
                         .put("proposals/"+proposalid+"/investigators/"+coiInvestigatorId+"/forPhD")
                         .then()
@@ -171,6 +179,53 @@ public class UseCasePiTest {
 
         System.out.println(response2.asString()); // readable output - can be removed later
 
+
+        //add a new SupportingDocument to the proposal
+        SupportingDocument supportingDocument = new SupportingDocument(randomText1,
+                "void://fake/path/to/nonexistent/file");
+
+        String jsonSupportingDocument =
+                mapper.writerWithDefaultPrettyPrinter().writeValueAsString(supportingDocument);
+
+        Response response3 =
+                given()
+                        .body(jsonSupportingDocument)
+                        .contentType(JSON_UTF16)
+                        .when()
+                        .post("proposals/"+proposalid+"/supportingDocuments")
+                        .then()
+                        .contentType(JSON)
+                        .body(
+                                containsString(randomText1)
+                        )
+                        .extract().response();
+
+        System.out.println(response3.asString()); // readable output - can be removed later
+
+        Integer supportingDocumentId =
+                given()
+                        .when()
+                        .param("title", randomText1)
+                        .get("proposals/"+proposalid+"/supportingDocuments")
+                        .then()
+                        .body(
+                                "$.size()", equalTo(1)
+                        )
+                        .extract().jsonPath().getInt("[0].dbid");
+
+        //change the title of the supporting document
+        Response response4 =
+                given()
+                        .body(randomText2)
+                        .contentType(TEXT)
+                        .put("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId+"/title")
+                        .then()
+                        .body(
+                                containsString(randomText2)
+                        )
+                        .extract().response();
+
+        System.out.println(response4.asString()); // readable output - can be removed later
 
     }
 

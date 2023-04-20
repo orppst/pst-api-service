@@ -179,7 +179,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
                     422);
         }
 
@@ -201,7 +201,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
                     422);
         }
 
@@ -225,7 +225,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
                     422);
         }
 
@@ -247,7 +247,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
                     422);
         }
 
@@ -269,7 +269,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Telescope telescope = (Telescope) super.findObjectInList(subId, observatory.getTelescopes());
 
         if (telescope == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Telescope", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Telescope", subId, "Observatory", id),
                     422);
         }
 
@@ -331,7 +331,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -353,7 +353,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -375,7 +375,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -397,7 +397,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -419,7 +419,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -446,7 +446,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Instrument instrument = (Instrument) super.findObjectInList(subId, observatory.getInstruments());
 
         if (instrument == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Instrument", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Instrument", subId, "Observatory", id),
                     422);
         }
 
@@ -477,7 +477,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend =
                 (Backend) findObjectInList(subId, super.findObject(Observatory.class, id).getBackends());
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
                     422);
         }
 
@@ -535,7 +535,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
                     422);
         }
 
@@ -557,7 +557,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE, "Backend", subId, "Observatory", id),
+            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
                     422);
         }
 
