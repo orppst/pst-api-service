@@ -22,7 +22,7 @@ import java.util.List;
    For use cases see:
          https://gitlab.com/opticon-radionet-pilot/proposal-submission-tool/requirements/-/blob/main/UseCases.adoc
  */
-
+//TODO - should really ensure that submitted proposals are not editable even via the direct {proposalCode} route
 @Path("proposals")
 @Tag(name = "proposal-tool-proposals")
 @Produces(MediaType.APPLICATION_JSON)
@@ -44,9 +44,9 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "Get all ObservingProposals identifiers, optionally get the ObservingProposal identifier for the named proposal")
     public List<ObjectIdentifier> getProposals(@RestQuery String title) {
         if (title == null) {
-            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o ORDER BY o.title");
+            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o  WHERE o.submitted = false or o.submitted = null ORDER BY o.title");
         } else {
-            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE o.title like '"+title+"' ORDER BY o.title");
+            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE  (o.submitted = false or o.submitted = null) and o.title like '"+title+"' ORDER BY o.title");
         }
     }
 

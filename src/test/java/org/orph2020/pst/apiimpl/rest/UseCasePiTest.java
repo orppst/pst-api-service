@@ -117,7 +117,6 @@ public class UseCasePiTest {
                 .body("title", equalTo("My New Proposal"))
                 .extract().response()
                 ;
-        System.out.println(response.asString());
 
         Integer coiPersonId =
                 given()
@@ -200,9 +199,7 @@ public class UseCasePiTest {
                         .extract().jsonPath().getInt("[0].dbid");
 
 
-        // take a look at what is there now
 
-       given().when().get("proposals").then().log().body();
 
 
         // add a related proposal.
@@ -261,7 +258,9 @@ public class UseCasePiTest {
              .statusCode(201)
        ;
 
+       // take a look at what is there now
 
+       given().when().get("proposals").then().log().body();
     }
 
 

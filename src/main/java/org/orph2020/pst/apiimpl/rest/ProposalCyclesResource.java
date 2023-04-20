@@ -59,8 +59,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
-        em.detach(proposal);
-        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), proposal);
+        ObservingProposal pclone = new ObservingProposal(proposal); // create clone
+        pclone.setSubmitted(true);
+        em.persist(pclone);
+        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), pclone);
         cycle.addSubmittedProposals(submittedProposal);
         return mergeObject(cycle);
     }
