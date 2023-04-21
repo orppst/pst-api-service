@@ -8,12 +8,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
+import org.ivoa.dm.ivoa.RealQuantity;
+import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
+import org.ivoa.dm.proposal.prop.Point;
+import org.ivoa.dm.stc.coords.*;
+import org.ivoa.vodml.stdtypes.Unit;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
 import javax.ws.rs.core.MediaType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import static io.restassured.RestAssured.given;
@@ -198,11 +204,20 @@ public class UseCasePiTest {
                         )
                         .extract().jsonPath().getInt("[0].dbid");
 
+        //change the title of the SupportingDocument
+        Response response4 =
+                given()
+                        .body(randomText2)
+                        .contentType(TEXT)
+                        .put("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId+"/title")
+                        .then()
+                        .body(
+                                containsString(randomText2)
+                        )
+                        .extract().response();
 
 
-
-
-        // add a related proposal.
+        // add a related proposal - the related proposal should already exist and/or be submitted?
         Integer relatedProposalId =
               given()
                     .when()
@@ -214,7 +229,6 @@ public class UseCasePiTest {
                     .extract().jsonPath().getInt("[0].dbid");
 
 
-
         ObservingProposal otherProposal =
               given()
                     .when()
@@ -223,7 +237,6 @@ public class UseCasePiTest {
                     .statusCode(200)
                     .extract().as(ObservingProposal.class, raObjectMapper);
         RelatedProposal relatedProposal = new RelatedProposal(otherProposal);
-
 
         given()
               .contentType("text/plain")
@@ -236,6 +249,75 @@ public class UseCasePiTest {
 
 
        //FIXME continue manipulating the proposal  add Observations
+
+        SpaceSys ICRS_SYS = new SpaceSys(
+                new CartesianCoordSpace(),
+                new SpaceFrame( new StdRefLocation("TOPOCENTRE"), "ICRS", new Epoch("J2000.0"), "")
+        );
+
+        //copied and edited from the EmerlinExample
+        TargetObservation targetObservation =
+        TargetObservation.createTargetObservation((t) -> {
+            t.target = CelestialTarget.createCelestialTarget((c) -> {
+                c.sourceName = "imaginativeSourceName";
+                c.sourceCoordinates = new EquatorialPoint(
+                        new RealQuantity(12.5, new Unit("degrees")),
+                        new RealQuantity(78.4, new Unit("degrees")),
+                        ICRS_SYS);
+                c.positionEpoch = new Epoch("J2000.0");
+            });
+            t.field = new TargetField("ketchup");
+            t.tech = TechnicalGoal.createTechnicalGoal((g) -> {
+                g.performance = PerformanceParameters.createPerformanceParameters((p) -> {
+                    p.desiredAngularResolution = new RealQuantity(13.0, new Unit("arcsec"));
+                    p.desiredLargestScale = new RealQuantity(0.05, new Unit("degrees"));
+                    p.representativeSpectralPoint = new RealQuantity(1.9, new Unit("ghz"));
+                });
+                g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
+                    ssw.index = 98;
+                    ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
+                        sw.start = new RealQuantity(1.4, new Unit("ghz"));
+                        sw.end = new RealQuantity(2.2, new Unit("ghz"));
+                        sw.spectralResolution = new RealQuantity(0.3, new Unit("ghz"));
+                        sw.isSkyFrequency = false;
+                        sw.polarization = PolStateEnum.LR;
+                    });
+                }), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
+                    ssw.index = 99;
+                    ssw.expectedSpectralLine = Arrays.asList(ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
+                        sl.restFrequency = new RealQuantity(1.8472, new Unit("ghz"));
+                        sl.description = "ALIENS";
+                        sl.splatalogId = new StringIdentifier("1000101");
+                    }));
+                    ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
+                        sw.start = new RealQuantity(1.84, new Unit("ghz"));
+                        sw.end = new RealQuantity(1.89, new Unit("ghz"));
+                        sw.spectralResolution = new RealQuantity(120.0, new Unit("khz"));
+                        sw.isSkyFrequency = false;
+                        sw.polarization = PolStateEnum.PP;
+                    });
+                }));
+            });
+        });
+
+        System.out.println("created a targetObservation");
+
+        String jsonTargetObservation = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(targetObservation);
+
+        System.out.println(jsonTargetObservation);
+
+        System.out.println("converted targetObservation to json string");
+
+        Response response5 =
+                given()
+                        .body(jsonTargetObservation)
+                        .contentType(JSON)
+                        .post("proposals/"+proposalid+"/observations/targetObservation")
+                        .then()
+                        .statusCode(201)
+                        .extract().response();
+
+        //System.out.println(response5.asString());
 
        //finally submit the proposal.
 
