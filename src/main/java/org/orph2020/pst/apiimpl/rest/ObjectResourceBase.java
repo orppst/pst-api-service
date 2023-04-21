@@ -8,10 +8,7 @@ import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import javax.inject.Inject;
-import javax.persistence.EntityExistsException;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
+import javax.persistence.*;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -52,6 +49,18 @@ abstract public class ObjectResourceBase {
         if (object == null) {
             String ERR_NOT_FOUND = "%s with id: %d not found";
             throw new WebApplicationException(String.format(ERR_NOT_FOUND, type.toString(), id), 404);
+        }
+
+        return object;
+    }
+
+    protected <T> T queryObject(TypedQuery<T> q)
+          throws WebApplicationException
+    {
+        T object = q.getSingleResult();
+        if (object == null) {
+            String ERR_NOT_FOUND = "%s does not find object";
+            throw new WebApplicationException(String.format(ERR_NOT_FOUND, q.toString()), 404);
         }
 
         return object;
