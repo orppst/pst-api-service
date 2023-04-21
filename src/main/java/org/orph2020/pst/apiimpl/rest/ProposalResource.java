@@ -35,9 +35,9 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     private static final String proposalsRoot = "{proposalCode}";
-
     private static final String investigatorsRoot = proposalsRoot+"/investigators";
     private static final String supportingDocumentsRoot = proposalsRoot+"/supportingDocuments";
+    private static final String observationsRoot = proposalsRoot+"/observations";
 
 
     @GET
@@ -487,13 +487,70 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     //********************** OBSERVATIONS ***************************
+    private Observation findObservation(List<Observation> observations, Long id, Long proposalCode)
+            throws WebApplicationException
+    {
+        return observations.stream().filter(o -> id.equals(o.getId())).findAny()
+                .orElseThrow(() -> new WebApplicationException(
+                        String.format(NON_ASSOCIATE_ID, "Observation", id, "ObservingProposal", proposalCode)
+                ));
+    }
+
+    @GET
+    @Path(observationsRoot)
+    @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a sourceName as a query to get that particular Observation's identifier")
+    public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
+                                                  @RestQuery String sourceName)
+            throws WebApplicationException
+    {
+        List<Observation> observations = super.findObject(ObservingProposal.class, proposalCode)
+                .getObservations();
+
+        List<ObjectIdentifier> response = new ArrayList<>();
+        if (sourceName == null) {
+
+            for (Observation o : observations) {
+                response.add(new ObjectIdentifier(o.getId(), o.getTarget().getSourceName()));
+            }
+
+        } else {
+
+            //search the list of Observations for the queried sourceName
+            Observation observation = observations
+                    .stream().filter(o -> sourceName.equals(o.getTarget().getSourceName())).findAny()
+                    .orElseThrow(() -> new WebApplicationException(
+                            String.format(NON_ASSOCIATE_NAME, "Observation", sourceName, "ObservingProposal",
+                                    proposalCode), 404
+                    ));
+
+            //return value is a list of ObjectIdentifiers with one element
+            response.add(new ObjectIdentifier(observation.getId(), observation.getTarget().getSourceName()));
+        }
+        return response;
+    }
+
+    @POST
+    @Path(observationsRoot)
+    @Operation(summary = "add a new Observation to the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response addNewObservation(@PathParam("proposalCode") Long proposalCode, Observation observation)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        observingProposal.addObservations(observation);
+
+        return super.mergeObject(observingProposal);
+    }
+
+
     @PUT
-    @Operation(summary="add an observation to the ObservingProposal specified")
-    @Path("{proposalCode}/observations")
+    @Operation(summary = "add an existing Observation to the given ObservingProposal")
+    @Path(observationsRoot)
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addObservation(@PathParam("proposalCode") Long proposalCode,
-                                   Long observationId)
+    public Response addObservation(@PathParam("proposalCode") Long proposalCode, Long observationId)
             throws WebApplicationException
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
@@ -504,14 +561,132 @@ public class ProposalResource extends ObjectResourceBase {
             if (o.getId().equals(observationId)) {
                 throw new WebApplicationException(
                         String.format("Observation with id: %d already added to ObservingProposal %s",
-                                observationId, proposalCode), 418);
+                                observationId, proposalCode), 422);
             }
         }
 
         proposal.addObservations(observation);
 
         return responseWrapper(proposal, 201);
-
     }
+
+    @DELETE
+    @Path(observationsRoot+"/{id}")
+    @Operation(summary = "remove the Observation specified by 'id' from the given ObservingProposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeObservation(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation =
+                findObservation(observingProposal.getObservations(), id, proposalCode);
+
+        observingProposal.removeObservations(observation);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+    @PUT
+    @Path(observationsRoot+"/{id}/target")
+    @Operation(summary = "replace the Target of the Observation for the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTarget(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                  Target target)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation =
+                findObservation(observingProposal.getObservations(), id, proposalCode);
+        observation.setTarget(target);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+    @PUT
+    @Path(observationsRoot+"/{id}/field")
+    @Operation(summary = "replace the Field of the Observation for the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceField(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                  Field field)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation =
+                findObservation(observingProposal.getObservations(), id, proposalCode);
+        observation.setField(field);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+    @PUT
+    @Path(observationsRoot+"/{id}/technicalGoal")
+    @Operation(summary = "replace the TechnicalGoal of the Observation for the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceTechnicalGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                  TechnicalGoal technicalGoal)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation =
+                findObservation(observingProposal.getObservations(), id, proposalCode);
+        observation.setTech(technicalGoal);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+    @GET
+    @Path(observationsRoot+"/{id}/constraints")
+    @Operation(summary = "get the list of Constraints for the Observation 'id' in the given ObservingProposal")
+    public List<Constraint> getConstraints(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation = findObservation(observingProposal.getObservations(), id, proposalCode);
+        return observation.getConstraints();
+    }
+
+    @POST
+    @Path(observationsRoot+"/{id}/constraints")
+    @Operation(summary = "add a new Constraint to the Observation specified by 'id' in the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response addNewConstraint(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                  Constraint constraint)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation =
+                findObservation(observingProposal.getObservations(), id, proposalCode);
+        observation.addConstraints(constraint);
+
+        return super.mergeObject(observingProposal);
+    }
+
+    @DELETE
+    @Path(observationsRoot+"/{id}/constraints/{constraintId}")
+    @Operation(summary = "remove the specified Constraint from the Observation ('id') of the given ObservationProposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeConstraint(@PathParam("proposalCode") Long proposalCode, @PathParam("id") Long id,
+                                     @PathParam("constraintId") Long constraintId)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Observation observation = findObservation(observingProposal.getObservations(), id, proposalCode);
+        List<Constraint> constraints = observation.getConstraints();
+
+        Constraint constraint = constraints
+                .stream().filter(o -> constraintId.equals(o.getId())).findAny()
+                .orElseThrow(() -> new WebApplicationException(
+                        String.format(NON_ASSOCIATE_ID, "Constraint", constraintId, "Observation", id)
+                ));
+
+        observation.removeConstraints(constraint);
+
+        return responseWrapper(observingProposal, 201);
+    }
+
 
 }
