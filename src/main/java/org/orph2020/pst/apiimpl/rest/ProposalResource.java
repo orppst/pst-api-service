@@ -530,11 +530,11 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     @POST
-    @Path(observationsRoot)
+    @Path(observationsRoot+"/targetObservation")
     @Operation(summary = "add a new Observation to the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewObservation(@PathParam("proposalCode") Long proposalCode, Observation observation)
+    public Response addNewObservation(@PathParam("proposalCode") Long proposalCode, TargetObservation observation)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
