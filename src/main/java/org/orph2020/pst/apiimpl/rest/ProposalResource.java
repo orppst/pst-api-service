@@ -531,10 +531,11 @@ public class ProposalResource extends ObjectResourceBase {
 
     @POST
     @Path(observationsRoot+"/targetObservation")
-    @Operation(summary = "add a new Observation to the given ObservingProposal")
+    @Operation(summary = "add a new TargetObservation to the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewObservation(@PathParam("proposalCode") Long proposalCode, TargetObservation observation)
+    public Response addNewTargetObservation(@PathParam("proposalCode") Long proposalCode,
+                                            TargetObservation observation)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
@@ -544,6 +545,51 @@ public class ProposalResource extends ObjectResourceBase {
         return super.mergeObject(observingProposal);
     }
 
+    @POST
+    @Path(observationsRoot+"/calibrationObservation")
+    @Operation(summary = "add a new CalibrationObservation to the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response addNewCalibrationObservation(@PathParam("proposalCode") Long proposalCode,
+                                                 CalibrationObservation observation)
+            throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        observingProposal.addObservations(observation);
+
+        return super.mergeObject(observingProposal);
+    }
+
+    //Intent is for CalibrationObservation subtype only
+    @PUT
+    @Path(observationsRoot+"/calibrationObservation/{id}/intent")
+    @Operation(summary = "replace the intention of the CalibrationObservation specified by the 'id': one-of: AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY.")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceCalibrationObservationIntent(@PathParam("proposalCode") Long proposalCode,
+                                                        @PathParam("id") Long id,
+                                                        String replacementIntent)
+        throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        Observation observation = findObservation(observingProposal.getObservations(), id, proposalCode);
+
+        //check the subtype
+        if (observation instanceof CalibrationObservation) {
+
+            ((CalibrationObservation) observation)
+                    .setIntent(CalibrationTarget_intendedUse.fromValue(replacementIntent));
+
+        } else {
+            throw new WebApplicationException(
+                    String.format("Observation with id %d is not a CalibrationObservation subtype", id), 400
+            );
+        }
+
+        return responseWrapper(observingProposal, 201);
+    }
 
     @PUT
     @Operation(summary = "add an existing Observation to the given ObservingProposal")
