@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -15,6 +16,7 @@ import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 abstract public class ObjectResourceBase {
     @PersistenceContext
@@ -116,6 +118,15 @@ abstract public class ObjectResourceBase {
 
         return responseWrapper(object, 201);
     }
+
+    protected <T,S> S addNewChildObject(T parent, S child, Consumer<S> adder)
+    {
+        em.persist(child);
+        adder.accept(child);
+        em.merge(parent);
+        return child;
+    }
+
 
 
     //--------------------------------------------------------------------------------

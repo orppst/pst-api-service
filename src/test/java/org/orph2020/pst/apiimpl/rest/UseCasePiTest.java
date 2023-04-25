@@ -14,6 +14,7 @@ import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.proposal.prop.Point;
 import org.ivoa.dm.stc.coords.*;
 import org.ivoa.vodml.stdtypes.Unit;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
@@ -37,6 +38,26 @@ public class UseCasePiTest {
 
     @Inject
     protected ObjectMapper mapper;
+    private io.restassured.mapper.ObjectMapper raObjectMapper;
+    private Unit ghz;
+    private Unit degrees;
+    private SpaceSys ICRS_SYS;
+
+    @BeforeEach
+    void setUp() {
+        raObjectMapper = new Jackson2Mapper(((type, charset) -> {
+            return mapper;
+        }));
+        ghz = new Unit("ghz");
+        degrees = new Unit("degrees");
+        ICRS_SYS = given()
+              .when()
+              .get("spaceSystems/ICRS")
+              .then()
+              .statusCode(200)
+              .extract().as(SpaceSys.class, raObjectMapper);
+    }
+
     @Test
     void testCreateProposal() throws JsonProcessingException {
 
@@ -46,11 +67,6 @@ public class UseCasePiTest {
         String randomText2 = "Batman prefers dogs";
         String randomText3 = "Wonderwoman drinks pints";
         String randomText4 = "Superman licks windows";
-
-
-        io.restassured.mapper.ObjectMapper raObjectMapper = new Jackson2Mapper(((type, charset) -> {
-            return mapper;
-        }));
 
 
         // che4ck initial conditions
@@ -166,10 +182,6 @@ public class UseCasePiTest {
                         .extract().response();
 
 
-
-
-
-
         //add a new SupportingDocument to the proposal
        //FIXME real use case here will actually upload the document to the document store with http POST form multipart
 
@@ -248,76 +260,102 @@ public class UseCasePiTest {
               ;
 
 
-       //FIXME continue manipulating the proposal  add Observations
+       // add Observations
 
-        SpaceSys ICRS_SYS = new SpaceSys(
-                new CartesianCoordSpace(),
-                new SpaceFrame( new StdRefLocation("TOPOCENTRE"), "ICRS", new Epoch("J2000.0"), "")
-        );
+        CelestialTarget target = CelestialTarget.createCelestialTarget((c) -> {
+            c.sourceName = "imaginativeSourceName";
+            c.sourceCoordinates = new EquatorialPoint(
+                  new RealQuantity(12.5, degrees),
+                  new RealQuantity(78.4, degrees),
+                  ICRS_SYS);
+            c.positionEpoch = new Epoch("J2000.0");
+        });
+
+        CelestialTarget createdTarget =
+              given()
+                    .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(target))
+                    .contentType(JSON_UTF16)
+                    .when()
+                    .post("proposals/"+proposalid+"/targets")
+                    .then()
+                    .contentType(JSON)
+//                    .log().body()
+                    .extract().as(CelestialTarget.class,raObjectMapper);
+
+        Field createdField =
+              given()
+                    .body(mapper.writeValueAsString(new TargetField("the field")))
+                    .contentType(JSON_UTF16)
+                    .when()
+                    .post("proposals/"+proposalid+"/fields")
+                    .then()
+                    .contentType(JSON)
+                    .log().body()
+                    .extract().as(Field.class,raObjectMapper);
+
+        TechnicalGoal technicalGoal = TechnicalGoal.createTechnicalGoal((g) -> {
+            g.performance = PerformanceParameters.createPerformanceParameters((p) -> {
+                p.desiredAngularResolution = new RealQuantity(13.0, new Unit("arcsec"));
+                p.desiredLargestScale = new RealQuantity(0.05, degrees);
+                p.representativeSpectralPoint = new RealQuantity(1.9, ghz);
+            });
+            g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
+                ssw.index = 98;
+                ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
+                    sw.start = new RealQuantity(1.4, ghz);
+                    sw.end = new RealQuantity(2.2, ghz);
+                    sw.spectralResolution = new RealQuantity(0.3, ghz);
+                    sw.isSkyFrequency = false;
+                    sw.polarization = PolStateEnum.LR;
+                });
+            }), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
+                ssw.index = 99;
+                ssw.expectedSpectralLine = Arrays.asList(ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
+                    sl.restFrequency = new RealQuantity(1.8472, ghz);
+                    sl.description = "ALIENS";
+                    sl.splatalogId = new StringIdentifier("1000101");
+                }));
+                ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
+                    sw.start = new RealQuantity(1.84, ghz);
+                    sw.end = new RealQuantity(1.89, ghz);
+                    sw.spectralResolution = new RealQuantity(120.0, new Unit("khz"));
+                    sw.isSkyFrequency = false;
+                    sw.polarization = PolStateEnum.PP;
+                });
+            }));
+        });
+
+        TechnicalGoal createdTechGoal =
+              given()
+                    .body(mapper.writeValueAsString(technicalGoal))
+                    .contentType(JSON_UTF16)
+                    .when()
+                    .post("proposals/"+proposalid+"/technicalGoals")
+                    .then()
+                    .contentType(JSON)
+                    .log().body()
+                    .extract().as(TechnicalGoal.class,raObjectMapper);
 
         //copied and edited from the EmerlinExample
         TargetObservation targetObservation =
         TargetObservation.createTargetObservation((t) -> {
-            t.target = CelestialTarget.createCelestialTarget((c) -> {
-                c.sourceName = "imaginativeSourceName";
-                c.sourceCoordinates = new EquatorialPoint(
-                        new RealQuantity(12.5, new Unit("degrees")),
-                        new RealQuantity(78.4, new Unit("degrees")),
-                        ICRS_SYS);
-                c.positionEpoch = new Epoch("J2000.0");
-            });
-            t.field = new TargetField("ketchup");
-            t.tech = TechnicalGoal.createTechnicalGoal((g) -> {
-                g.performance = PerformanceParameters.createPerformanceParameters((p) -> {
-                    p.desiredAngularResolution = new RealQuantity(13.0, new Unit("arcsec"));
-                    p.desiredLargestScale = new RealQuantity(0.05, new Unit("degrees"));
-                    p.representativeSpectralPoint = new RealQuantity(1.9, new Unit("ghz"));
-                });
-                g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                    ssw.index = 98;
-                    ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
-                        sw.start = new RealQuantity(1.4, new Unit("ghz"));
-                        sw.end = new RealQuantity(2.2, new Unit("ghz"));
-                        sw.spectralResolution = new RealQuantity(0.3, new Unit("ghz"));
-                        sw.isSkyFrequency = false;
-                        sw.polarization = PolStateEnum.LR;
-                    });
-                }), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                    ssw.index = 99;
-                    ssw.expectedSpectralLine = Arrays.asList(ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
-                        sl.restFrequency = new RealQuantity(1.8472, new Unit("ghz"));
-                        sl.description = "ALIENS";
-                        sl.splatalogId = new StringIdentifier("1000101");
-                    }));
-                    ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
-                        sw.start = new RealQuantity(1.84, new Unit("ghz"));
-                        sw.end = new RealQuantity(1.89, new Unit("ghz"));
-                        sw.spectralResolution = new RealQuantity(120.0, new Unit("khz"));
-                        sw.isSkyFrequency = false;
-                        sw.polarization = PolStateEnum.PP;
-                    });
-                }));
-            });
+
+            t.target = createdTarget;
+            t.field = createdField;
+            t.technicalGoal = createdTechGoal;
+
         });
-
-        System.out.println("created a targetObservation");
-
-        String jsonTargetObservation = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(targetObservation);
-
-        System.out.println(jsonTargetObservation);
-
-        System.out.println("converted targetObservation to json string");
 
         Response response5 =
                 given()
-                        .body(jsonTargetObservation)
+                        .body(mapper.writeValueAsString(targetObservation))
                         .contentType(JSON)
-                        .post("proposals/"+proposalid+"/observations/targetObservation")
+                        .post("proposals/"+proposalid+"/observations")
                         .then()
                         .statusCode(201)
                         .extract().response();
 
-        //System.out.println(response5.asString());
+
 
        //finally submit the proposal.
 

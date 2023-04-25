@@ -79,7 +79,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
         pclone.setSubmitted(true);
         em.persist(pclone);
-        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, new Date());
+        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
         cycle.addSubmittedProposals(submittedProposal);
         return mergeObject(cycle);
     }

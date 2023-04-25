@@ -8,9 +8,11 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
+import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
+import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -29,15 +31,18 @@ import java.util.List;
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
 
-
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
 
-    private static final String proposalsRoot = "{proposalCode}";
-    private static final String investigatorsRoot = proposalsRoot+"/investigators";
-    private static final String supportingDocumentsRoot = proposalsRoot+"/supportingDocuments";
-    private static final String observationsRoot = proposalsRoot+"/observations";
+    private static final String proposalRoot = "{proposalCode}";
+    private static final String investigatorsRoot = proposalRoot +"/investigators";
+    private static final String supportingDocumentsRoot = proposalRoot +"/supportingDocuments";
+
+    private static final String targetsRoot = proposalRoot +"/targets";
+    private static final String fieldsRoot = proposalRoot +"/fields";
+    private static final String techGoalsRoot = proposalRoot +"/technicalGoals";
+    private static final String observationsRoot = proposalRoot +"/observations";
 
 
     @GET
@@ -57,7 +62,7 @@ public class ProposalResource extends ObjectResourceBase {
             responseCode = "200",
             description = "get a single Proposal specified by the code"
     )
-    @Path(proposalsRoot)
+    @Path(proposalRoot)
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
@@ -75,7 +80,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     @DELETE
-    @Path(proposalsRoot)
+    @Path(proposalRoot)
     @Operation(summary = "remove the ObservingProposal specified by the 'proposalCode'")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response deleteObservingProposal(@PathParam("proposalCode") long code)
@@ -90,7 +95,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "change the title of an ObservingProposal")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @Path(proposalsRoot+"/title")
+    @Path(proposalRoot +"/title")
     public Response replaceTitle(
             @PathParam("proposalCode") long proposalCode,
             String replacementTitle)
@@ -106,7 +111,7 @@ public class ProposalResource extends ObjectResourceBase {
     //********************** SUMMARY ***************************
     @PUT
     @Operation(summary = "replace the summary of an ObservingProposal")
-    @Path(proposalsRoot+"/summary")
+    @Path(proposalRoot +"/summary")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceSummary(@PathParam("proposalCode") long proposalCode, String replacementSummary)
@@ -122,7 +127,7 @@ public class ProposalResource extends ObjectResourceBase {
     //********************** KIND ***************************
     @PUT
     @Operation(summary = "change the 'kind' of the ObservingProposal specified, one-of: STANDARD, TOO, SURVEY")
-    @Path(proposalsRoot+"/kind")
+    @Path(proposalRoot +"/kind")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response changeKind(@PathParam("proposalCode") long proposalCode, String kind)
@@ -142,7 +147,7 @@ public class ProposalResource extends ObjectResourceBase {
     //********************** JUSTIFICATIONS ***************************
 
     @GET
-    @Path(proposalsRoot+"/justifications/{which}")
+    @Path(proposalRoot +"/justifications/{which}")
     @Operation(summary = "get the technical or scientific justification associated with the ObservingProposal specified by 'proposalCode'")
     public Justification getJustification(@PathParam("proposalCode") Long proposalCode,
                                           @PathParam("which") String which)
@@ -174,7 +179,7 @@ public class ProposalResource extends ObjectResourceBase {
 
     @PUT
     @Operation( summary = "update a technical or scientific Justification in the ObservingProposal specified by the 'proposalCode'")
-    @Path(proposalsRoot+"/justifications/{which}")
+    @Path(proposalRoot +"/justifications/{which}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
     public Response updateJustification(
@@ -237,14 +242,14 @@ public class ProposalResource extends ObjectResourceBase {
         if (fullName == null) {
 
             for (Investigator i : investigators) {
-                response.add(new ObjectIdentifier(i.getId(), i.getInvestigator().getFullName()));
+                response.add(new ObjectIdentifier(i.getId(), i.getPerson().getFullName()));
             }
 
         } else {
 
             //search the list of Investigators for the queried personName
             Investigator investigator = investigators
-                    .stream().filter(o -> fullName.equals(o.getInvestigator()
+                    .stream().filter(o -> fullName.equals(o.getPerson()
                             .getFullName())).findAny()
                     .orElseThrow(() -> new WebApplicationException(
                             String.format(NON_ASSOCIATE_NAME, "Investigator",
@@ -252,7 +257,7 @@ public class ProposalResource extends ObjectResourceBase {
                     ));
 
             //return value is a list of ObjectIdentifiers with one element
-            response.add(new ObjectIdentifier(investigator.getId(), investigator.getInvestigator().getFullName()));
+            response.add(new ObjectIdentifier(investigator.getId(), investigator.getPerson().getFullName()));
         }
         return response;
     }
@@ -278,7 +283,7 @@ public class ProposalResource extends ObjectResourceBase {
                                             Investigator investigator)
             throws WebApplicationException
     {
-        if (investigator.getInvestigator().getId() == 0) {
+        if (investigator.getPerson().getId() == 0) {
             throw new WebApplicationException(
                     "Please create a new person at 'proposals/people' before trying to add them as an Investigator",
                     400
@@ -487,6 +492,9 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     //********************** OBSERVATIONS ***************************
+
+
+
     private Observation findObservation(List<Observation> observations, Long id, Long proposalCode)
             throws WebApplicationException
     {
@@ -497,99 +505,177 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path(observationsRoot)
-    @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a sourceName as a query to get that particular Observation's identifier")
-    public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
+    @Path(targetsRoot)
+    @Operation(summary = "get the list of ObjectIdentifiers for the targets associated with the given ObservingProposal, optionally provide a sourceName as a query to get that particular Observation's identifier")
+    public List<ObjectIdentifier> getTargets(@PathParam("proposalCode") Long proposalCode,
                                                   @RestQuery String sourceName)
-            throws WebApplicationException
+          throws WebApplicationException
     {
-        List<Observation> observations = super.findObject(ObservingProposal.class, proposalCode)
-                .getObservations();
-
-        List<ObjectIdentifier> response = new ArrayList<>();
         if (sourceName == null) {
-
-            for (Observation o : observations) {
-                response.add(new ObjectIdentifier(o.getId(), o.getTarget().getSourceName()));
-            }
-
+            return super.getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
         } else {
-
-            //search the list of Observations for the queried sourceName
-            Observation observation = observations
-                    .stream().filter(o -> sourceName.equals(o.getTarget().getSourceName())).findAny()
-                    .orElseThrow(() -> new WebApplicationException(
-                            String.format(NON_ASSOCIATE_NAME, "Observation", sourceName, "ObservingProposal",
-                                    proposalCode), 404
-                    ));
-
-            //return value is a list of ObjectIdentifiers with one element
-            response.add(new ObjectIdentifier(observation.getId(), observation.getTarget().getSourceName()));
+            return super.getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
         }
-        return response;
+
     }
 
     @POST
-    @Path(observationsRoot+"/targetObservation")
-    @Operation(summary = "add a new TargetObservation to the given ObservingProposal")
+    @Path(targetsRoot)
+    @Operation(summary = "add a new Target to the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewTargetObservation(@PathParam("proposalCode") Long proposalCode,
-                                            TargetObservation observation)
-            throws WebApplicationException
+    @ResponseStatus(201)
+    @Transactional
+    public Target addNewTarget(@PathParam("proposalCode") Long proposalCode, Target target)
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-
-        observingProposal.addObservations(observation);
-
-        return super.mergeObject(observingProposal);
+        return super.addNewChildObject(observingProposal,target,t -> observingProposal.addTargets(t));
     }
 
-    @POST
-    @Path(observationsRoot+"/calibrationObservation")
-    @Operation(summary = "add a new CalibrationObservation to the given ObservingProposal")
-    @Consumes(MediaType.APPLICATION_JSON)
+
+
+
+    @DELETE
+    @Path(targetsRoot+"/{targetId}")
+    @Operation(summary = "remove the Target specified by 'id' from the given ObservingProposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewCalibrationObservation(@PathParam("proposalCode") Long proposalCode,
-                                                 CalibrationObservation observation)
-            throws WebApplicationException
+    public Response removeTarget(@PathParam("proposalCode") Long proposalCode, @PathParam("targetId") Long targetId)
+          throws WebApplicationException
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
 
-        observingProposal.addObservations(observation);
-
-        return super.mergeObject(observingProposal);
-    }
-
-    //Intent is for CalibrationObservation subtype only
-    @PUT
-    @Path(observationsRoot+"/calibrationObservation/{id}/intent")
-    @Operation(summary = "replace the intention of the CalibrationObservation specified by the 'id': one-of: AMPLITUDE, ATMOSPHERIC, BANDPASS, PHASE, POINTING, FOCUS, POLARIZATION, DELAY.")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceCalibrationObservationIntent(@PathParam("proposalCode") Long proposalCode,
-                                                        @PathParam("id") Long id,
-                                                        String replacementIntent)
-        throws WebApplicationException
-    {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-
-        Observation observation = findObservation(observingProposal.getObservations(), id, proposalCode);
-
-        //check the subtype
-        if (observation instanceof CalibrationObservation) {
-
-            ((CalibrationObservation) observation)
-                    .setIntent(CalibrationTarget_intendedUse.fromValue(replacementIntent));
-
-        } else {
-            throw new WebApplicationException(
-                    String.format("Observation with id %d is not a CalibrationObservation subtype", id), 400
-            );
-        }
-
+        Target target = observingProposal.getTargets().stream().filter(o -> targetId.equals(o.getId())).findAny()
+              .orElseThrow(() -> new WebApplicationException(
+                    String.format(NON_ASSOCIATE_ID, "Target", targetId, "ObservingProposal", proposalCode)
+              ));
+        observingProposal.removeTargets(target);
         return responseWrapper(observingProposal, 201);
     }
+
+
+    // field operations
+    @GET
+    @Path(fieldsRoot)
+    @Operation(summary = "get the list of ObjectIdentifiers for the Fields associated with the given ObservingProposal, optionally provide a name as a query to get that particular Fields's identifier")
+    public List<ObjectIdentifier> getFields(@PathParam("proposalCode") Long proposalCode,
+                                             @RestQuery String fieldName)
+          throws WebApplicationException
+    {
+        if (fieldName == null) {
+            return super.getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
+        } else {
+            return super.getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
+        }
+
+    }
+
+    @POST
+    @Path(fieldsRoot)
+    @Operation(summary = "add a new Field to the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ResponseStatus(201)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Field addNewField(@PathParam("proposalCode") Long proposalCode,
+                                Field field)
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        return addNewChildObject(observingProposal, field, f -> observingProposal.addFields(f));
+    }
+
+
+
+
+    @DELETE
+    @Path(fieldsRoot+"/{fieldId}")
+    @Operation(summary = "remove the Target specified by 'id' from the given ObservingProposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeField(@PathParam("proposalCode") Long proposalCode, @PathParam("fieldId") Long fieldId)
+          throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        Field target = observingProposal.getFields().stream().filter(o -> fieldId.equals(o.getId())).findAny()
+              .orElseThrow(() -> new WebApplicationException(
+                    String.format(NON_ASSOCIATE_ID, "Field", fieldId, "ObservingProposal", proposalCode)
+              ));
+        observingProposal.removeFields(target);
+        return responseWrapper(observingProposal, 201);
+    }
+
+    //TODO add techgoal operations
+
+
+    @GET
+    @Path(techGoalsRoot)
+    @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
+    public List<TechnicalGoal> getTechGoals(@PathParam("proposalCode") Long proposalCode)
+    {
+        TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = '" + proposalCode + "'", TechnicalGoal.class);
+        return q.getResultList();
+    }
+
+    @POST
+    @Path(techGoalsRoot)
+    @Operation(summary = "add a new technical goal to the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ResponseStatus(201)
+    @Transactional
+    public TechnicalGoal addNewTechGoal(@PathParam("proposalCode") Long proposalCode, TechnicalGoal technicalGoal)
+          throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        return super.addNewChildObject(observingProposal,technicalGoal,t->observingProposal.addTechnicalGoals(t));
+    }
+
+
+
+
+    @DELETE
+    @Path(techGoalsRoot+"/{techGoalId}")
+    @Operation(summary = "remove the Technical Goal specified by 'id' from the given ObservingProposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeTechGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("techGoalId") Long techGoalId)
+          throws WebApplicationException
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+
+        TechnicalGoal target = observingProposal.getTechnicalGoals().stream().filter(o -> techGoalId.equals(o.getId())).findAny()
+              .orElseThrow(() -> new WebApplicationException(
+                    String.format(NON_ASSOCIATE_ID, "Technical Goal", techGoalId, "ObservingProposal", proposalCode)
+              ));
+        observingProposal.removeTechnicalGoals(target);
+        return responseWrapper(observingProposal, 201);
+    }
+
+
+
+    @GET
+    @Path(observationsRoot)
+    @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a fieldName as a query to get that particular Observation's identifier")
+    public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
+                                                  @RestQuery String fieldName)
+            throws WebApplicationException
+    {
+        if (fieldName == null) {
+            return super.getObjects("SELECT t._id,f.name FROM ObservingProposal p Inner Join p.observations t Inner Join t.field f WHERE p._id = '"+proposalCode+"' ORDER BY f.name");
+        } else {
+            return super.getObjects("SELECT t._id,f.name FROM ObservingProposal p Inner Join p.observations t Inner Join t.field f WHERE p._id = '"+proposalCode+"' and f.name like '"+fieldName+"' ORDER BY f.name");
+        }
+
+
+    }
+
+    @POST
+    @Path(observationsRoot)
+    @Operation(summary = "add a new Observation to the given ObservingProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ResponseStatus(201)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Observation addNewObservation(@PathParam("proposalCode") Long proposalCode, Observation observation)
+    {
+        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        return super.addNewChildObject(observingProposal,observation,t->observingProposal.addObservations(t));
+    }
+
 
     @PUT
     @Operation(summary = "add an existing Observation to the given ObservingProposal")
@@ -678,7 +764,7 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
-        observation.setTech(technicalGoal);
+        observation.setTechnicalGoal(technicalGoal);
 
         return responseWrapper(observingProposal, 201);
     }
