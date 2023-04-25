@@ -290,7 +290,7 @@ public class ProposalResource extends ObjectResourceBase {
             );
         }
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        proposal.addInvestigators(investigator);
+        proposal.addToInvestigators(investigator);
 
         return super.mergeObject(proposal); //merge as we have a "new" Investigator to persist
     }
@@ -306,7 +306,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         Investigator investigator = findInvestigator(observingProposal.getInvestigators(), id, proposalCode);
 
-        observingProposal.removeInvestigators(investigator);
+        observingProposal.removeFromInvestigators(investigator);
 
         return responseWrapper(observingProposal, 201);
     }
@@ -364,7 +364,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         ObservingProposal relatedProposal = findObject(ObservingProposal.class, relatedProposalCode);
 
-        proposal.addRelatedProposals(new RelatedProposal(relatedProposal));
+        proposal.addToRelatedProposals(new RelatedProposal(relatedProposal));
 
         return responseWrapper(proposal, 201);
     }
@@ -437,7 +437,7 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
 
-        proposal.addSupportingDocuments(supportingDocument);
+        proposal.addToSupportingDocuments(supportingDocument);
 
         return super.mergeObject(proposal);
     }
@@ -453,7 +453,7 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
         SupportingDocument supportingDocument =
                 findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
-        observingProposal.removeSupportingDocuments(supportingDocument);
+        observingProposal.removeFromSupportingDocuments(supportingDocument);
         return responseWrapper(observingProposal, 201);
     }
 
@@ -528,7 +528,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Target addNewTarget(@PathParam("proposalCode") Long proposalCode, Target target)
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(observingProposal,target,t -> observingProposal.addTargets(t));
+        return super.addNewChildObject(observingProposal,target,t -> observingProposal.addToTargets(t));
     }
 
 
@@ -547,7 +547,7 @@ public class ProposalResource extends ObjectResourceBase {
               .orElseThrow(() -> new WebApplicationException(
                     String.format(NON_ASSOCIATE_ID, "Target", targetId, "ObservingProposal", proposalCode)
               ));
-        observingProposal.removeTargets(target);
+        observingProposal.removeFromTargets(target);
         return responseWrapper(observingProposal, 201);
     }
 
@@ -578,7 +578,7 @@ public class ProposalResource extends ObjectResourceBase {
                                 Field field)
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return addNewChildObject(observingProposal, field, f -> observingProposal.addFields(f));
+        return addNewChildObject(observingProposal, field, f -> observingProposal.addToFields(f));
     }
 
 
@@ -597,7 +597,7 @@ public class ProposalResource extends ObjectResourceBase {
               .orElseThrow(() -> new WebApplicationException(
                     String.format(NON_ASSOCIATE_ID, "Field", fieldId, "ObservingProposal", proposalCode)
               ));
-        observingProposal.removeFields(target);
+        observingProposal.removeFromFields(target);
         return responseWrapper(observingProposal, 201);
     }
 
@@ -623,7 +623,7 @@ public class ProposalResource extends ObjectResourceBase {
           throws WebApplicationException
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(observingProposal,technicalGoal,t->observingProposal.addTechnicalGoals(t));
+        return super.addNewChildObject(observingProposal,technicalGoal,t->observingProposal.addToTechnicalGoals(t));
     }
 
 
@@ -642,7 +642,7 @@ public class ProposalResource extends ObjectResourceBase {
               .orElseThrow(() -> new WebApplicationException(
                     String.format(NON_ASSOCIATE_ID, "Technical Goal", techGoalId, "ObservingProposal", proposalCode)
               ));
-        observingProposal.removeTechnicalGoals(target);
+        observingProposal.removeFromTechnicalGoals(target);
         return responseWrapper(observingProposal, 201);
     }
 
@@ -673,7 +673,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Observation addNewObservation(@PathParam("proposalCode") Long proposalCode, Observation observation)
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(observingProposal,observation,t->observingProposal.addObservations(t));
+        return super.addNewChildObject(observingProposal,observation,t->observingProposal.addToObservations(t));
     }
 
 
@@ -697,7 +697,7 @@ public class ProposalResource extends ObjectResourceBase {
             }
         }
 
-        proposal.addObservations(observation);
+        proposal.addToObservations(observation);
 
         return responseWrapper(proposal, 201);
     }
@@ -713,7 +713,7 @@ public class ProposalResource extends ObjectResourceBase {
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
 
-        observingProposal.removeObservations(observation);
+        observingProposal.removeFromObservations(observation);
 
         return responseWrapper(observingProposal, 201);
     }
@@ -792,7 +792,7 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
-        observation.addConstraints(constraint);
+        observation.addToConstraints(constraint);
 
         return super.mergeObject(observingProposal);
     }
@@ -815,7 +815,7 @@ public class ProposalResource extends ObjectResourceBase {
                         String.format(NON_ASSOCIATE_ID, "Constraint", constraintId, "Observation", id)
                 ));
 
-        observation.removeConstraints(constraint);
+        observation.removeFromConstraints(constraint);
 
         return responseWrapper(observingProposal, 201);
     }

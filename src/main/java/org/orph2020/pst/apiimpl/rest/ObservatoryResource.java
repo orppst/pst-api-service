@@ -140,7 +140,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         Telescope telescope = super.findObject(Telescope.class, telescopeId);
 
-        observatory.addTelescopes(telescope);
+        observatory.addToTelescopes(telescope);
 
         return super.responseWrapper(observatory, 201);
     }
@@ -161,7 +161,7 @@ public class ObservatoryResource extends ObjectResourceBase {
             }
         }
 
-        observatory.addTelescopes(telescope);
+        observatory.addToTelescopes(telescope);
 
         return super.mergeObject(observatory);
     }
@@ -292,7 +292,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         Instrument instrument = super.findObject(Instrument.class, instrumentId);
 
-        observatory.addInstruments(instrument);
+        observatory.addToInstruments(instrument);
 
         return super.responseWrapper(observatory, 201);
     }
@@ -313,7 +313,7 @@ public class ObservatoryResource extends ObjectResourceBase {
             }
         }
 
-        observatory.addInstruments(instrument);
+        observatory.addToInstruments(instrument);
 
         return super.mergeObject(observatory);
     }
@@ -496,7 +496,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         Backend backend = super.findObject(Backend.class, backendId);
 
-        observatory.addBackends(backend);
+        observatory.addToBackends(backend);
 
         return super.responseWrapper(observatory, 201);
     }
@@ -517,7 +517,7 @@ public class ObservatoryResource extends ObjectResourceBase {
             }
         }
 
-        observatory.addBackends(backend);
+        observatory.addToBackends(backend);
 
         return super.mergeObject(observatory);
     }
@@ -580,7 +580,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         TelescopeArray array = super.findObject(TelescopeArray.class, telescopeArrayId);
 
-        observatory.addArrays(array);
+        observatory.addToArrays(array);
 
         return super.responseWrapper(observatory, 201);
     }
@@ -601,7 +601,7 @@ public class ObservatoryResource extends ObjectResourceBase {
             }
         }
 
-        observatory.addArrays(telescopeArray);
+        observatory.addToArrays(telescopeArray);
 
         return super.mergeObject(observatory);
     }

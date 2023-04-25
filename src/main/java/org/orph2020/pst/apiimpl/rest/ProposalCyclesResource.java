@@ -80,7 +80,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         pclone.setSubmitted(true);
         em.persist(pclone);
         SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
-        cycle.addSubmittedProposals(submittedProposal);
+        cycle.addToSubmittedProposals(submittedProposal);
         return mergeObject(cycle);
     }
     @GET
@@ -103,7 +103,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
         revIn.setSuccessful(false); // newly added so cannot be sucesssful yet.
-        cycle.addReviewedProposals(revIn);
+        cycle.addToReviewedProposals(revIn);
         return mergeObject(cycle);
     }
 
@@ -132,7 +132,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ReviewedProposal revprop = findReviewedProposal(cycleId,revId);
         revIn.setReviewDate(new Date());
-        revprop.addReviews(revIn);
+        revprop.addToReviews(revIn);
         return mergeObject(revprop);
     }
 }
