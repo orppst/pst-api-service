@@ -18,7 +18,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("telescopes")
-@Tag(name = "proposal-tool-telescopes")
+@Tag(name = "telescopes")
 public class TelescopeResource extends ObjectResourceBase{
 
     @GET

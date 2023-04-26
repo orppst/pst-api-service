@@ -20,7 +20,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observatories")
-@Tag(name = "proposal-tool-observatories")
+@Tag(name = "observatories")
 public class ObservatoryResource extends ObjectResourceBase {
 
     @GET

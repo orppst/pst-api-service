@@ -16,12 +16,11 @@ import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 @Path("proposalCycles")
-@Tag(name="The proposalCycles")
+@Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;

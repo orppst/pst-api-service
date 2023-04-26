@@ -15,7 +15,7 @@ import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("organizations")
-@Tag(name = "proposal-tool-organizations")
+@Tag(name = "organizations")
 public class OrganizationResource extends ObjectResourceBase {
 
     @GET
