@@ -8,11 +8,11 @@ import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
+import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 
 @Path("proposals/{proposalCode}/investigators")
@@ -20,14 +20,19 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class InvestigatorResource extends ObjectResourceBase {
 
-    private Investigator findInvestigator(List<Investigator> investigators, Long id, Long proposalCode) {
+    private Investigator findInvestigatorFromList(List<Investigator> investigators, long id) {
         return investigators
-                .stream().filter(o -> id.equals(o.getId())).findAny().orElseThrow(()->
-                        new WebApplicationException(
-                                String.format(NON_ASSOCIATE_ID, "Investigator", id, "ObservingProposal", proposalCode),
-                                422
-                        )
-                );
+                .stream().filter(o -> Long.valueOf(id).equals(o.getId())).findAny().orElse(null);
+    }
+
+    private Investigator findInvestigatorByQuery(long proposalCode, long id) {
+        TypedQuery<Investigator> q = em.createQuery(
+                "Select i From ObservingProposal p join p.investigators i where p._id = :pid and  i._id = :iid",
+                Investigator.class
+        );
+        q.setParameter("pid", proposalCode);
+        q.setParameter("iid", id);
+        return q.getSingleResult();
     }
 
     @GET
@@ -36,80 +41,62 @@ public class InvestigatorResource extends ObjectResourceBase {
                                                    @RestQuery String fullName)
             throws WebApplicationException
     {
-        //Would this be better expressed as a query string?
-        List<Investigator> investigators = super.findObject(ObservingProposal.class, proposalCode)
-                .getInvestigators();
-
-        List<ObjectIdentifier> response = new ArrayList<>();
         if (fullName == null) {
-
-            for (Investigator i : investigators) {
-                response.add(new ObjectIdentifier(i.getId(), i.getPerson().getFullName()));
-            }
-
+            return super.getObjects(
+                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' ORDER BY p.fullName"
+            );
         } else {
-
-            //search the list of Investigators for the queried personName
-            Investigator investigator = investigators
-                    .stream().filter(o -> fullName.equals(o.getPerson()
-                            .getFullName())).findAny()
-                    .orElseThrow(() -> new WebApplicationException(
-                            String.format(NON_ASSOCIATE_NAME, "Investigator",
-                                    fullName, "ObservingProposal", proposalCode), 404
-                    ));
-
-            //return value is a list of ObjectIdentifiers with one element
-            response.add(new ObjectIdentifier(investigator.getId(), investigator.getPerson().getFullName()));
+            return super.getObjects(
+                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' and p.fullName like '"+fullName+"' ORDER BY p.fullName"
+            );
         }
-        return response;
     }
 
     @GET
     @Path("/{investigatorId}")
     @Operation(summary = "get the Investigator specified by the 'id' associated with the given ObservingProposal")
-    public Investigator getInvestigator(@PathParam("proposalCode") Long proposalCode, @PathParam("investigatorId") Long id)
+    public Investigator getInvestigator(@PathParam("proposalCode") Long proposalCode,
+                                        @PathParam("investigatorId") Long id)
             throws WebApplicationException
     {
-        return findInvestigator(
-                super.findObject(ObservingProposal.class, proposalCode).getInvestigators(), id, proposalCode
-        );
+        return findInvestigatorByQuery(proposalCode, id);
     }
 
 
-    @PUT
-    @Operation(summary = "add an Investigator, using an existing Person, to the ObservationProposal specified")
+    @POST
+    @Operation(summary = "add a new Investigator, using an existing Person, to the ObservationProposal specified")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addPersonAsInvestigator(@PathParam("proposalCode") long proposalCode,
+    public Investigator addPersonAsInvestigator(@PathParam("proposalCode") long proposalCode,
                                             Investigator investigator)
             throws WebApplicationException
     {
-        if (investigator.getPerson().getId() == 0) {
-            throw new WebApplicationException(
-                    "Please create a new person at 'proposals/people' before trying to add them as an Investigator",
-                    400
-            );
-        }
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        proposal.addToInvestigators(investigator);
-
-        return super.mergeObject(proposal); //merge as we have a "new" Investigator to persist
+        return super.addNewChildObject(proposal, investigator, proposal::addToInvestigators);
     }
 
     @DELETE
     @Path("/{investigatorId}")
     @Operation(summary = "remove the Investigator specified by 'id' from the ObservingProposal identified by 'proposalCode'")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response removeInvestigator(@PathParam("proposalCode") Long proposalCode, @PathParam("investigatorId") Long id)
+    public Response removeInvestigator(@PathParam("proposalCode") Long proposalCode,
+                                       @PathParam("investigatorId") Long id)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
 
-        Investigator investigator = findInvestigator(observingProposal.getInvestigators(), id, proposalCode);
+        Investigator investigator = findInvestigatorFromList(observingProposal.getInvestigators(), id);
+
+        if (investigator == null) {
+            throw new WebApplicationException(
+                    String.format(NON_ASSOCIATE_ID, "Investigator", id, "ObservingProposal", proposalCode),
+                    422
+            );
+        }
 
         observingProposal.removeFromInvestigators(investigator);
 
-        return responseWrapper(observingProposal, 201);
+        return super.emptyResponse204();
     }
 
 
@@ -123,11 +110,9 @@ public class InvestigatorResource extends ObjectResourceBase {
                                            InvestigatorKind replacementKind)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-
-        findInvestigator(observingProposal.getInvestigators(), id, proposalCode).setType(replacementKind);
-
-        return super.responseWrapper(observingProposal, 201);
+        Investigator investigator = findInvestigatorByQuery(proposalCode, id);
+        investigator.setType(replacementKind);
+        return super.responseWrapper(investigator, 201);
     }
 
     @PUT
@@ -140,10 +125,9 @@ public class InvestigatorResource extends ObjectResourceBase {
                                              Boolean replacementForPhD)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        Investigator investigator = findInvestigatorByQuery(proposalCode, id);
+        investigator.setForPhD(replacementForPhD);
 
-        findInvestigator(observingProposal.getInvestigators(), id, proposalCode).setForPhD(replacementForPhD);
-
-        return super.responseWrapper(observingProposal, 201);
+        return super.responseWrapper(investigator, 201);
     }
 }

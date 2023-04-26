@@ -91,6 +91,11 @@ abstract public class ObjectResourceBase {
         return Response.ok(writeAsJsonString(object)).status(statusCode).build();
     }
 
+    protected Response emptyResponse204() {
+        return Response.ok().status(204).build();
+    }
+
+
     protected <T> Response persistObject(T object)
             throws WebApplicationException
     {
@@ -108,7 +113,7 @@ abstract public class ObjectResourceBase {
     {
         T object = findObject(type, id);
         em.remove(object);
-        return Response.ok().status(204).build();
+        return emptyResponse204();
     }
 
     protected <T> Response mergeObject(T object)
