@@ -71,7 +71,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Path("{id}/name")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateName(@PathParam("id") Long id, String replacementName )
+    public Response updateObservatoryName(@PathParam("id") Long id, String replacementName )
             throws WebApplicationException
     {
         Observatory observatory = super.findObject(Observatory.class, id);
@@ -101,7 +101,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Path("{id}/ivoId")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateIvoId(@PathParam("id") Long id, String replacementIvoId )
+    public Response updateObservatoryIvoId(@PathParam("id") Long id, String replacementIvoId )
             throws WebApplicationException
     {
         Observatory observatory = super.findObject(Observatory.class, id);
@@ -116,7 +116,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Path("{id}/wikiId")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateWikiId(@PathParam("id") Long id, String replacementWikiId )
+    public Response updateObservatoryWikiId(@PathParam("id") Long id, String replacementWikiId )
             throws WebApplicationException
     {
         Observatory observatory = super.findObject(Observatory.class, id);

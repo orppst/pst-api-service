@@ -58,7 +58,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @Consumes(MediaType.TEXT_PLAIN)
     @Operation(summary = "update an Organization's name")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateName(@PathParam("id") Long id, String replacementName)
+    public Response updateOrganisationName(@PathParam("id") Long id, String replacementName)
         throws WebApplicationException
     {
         Organization organization = super.findObject(Organization.class, id);
@@ -73,7 +73,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @Consumes(MediaType.TEXT_PLAIN)
     @Operation(summary = "update an Organization's address")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateAddress(@PathParam("id") Long id, String replacementAddress)
+    public Response updateOrganisationAddress(@PathParam("id") Long id, String replacementAddress)
             throws WebApplicationException
     {
         Organization organization = super.findObject(Organization.class, id);
@@ -88,7 +88,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @Consumes(MediaType.TEXT_PLAIN)
     @Operation(summary = "update an Organization's ivoId")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateIvoId(@PathParam("id") Long id, String replacementIvoId)
+    public Response updateOrganisationIvoId(@PathParam("id") Long id, String replacementIvoId)
             throws WebApplicationException
     {
         Organization organization = super.findObject(Organization.class, id);
@@ -103,7 +103,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @Consumes(MediaType.TEXT_PLAIN)
     @Operation(summary = "update an Organization's wikiId")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateWikiId(@PathParam("id") Long id, String replacementWikiId)
+    public Response updateOrganisationWikiId(@PathParam("id") Long id, String replacementWikiId)
             throws WebApplicationException
     {
         Organization organization = super.findObject(Organization.class, id);

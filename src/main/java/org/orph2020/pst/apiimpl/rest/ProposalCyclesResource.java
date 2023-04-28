@@ -33,7 +33,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "List the ProposalCycles")
-    public List<ObjectIdentifier> getProposals(@RestQuery boolean includeClosed) {
+    public List<ObjectIdentifier> getProposalCycless(@RestQuery boolean includeClosed) {
         if(includeClosed)
             return super.getObjects("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
         else
@@ -127,7 +127,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/proposalsInReview/{reviewCode}/reviews")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response submitProposalForReview(@PathParam("cycleCode") long cycleId, @PathParam("reviewCode") long revId, ProposalReview revIn)
+    public Response submitReviewOfProposal(@PathParam("cycleCode") long cycleId, @PathParam("reviewCode") long revId, ProposalReview revIn)
     {
         ReviewedProposal revprop = findReviewedProposal(cycleId,revId);
         revIn.setReviewDate(new Date());

@@ -66,7 +66,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @Operation(summary = "update the name of the Telescope specified by 'id'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateName(@PathParam("id") Long id, String replacementName)
+    public Response updateTelescopeName(@PathParam("id") Long id, String replacementName)
         throws WebApplicationException
     {
         Telescope telescope = super.findObject(Telescope.class, id);
@@ -81,7 +81,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @Operation(summary = "update the wikiId of the Telescope specified by 'id'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateWikiId(@PathParam("id") Long id, String replacementWikiId)
+    public Response updateTelescopeWikiId(@PathParam("id") Long id, String replacementWikiId)
             throws WebApplicationException
     {
         Telescope telescope = super.findObject(Telescope.class, id);
