@@ -56,16 +56,19 @@ abstract public class ObjectResourceBase {
         return object;
     }
 
+
     protected <T> T queryObject(TypedQuery<T> q)
           throws WebApplicationException
     {
-        T object = q.getSingleResult();
-        if (object == null) {
+        try {
+            T object = q.getSingleResult(); //either returns a result or throws, does not return null
+
+            return object;
+
+        } catch (NoResultException e) { //make the exception friendlier
             String ERR_NOT_FOUND = "%s does not find object";
             throw new WebApplicationException(String.format(ERR_NOT_FOUND, q.toString()), 404);
         }
-
-        return object;
     }
 
     protected XmlIdManagement findObjectInList(Long id, List<? extends XmlIdManagement> objects) {
@@ -92,7 +95,7 @@ abstract public class ObjectResourceBase {
     }
 
     protected Response emptyResponse204() {
-        return Response.ok().status(204).build();
+        return Response.noContent().build();
     }
 
 
