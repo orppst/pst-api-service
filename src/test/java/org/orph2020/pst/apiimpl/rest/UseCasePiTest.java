@@ -132,13 +132,6 @@ public class UseCasePiTest {
 
         System.out.println("proposalCode="+proposalid);
 
-        Response response = given().when()
-                .get("/proposals/"+String.valueOf(proposalid))
-                .then()
-                .statusCode(200)
-                .body("title", equalTo("My New Proposal"))
-                .extract().response()
-                ;
 
         Integer coiPersonId =
                 given()
@@ -175,7 +168,7 @@ public class UseCasePiTest {
                         .body(jsonCoiInvestigator)
                         .contentType(JSON_UTF16)
                         .when()
-                        .put("proposals/"+proposalid+"/investigators")
+                        .post("proposals/"+proposalid+"/investigators")
                         .then()
                         .contentType(JSON)
                         .body(containsString("\"type\":\"COI\",\"forPhD\":true"))

@@ -117,7 +117,7 @@ public class ProposalResourceTest {
                 .when()
                 .put("proposals/"+proposalId+"/justifications/technical")
                 .then()
-                .statusCode(201)
+                .statusCode(200)
                 .body(
                         containsString(textToCheck)
                 )
