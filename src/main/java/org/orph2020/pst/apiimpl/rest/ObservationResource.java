@@ -19,9 +19,11 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class ObservationResource extends ObjectResourceBase {
 
-    private static final String targetsRoot = "/targets";
-    private static final String fieldsRoot = "/fields";
-    private static final String techGoalsRoot = "/technicalGoals";
+    private static final String targetsRoot = "targets";
+    private static final String fieldsRoot = "fields";
+    private static final String techGoalsRoot = "technicalGoals";
+
+    private static final String observationsRoot = "observations";
 
 
     private Observation findObservation(List<Observation> observations, Long id, Long proposalCode)
@@ -35,7 +37,7 @@ public class ObservationResource extends ObjectResourceBase {
 
 
     @GET
-    @Path("observations")
+    @Path(observationsRoot)
     @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a fieldName as a query to get that particular Observation's identifier")
     public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
                                                   @RestQuery String fieldName)
@@ -203,6 +205,7 @@ public class ObservationResource extends ObjectResourceBase {
     @POST
     @Operation(summary = "add a new Observation to the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Path(observationsRoot)
     @ResponseStatus(201)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Observation addNewObservation(@PathParam("proposalCode") Long proposalCode,
@@ -215,6 +218,7 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Operation(summary = "add an existing Observation to the given ObservingProposal")
+    @Path(observationsRoot)
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addObservation(@PathParam("proposalCode") Long proposalCode, Long observationId)
@@ -238,7 +242,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @DELETE
-    @Path("/{observationId}")
+    @Path(observationsRoot+"/{observationId}")
     @Operation(summary = "remove the Observation specified by 'observationId' from the given ObservingProposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeObservation(@PathParam("proposalCode") Long proposalCode, @PathParam("observationId") Long id)
@@ -254,7 +258,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @PUT
-    @Path("/{observationId}/target")
+    @Path(observationsRoot+"/{observationId}/target")
     @Operation(summary = "replace the Target of the Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -271,7 +275,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @PUT
-    @Path("/{observationId}/field")
+    @Path(observationsRoot + "/{observationId}/field")
     @Operation(summary = "replace the Field of the given Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -288,7 +292,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @PUT
-    @Path("/{observationId}/technicalGoal")
+    @Path(observationsRoot +"/{observationId}/technicalGoal")
     @Operation(summary = "replace the TechnicalGoal of the given Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -305,7 +309,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path("/{observationId}/constraints")
+    @Path(observationsRoot +"/{observationId}/constraints")
     @Operation(summary = "get the list of Constraints for the given Observation in the given ObservingProposal")
     public List<Constraint> getConstraints(@PathParam("proposalCode") Long proposalCode,
                                            @PathParam("observationId") Long id)
@@ -317,7 +321,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @POST
-    @Path("/{observationId}/constraints")
+    @Path(observationsRoot +"/{observationId}/constraints")
     @Operation(summary = "add a new Constraint to the Observation specified by 'id' in the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -334,7 +338,7 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
     @DELETE
-    @Path("/{observationId}/constraints/{constraintId}")
+    @Path(observationsRoot +"/{observationId}/constraints/{constraintId}")
     @Operation(summary = "remove the specified Constraint from the Observation of the given ObservationProposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeConstraint(@PathParam("proposalCode") Long proposalCode, @PathParam("observationId") Long id,
