@@ -11,6 +11,7 @@ import org.ivoa.dm.ivoa.RealQuantity;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
+import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
@@ -57,7 +58,15 @@ public class TelescopeResource extends ObjectResourceBase{
                                   @PathParam("telescopeId") Long telescopeId)
             throws WebApplicationException
     {
-        return findTelescopeByQuery(observatoryId, telescopeId);
+        try {
+            Telescope telescope = findTelescopeByQuery(observatoryId, telescopeId);
+            return telescope;
+        } catch (NoResultException e) {
+            String ERR_NOT_FOUND = "%s with id: %d not found";
+            throw new WebApplicationException(
+                    String.format(ERR_NOT_FOUND, "Telescope", telescopeId), 404
+            );
+        }
     }
 
     @POST

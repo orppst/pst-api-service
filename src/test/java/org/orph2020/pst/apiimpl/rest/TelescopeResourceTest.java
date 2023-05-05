@@ -1,6 +1,8 @@
 package org.orph2020.pst.apiimpl.rest;
 
+
 import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.core.MediaType;
@@ -11,11 +13,29 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTest
 public class TelescopeResourceTest {
 
+    private Integer observatoryId;
+
+    @BeforeEach
+    void setup() {
+
+        observatoryId = given()
+                .when()
+                .param("name", "Jodrell Bank")
+                .get("observatories")
+                .then()
+                .statusCode(200)
+                .body(
+                        "$.size()", equalTo(1)
+                )
+                .extract().jsonPath().getInt("[0].dbid");
+    }
+
+
     @Test
     void testGetTelescopes() {
         given()
                 .when()
-                .get("telescopes")
+                .get("observatories/" + observatoryId + "/telescopes")
                 .then()
                 .statusCode(200)
                 .body(
@@ -26,11 +46,13 @@ public class TelescopeResourceTest {
     @Test
     void testGetTelescope() {
 
+        //here the test relies on observatoryId being that associated with Jodrell Bank
+
         Integer telescopeId =
                 given()
                         .when()
                         .param("name", "Lovell")
-                        .get("telescopes")
+                        .get("observatories/" + observatoryId + "/telescopes")
                         .then()
                         .statusCode(200)
                         .body(
@@ -40,16 +62,17 @@ public class TelescopeResourceTest {
 
         given()
                 .when()
-                .get("telescopes/"+telescopeId)
+                .get("observatories/" + observatoryId + "/telescopes/" + telescopeId)
                 .then()
                 .statusCode(200)
                 .body(
                         "name", equalTo("Lovell")
                 );
 
+        //test an invalid telescopeId
         given()
                 .when()
-                .get("telescopes/0")
+                .get("observatories/" + observatoryId + "/telescopes/0")
                 .then()
                 .statusCode(404)
                 .body(
@@ -64,7 +87,7 @@ public class TelescopeResourceTest {
         Integer telescopeId =
             given()
                     .when()
-                    .get("telescopes")
+                    .get("observatories/" + observatoryId + "/telescopes")
                     .then()
                     .statusCode(200)
                     .body(
@@ -72,14 +95,11 @@ public class TelescopeResourceTest {
                     )
                     .extract().jsonPath().getInt("[0].dbid");
 
-
-
-
         given()
                 .body(replacementName)
                 .header("Content-Type", MediaType.TEXT_PLAIN)
                 .when()
-                .put("telescopes/"+telescopeId+"/name")
+                .put("observatories/" + observatoryId + "/telescopes/" + telescopeId + "/name")
                 .then()
                 .statusCode(201)
                 .body(
@@ -97,7 +117,7 @@ public class TelescopeResourceTest {
         Integer telescopeId =
                 given()
                         .when()
-                        .get("telescopes")
+                        .get("observatories/" + observatoryId + "/telescopes")
                         .then()
                         .statusCode(200)
                         .body(
@@ -109,7 +129,7 @@ public class TelescopeResourceTest {
                 .body(replacementLocationXYZ)
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .put("telescopes/"+telescopeId+"/location/xyz")
+                .put("observatories/" + observatoryId + "/telescopes/" + telescopeId + "/location/xyz")
                 .then()
                 .statusCode(201)
                 .body(
