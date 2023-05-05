@@ -29,18 +29,29 @@ public class ObservationResource extends ObjectResourceBase {
     }
 
 
+    enum ObsType {
+        TargetObservation,
+        CalibrationObservation
+    }
     @GET
-    @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a fieldName as a query to get that particular Observation's identifier")
+    @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a srcName as a query to get that particular Observation's identifier")
     public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
-                                                  @RestQuery String fieldName)
+                                                  @RestQuery String srcName, @RestQuery ObsType type)
             throws WebApplicationException
     {
-        if (fieldName == null) {
-            return super.getObjects("SELECT t._id,f.name FROM ObservingProposal p Inner Join p.observations t Inner Join t.field f WHERE p._id = '"+proposalCode+"' ORDER BY f.name");
+        String tquery="";
+        if(type != null)
+        {
+            tquery = " and Type(o) = "+type.name();
+        }
+        if (srcName == null) {
+            return super.getObjects("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" ORDER BY t.sourceName");
         } else {
-            return super.getObjects("SELECT t._id,f.name FROM ObservingProposal p Inner Join p.observations t Inner Join t.field f WHERE p._id = '"+proposalCode+"' and f.name like '"+fieldName+"' ORDER BY f.name");
+            return super.getObjects("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" and t.sourceName like '"+srcName+"' ORDER BY t.sourceName");
         }
     }
+
+
 
     @POST
     @Operation(summary = "add a new Observation to the given ObservingProposal")

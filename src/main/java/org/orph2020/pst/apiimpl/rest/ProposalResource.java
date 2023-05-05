@@ -251,23 +251,6 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     //********** Observation References ************************************
-    @GET
-    @Path("{proposalCode}/targetObservations")
-    @Operation(summary = "get the ObjectIdentifiers for the TargetObservations associated with the given ObservingProposal")
-    public List<ObjectIdentifier> getTargetObservations(@PathParam("proposalCode") Long proposalCode)
-    {
-
-        return super.getObjects("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join o.target t WHERE p._id = '"+proposalCode+"' AND type(o) = 'proposal:TargetObservation' ORDER BY t.sourceName");
-
-    }
-
-    @GET
-    @Path("{proposalCode}/calibrationObservations")
-    @Operation(summary = "get the ObjectIdentifiers for the CalibrationObservations associated with the given ObservingProposal")
-    public List<ObjectIdentifier> getCalibrationObservations(@PathParam("proposalCode") Long proposalCode)
-    {
-        return super.getObjects("SELECT o._id,t.target.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join o.target t WHERE p._id = '"+proposalCode+"' AND type(o) = 'proposal:CalibrationObservation' ORDER BY t.sourceName");
-    }
 
     @GET
     @Path(targetsRoot)
