@@ -14,7 +14,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
-@Path("proposals/{proposalCode}/observations")
+@Path("proposals/{proposalCode}/")
 @Tag(name = "proposals-observations")
 @Produces(MediaType.APPLICATION_JSON)
 public class ObservationResource extends ObjectResourceBase {
@@ -35,6 +35,7 @@ public class ObservationResource extends ObjectResourceBase {
 
 
     @GET
+    @Path("observations")
     @Operation(summary = "get the list of ObjectIdentifiers for the Observations associated with the given ObservingProposal, optionally provide a fieldName as a query to get that particular Observation's identifier")
     public List<ObjectIdentifier> getObservations(@PathParam("proposalCode") Long proposalCode,
                                                   @RestQuery String fieldName)
