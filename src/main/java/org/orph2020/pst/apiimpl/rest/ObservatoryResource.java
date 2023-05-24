@@ -30,9 +30,9 @@ public class ObservatoryResource extends ObjectResourceBase {
     )
     public List<ObjectIdentifier> getObservatories(@RestQuery String name){
         if (name == null) {
-            return super.getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
+            return getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
         } else {
-            return super.getObjects("SELECT o._id,o.name FROM Observatory o WHERE o.name like '" +name+ "'ORDER BY o.name");
+            return getObjects("SELECT o._id,o.name FROM Observatory o WHERE o.name like '" +name+ "'ORDER BY o.name");
         }
     }
 
@@ -42,7 +42,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Observatory getObservatory(@PathParam("id") Long id)
             throws WebApplicationException
     {
-        return super.findObject(Observatory.class, id);
+        return findObject(Observatory.class, id);
     }
 
     @POST
@@ -52,7 +52,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response createObservatory(Observatory observatory)
             throws WebApplicationException
     {
-        return super.persistObject(observatory);
+        return persistObject(observatory);
     }
 
 
@@ -63,7 +63,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response deleteObservatory(@PathParam("id") Long id)
             throws WebApplicationException
     {
-        return super.removeObject(Observatory.class, id);
+        return removeObject(Observatory.class, id);
     }
 
     @PUT
@@ -74,11 +74,11 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response updateObservatoryName(@PathParam("id") Long id, String replacementName )
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
         observatory.setName(replacementName);
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -89,11 +89,11 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response updateAddress(@PathParam("id") Long id, String replacementAddress )
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
         observatory.setAddress(replacementAddress);
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -104,11 +104,11 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response updateObservatoryIvoId(@PathParam("id") Long id, String replacementIvoId )
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
         observatory.setIvoid(new Ivorn(replacementIvoId));
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
     @PUT
@@ -119,11 +119,11 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response updateObservatoryWikiId(@PathParam("id") Long id, String replacementWikiId )
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
         observatory.setWikiId(new WikiDataId(replacementWikiId));
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
 
@@ -135,7 +135,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     public List<Backend> getObservatoryBackends(@PathParam("id") Long id)
         throws WebApplicationException
     {
-        return super.findObject(Observatory.class, id).getBackends();
+        return findObject(Observatory.class, id).getBackends();
     }
 
     @GET
@@ -145,7 +145,7 @@ public class ObservatoryResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         Backend backend =
-                (Backend) findObjectInList(subId, super.findObject(Observatory.class, id).getBackends());
+                (Backend) findObjectInList(subId, findObject(Observatory.class, id).getBackends());
         if (backend == null) {
             throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
                     422);
@@ -162,13 +162,13 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response addBackend(@PathParam("id") Long id, Long backendId)
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
-        Backend backend = super.findObject(Backend.class, backendId);
+        Backend backend = findObject(Backend.class, backendId);
 
         observatory.addToBackends(backend);
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
     @POST
@@ -176,42 +176,41 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Path("{id}/backend")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createAndAddBackend(@PathParam("id") Long observatoryId, Backend backend)
+    public Backend createAndAddBackend(@PathParam("id") Long observatoryId, Backend backend)
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         for (Backend b : observatory.getBackends()) {
             if (b.equals(backend)) {
                 throw new WebApplicationException("Backend already added to Observatory", 400);
             }
         }
-
-        observatory.addToBackends(backend);
-
-        return super.mergeObject(observatory);
+        
+        return addNewChildObject(observatory, backend, observatory::addToBackends);
     }
 
     @PUT
-    @Path("{id}/backend/{subId}/name")
+    @Path("{observatoryId}/backend/{backendId}/name")
     @Operation(summary = "replace the name of the Backend specified by the 'subId'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceBackendName(@PathParam("id") Long id, @PathParam("subId") Long subId,
+    public Response replaceBackendName(@PathParam("observatoryId") Long id, @PathParam("backendId") Long subId,
                                           String replacementName) throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
-        Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
+        Backend backend = (Backend) findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
+            throw new WebApplicationException(
+                    String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
                     422);
         }
 
         backend.setName(replacementName);
 
-        return super.mergeObject(observatory);
+        return mergeObject(observatory);
     }
 
     @PUT
@@ -222,9 +221,9 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response updateBackendParallel(@PathParam("id") Long id, @PathParam("subId") Long subId,
                                        Boolean updateParallel) throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
-        Backend backend = (Backend) super.findObjectInList(subId, observatory.getBackends());
+        Backend backend = (Backend) findObjectInList(subId, observatory.getBackends());
 
         if (backend == null) {
             throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
@@ -233,7 +232,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         backend.setParallel(updateParallel);
 
-        return super.mergeObject(observatory);
+        return mergeObject(observatory);
     }
 
     //TELESCOPE ARRAY *****************************************************************************
@@ -246,13 +245,13 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response addArray(@PathParam("id") Long id, Long telescopeArrayId )
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, id);
+        Observatory observatory = findObject(Observatory.class, id);
 
-        TelescopeArray array = super.findObject(TelescopeArray.class, telescopeArrayId);
+        TelescopeArray array = findObject(TelescopeArray.class, telescopeArrayId);
 
         observatory.addToArrays(array);
 
-        return super.responseWrapper(observatory, 201);
+        return responseWrapper(observatory, 201);
     }
 
     @POST
@@ -263,7 +262,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     public Response createAndAddArray(@PathParam("id") Long observatoryId, TelescopeArray telescopeArray)
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         for (TelescopeArray t : observatory.getArrays()) {
             if (t.equals(telescopeArray)) {
@@ -273,7 +272,7 @@ public class ObservatoryResource extends ObjectResourceBase {
 
         observatory.addToArrays(telescopeArray);
 
-        return super.mergeObject(observatory);
+        return mergeObject(observatory);
     }
 
 }

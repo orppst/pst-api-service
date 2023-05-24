@@ -105,21 +105,22 @@ public class ProposalResourceTest {
     }
 
     @Test
-    void testReplaceJustification() {
+    void testReplaceJustification() throws JsonProcessingException {
         //replace the technical justification text
 
-        String textToCheck = "\"text\":\"replacement justification\",\"format\":\"LATEX\"";
-        String replacementText = "{" + textToCheck + "}";
+
+        Justification justification = new Justification("replacement justification",
+                TextFormats.LATEX);
 
         given()
-                .body(replacementText)
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(justification))
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .put("proposals/"+proposalId+"/justifications/technical")
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString(textToCheck)
+                        containsString("replacement justification")
                 )
         ;
 

@@ -45,9 +45,9 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "Get all ObservingProposals identifiers, optionally get the ObservingProposal identifier for the named proposal")
     public List<ObjectIdentifier> getProposals(@RestQuery String title) {
         if (title == null) {
-            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o  WHERE o.submitted = false or o.submitted = null ORDER BY o.title");
+            return getObjects("SELECT o._id,o.title FROM ObservingProposal o  WHERE o.submitted = false or o.submitted = null ORDER BY o.title");
         } else {
-            return super.getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE  (o.submitted = false or o.submitted = null) and o.title like '"+title+"' ORDER BY o.title");
+            return getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE  (o.submitted = false or o.submitted = null) and o.title like '"+title+"' ORDER BY o.title");
         }
     }
 
@@ -62,7 +62,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
-        return super.findObject(ObservingProposal.class, proposalCode);
+        return findObject(ObservingProposal.class, proposalCode);
     }
 
     @POST
@@ -72,7 +72,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response createObservingProposal(ObservingProposal op)
             throws WebApplicationException
     {
-        return super.persistObject(op);
+        return persistObject(op);
     }
 
     @DELETE
@@ -82,7 +82,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response deleteObservingProposal(@PathParam("proposalCode") long code)
             throws WebApplicationException
     {
-        return super.removeObject(ObservingProposal.class, code);
+        return removeObject(ObservingProposal.class, code);
     }
 
 
@@ -260,9 +260,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (sourceName == null) {
-            return super.getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
+            return getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
         } else {
-            return super.getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
+            return getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
         }
 
     }
@@ -275,8 +275,8 @@ public class ProposalResource extends ObjectResourceBase {
     @Transactional
     public Target addNewTarget(@PathParam("proposalCode") Long proposalCode, Target target)
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(observingProposal,target, observingProposal::addToTargets);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        return addNewChildObject(observingProposal,target, observingProposal::addToTargets);
     }
 
 
@@ -287,7 +287,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response removeTarget(@PathParam("proposalCode") Long proposalCode, @PathParam("targetId") Long targetId)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
         Target target = observingProposal.getTargets().stream().filter(o -> targetId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
@@ -307,9 +307,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (fieldName == null) {
-            return super.getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
+            return getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
         } else {
-            return super.getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
+            return getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
         }
 
     }
@@ -323,7 +323,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Field addNewField(@PathParam("proposalCode") Long proposalCode,
                              Field field)
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         return addNewChildObject(observingProposal, field, observingProposal::addToFields);
     }
 
@@ -334,7 +334,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response removeField(@PathParam("proposalCode") Long proposalCode, @PathParam("fieldId") Long fieldId)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
         Field field = observingProposal.getFields().stream().filter(o -> fieldId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
@@ -364,8 +364,8 @@ public class ProposalResource extends ObjectResourceBase {
     public TechnicalGoal addNewTechGoal(@PathParam("proposalCode") Long proposalCode, TechnicalGoal technicalGoal)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(observingProposal,technicalGoal, observingProposal::addToTechnicalGoals);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        return addNewChildObject(observingProposal,technicalGoal, observingProposal::addToTechnicalGoals);
     }
 
 
@@ -376,7 +376,7 @@ public class ProposalResource extends ObjectResourceBase {
     public Response removeTechGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("techGoalId") Long techGoalId)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
         TechnicalGoal target = observingProposal.getTechnicalGoals().stream().filter(o -> techGoalId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
