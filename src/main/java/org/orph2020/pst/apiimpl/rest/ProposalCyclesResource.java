@@ -33,7 +33,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "List the ProposalCycles")
-    public List<ObjectIdentifier> getProposalCycless(@RestQuery boolean includeClosed) {
+    public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed) {
         if(includeClosed)
             return super.getObjects("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
         else
@@ -60,9 +60,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the Submitted Proposals")
     public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
         if(title == null)
-            return super.getObjects("SELECT o._id,o.proposal.title FROM SubmittedProposal o ORDER BY o.proposal.title"); //FIXME this returns all of the submitted proposals - should only be for the particular cycle
+            return super.getObjects("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
         else
-            return super.getObjects("SELECT o._id,o.proposal.title FROM SubmittedProposal o Where o.proposal.title like '"+title+"' ORDER BY o.title");
+            return super.getObjects("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
     }
 
 
@@ -82,6 +82,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.addToSubmittedProposals(submittedProposal);
         return mergeObject(cycle);
     }
+
     @GET
     @Path("{cycleCode}/proposalsInReview")
     @Operation(summary = "List the Proposals being reviewed")
@@ -101,7 +102,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public Response submitProposalForReview(@PathParam("cycleCode") long cycleId, ReviewedProposal revIn)
     {
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
-        revIn.setSuccessful(false); // newly added so cannot be sucesssful yet.
+        revIn.setSuccessful(false); // newly added so cannot be successful yet.
         cycle.addToReviewedProposals(revIn);
         return mergeObject(cycle);
     }
