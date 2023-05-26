@@ -58,19 +58,8 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "Get all ObservingProposals identifiers, optionally get the ObservingProposal identifier for the named proposal")
-    public List<ObjectIdentifier> getProposals(@RestQuery String title) {
-        if (title == null) {
-            return getObjects("SELECT o._id,o.title FROM ObservingProposal o  WHERE o.submitted = false or o.submitted = null ORDER BY o.title");
-        } else {
-            return getObjects("SELECT o._id,o.title FROM ObservingProposal o WHERE  (o.submitted = false or o.submitted = null) and o.title like '"+title+"' ORDER BY o.title");
-        }
-    }
-
-    @GET
-    @Path("synopses")
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name to see only synopses related to that person")
-    public List<ProposalSynopsis> getProposalSynopses(@RestQuery String investigatorName) {
+    public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName) {
         //if 'ProposalSynopsis' is modified we should check the queries below for suitability
         if (investigatorName == null) {
             return getSynopses("select o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o order by o.title");
