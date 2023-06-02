@@ -26,16 +26,16 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "get People from the database, optionally provide a name to find all the people with that name")
    public List<ObjectIdentifier> getPeople(@RestQuery String name) {
       if(name == null)
-         return super.getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
+         return getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
       else
-         return super.getObjects("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
+         return getObjects("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
    }
 
    @GET
    @Path("{id}")
    @Operation(summary = "get the specified Person")
    public Person getPerson(@PathParam("id") Long id) {
-      return super.findObject(Person.class, id);
+      return findObject(Person.class, id);
    }
 
    @POST
@@ -45,7 +45,7 @@ public class PersonResource extends ObjectResourceBase {
    public Response createPerson(Person person)
          throws WebApplicationException
    {
-      return super.persistObject(person);
+      return persistObject(person);
    }
 
    @DELETE
@@ -55,7 +55,7 @@ public class PersonResource extends ObjectResourceBase {
    public Response deletePerson(@PathParam("id") Long id)
            throws WebApplicationException
    {
-      return super.removeObject(Person.class, id);
+      return removeObject(Person.class, id);
    }
 
    @PUT
@@ -66,7 +66,7 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateFullName(@PathParam("id") long personId, String replacementFullName)
       throws WebApplicationException
    {
-      Person person = super.findObject(Person.class, personId);
+      Person person = findObject(Person.class, personId);
 
       person.setFullName(replacementFullName);
 
@@ -81,7 +81,7 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateEMail(@PathParam("id") long personId, String replacementEMail)
            throws WebApplicationException
    {
-      Person person = super.findObject(Person.class, personId);
+      Person person = findObject(Person.class, personId);
 
       person.setEMail(replacementEMail);
 
@@ -96,7 +96,7 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateOrcidId(@PathParam("id") long personId, String replacementOrcidId)
            throws WebApplicationException
    {
-      Person person = super.findObject(Person.class, personId);
+      Person person = findObject(Person.class, personId);
 
       person.setOrcidId(new StringIdentifier(replacementOrcidId));
 

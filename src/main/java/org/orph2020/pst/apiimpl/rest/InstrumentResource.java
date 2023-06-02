@@ -27,7 +27,7 @@ import java.util.List;
 public class InstrumentResource extends ObjectResourceBase {
 
     private Instrument findInstrumentInList(List<Instrument> instruments, long instrumentId ) {
-        return (Instrument) super.findObjectInList(instrumentId, instruments);
+        return (Instrument) findObjectInList(instrumentId, instruments);
     }
 
     private Instrument findInstrumentByQuery(long observatoryId, long instrumentId) {
@@ -46,9 +46,9 @@ public class InstrumentResource extends ObjectResourceBase {
                                                             @RestQuery String name)
     {
         if (name == null) {
-            return super.getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' ORDER BY i.name");
+            return getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' ORDER BY i.name");
         } else {
-            return super.getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' and i.name like '"+name+"' ORDER BY i.name");
+            return getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' and i.name like '"+name+"' ORDER BY i.name");
         }
     }
 
@@ -60,13 +60,13 @@ public class InstrumentResource extends ObjectResourceBase {
                                                     @PathParam("instrumentId") Long instrumentId)
         throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         Instrument instrument = findInstrumentByQuery(observatoryId, instrumentId );
 
         observatory.removeFromInstruments(instrument);
 
-        return super.removeObject(Instrument.class, instrumentId);
+        return removeObject(Instrument.class, instrumentId);
     }
 
     @POST
@@ -77,7 +77,7 @@ public class InstrumentResource extends ObjectResourceBase {
                                                         Instrument instrument)
             throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         for (Instrument i : observatory.getInstruments()) {
             //semantically what we want but unsure how 'equals' is implemented
@@ -86,7 +86,7 @@ public class InstrumentResource extends ObjectResourceBase {
             }
         }
 
-        return super.addNewChildObject(observatory, instrument, observatory::addToInstruments);
+        return addNewChildObject(observatory, instrument, observatory::addToInstruments);
     }
 
     @PUT
@@ -119,7 +119,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
         instrument.setDescription(replacementDescription);
 
-        return super.responseWrapper(instrument, 201);
+        return responseWrapper(instrument, 201);
     }
 
     @PUT
@@ -135,7 +135,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
         instrument.setWikiId(new WikiDataId(replacementWikiId));
 
-        return super.responseWrapper(instrument, 201);
+        return responseWrapper(instrument, 201);
     }
 
     @PUT
@@ -171,7 +171,7 @@ public class InstrumentResource extends ObjectResourceBase {
             throw new WebApplicationException(e.getMessage(), 400);
         }
 
-        return super.responseWrapper(instrument, 201);
+        return responseWrapper(instrument, 201);
     }
 
     @PUT
@@ -188,6 +188,6 @@ public class InstrumentResource extends ObjectResourceBase {
 
         instrument.setFrequencyCoverage(replacementFrequencyCoverage);
 
-        return super.responseWrapper(instrument, 201);
+        return responseWrapper(instrument, 201);
     }
 }

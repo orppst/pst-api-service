@@ -25,7 +25,7 @@ import java.util.List;
 public class TelescopeResource extends ObjectResourceBase{
 
     private Telescope findTelescopeInList(List<Telescope> telescopes, long telescopeId) {
-        return (Telescope) super.findObjectInList(telescopeId, telescopes);
+        return (Telescope) findObjectInList(telescopeId, telescopes);
     }
 
     private Telescope findTelescopeByQuery(long observatoryId, long telescopeId) {
@@ -44,9 +44,9 @@ public class TelescopeResource extends ObjectResourceBase{
                                                             @RestQuery String name)
     {
         if (name == null) {
-            return super.getObjects("SELECT t._id,t.name FROM Observatory o Inner Join o.telescopes t WHERE o._id = '"+observatoryId+"' ORDER BY t.name");
+            return getObjects("SELECT t._id,t.name FROM Observatory o Inner Join o.telescopes t WHERE o._id = '"+observatoryId+"' ORDER BY t.name");
         } else {
-            return super.getObjects("SELECT t._id,t.name FROM Observatory o Inner Join o.telescopes t WHERE o._id = '"+observatoryId+"' and t.name like '"+name+"' ORDER BY t.name");
+            return getObjects("SELECT t._id,t.name FROM Observatory o Inner Join o.telescopes t WHERE o._id = '"+observatoryId+"' and t.name like '"+name+"' ORDER BY t.name");
         }
 
     }
@@ -77,7 +77,7 @@ public class TelescopeResource extends ObjectResourceBase{
                                                        Telescope telescope)
         throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         for (Telescope t : observatory.getTelescopes()) {
             if (t.equals(telescope)) {
@@ -85,7 +85,7 @@ public class TelescopeResource extends ObjectResourceBase{
             }
         }
 
-        return super.addNewChildObject(observatory, telescope, observatory::addToTelescopes);
+        return addNewChildObject(observatory, telescope, observatory::addToTelescopes);
     }
 
 
@@ -97,7 +97,7 @@ public class TelescopeResource extends ObjectResourceBase{
                                     @PathParam("telescopeId") Long telescopeId)
         throws WebApplicationException
     {
-        Observatory observatory = super.findObject(Observatory.class, observatoryId);
+        Observatory observatory = findObject(Observatory.class, observatoryId);
 
         Telescope telescope = findTelescopeInList(observatory.getTelescopes(), telescopeId);
 
@@ -110,7 +110,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         observatory.removeFromTelescopes(telescope);
 
-        return super.removeObject(Telescope.class, telescopeId); //erase Telescope from the database
+        return removeObject(Telescope.class, telescopeId); //erase Telescope from the database
     }
 
     @PUT
@@ -127,7 +127,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.setName(replacementName);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -144,7 +144,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.setWikiId(new WikiDataId(replacementWikiId));
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -161,7 +161,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.setLocation(replacementLocation);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -180,7 +180,7 @@ public class TelescopeResource extends ObjectResourceBase{
         telescope.getLocation().setY(xyz.get(1));
         telescope.getLocation().setZ(xyz.get(2));
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -197,7 +197,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.getLocation().setX(replacementX);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -214,7 +214,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.getLocation().setY(replacementY);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -231,7 +231,7 @@ public class TelescopeResource extends ObjectResourceBase{
 
         telescope.getLocation().setZ(replacementZ);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 
     @PUT
@@ -246,10 +246,10 @@ public class TelescopeResource extends ObjectResourceBase{
     {
         Telescope telescope = findTelescopeByQuery(observatoryId, telescopeId);
 
-        CoordSys coordSys = super.findObject(CoordSys.class, coordinateSystemId);
+        CoordSys coordSys = findObject(CoordSys.class, coordinateSystemId);
 
         telescope.getLocation().setCoordSys(coordSys);
 
-        return super.responseWrapper(telescope, 201);
+        return responseWrapper(telescope, 201);
     }
 }

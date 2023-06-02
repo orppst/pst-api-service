@@ -21,7 +21,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @GET
     @Operation(summary= "get all Organizations stored in the database")
     public List<ObjectIdentifier> getOrganizations() {
-        return super.getObjects("SELECT o._id,o.name FROM Organization o ORDER BY o.name");
+        return getObjects("SELECT o._id,o.name FROM Organization o ORDER BY o.name");
     }
 
     @GET
@@ -30,7 +30,7 @@ public class OrganizationResource extends ObjectResourceBase {
     public Organization getOrganization(@PathParam("id") Long id)
         throws WebApplicationException
     {
-        return super.findObject(Organization.class, id);
+        return findObject(Organization.class, id);
     }
 
     @POST
@@ -40,7 +40,7 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response createOrganization(Organization organization)
         throws WebApplicationException
     {
-        return super.persistObject(organization);
+        return persistObject(organization);
     }
 
     @DELETE
@@ -50,7 +50,7 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response deleteOrganization(@PathParam("id") Long id)
         throws WebApplicationException
     {
-        return super.removeObject(Organization.class, id);
+        return removeObject(Organization.class, id);
     }
 
     @PUT
@@ -61,11 +61,11 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response updateOrganisationName(@PathParam("id") Long id, String replacementName)
         throws WebApplicationException
     {
-        Organization organization = super.findObject(Organization.class, id);
+        Organization organization = findObject(Organization.class, id);
 
         organization.setName(replacementName);
 
-        return super.responseWrapper(organization, 201);
+        return responseWrapper(organization, 201);
     }
 
     @PUT
@@ -76,11 +76,11 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response updateOrganisationAddress(@PathParam("id") Long id, String replacementAddress)
             throws WebApplicationException
     {
-        Organization organization = super.findObject(Organization.class, id);
+        Organization organization = findObject(Organization.class, id);
 
         organization.setAddress(replacementAddress);
 
-        return super.responseWrapper(organization, 201);
+        return responseWrapper(organization, 201);
     }
 
     @PUT
@@ -91,11 +91,11 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response updateOrganisationIvoId(@PathParam("id") Long id, String replacementIvoId)
             throws WebApplicationException
     {
-        Organization organization = super.findObject(Organization.class, id);
+        Organization organization = findObject(Organization.class, id);
 
         organization.setIvoid(new Ivorn(replacementIvoId));
 
-        return super.responseWrapper(organization, 201);
+        return responseWrapper(organization, 201);
     }
 
     @PUT
@@ -106,11 +106,11 @@ public class OrganizationResource extends ObjectResourceBase {
     public Response updateOrganisationWikiId(@PathParam("id") Long id, String replacementWikiId)
             throws WebApplicationException
     {
-        Organization organization = super.findObject(Organization.class, id);
+        Organization organization = findObject(Organization.class, id);
 
         organization.setWikiId(new WikiDataId(replacementWikiId));
 
-        return super.responseWrapper(organization, 201);
+        return responseWrapper(organization, 201);
     }
 
 }

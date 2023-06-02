@@ -231,7 +231,7 @@ public class UseCasePiTest {
                     .then()
                     .statusCode(200)
                     .body("$.size()", equalTo(1))
-                    .extract().jsonPath().getInt("[0].dbid");
+                    .extract().jsonPath().getInt("[0].code");
 
 
         ObservingProposal otherProposal =

@@ -88,9 +88,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the Proposals being reviewed")
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
         if(title == null)
-            return super.getObjects("SELECT o._id,o.submitted.proposal.title FROM ReviewedProposal o ORDER BY o.submitted.proposal.title");
+            return getObjects("SELECT o._id,o.submitted.proposal.title FROM ReviewedProposal o ORDER BY o.submitted.proposal.title");
         else
-            return super.getObjects("SELECT o._id,o.submitted.proposal.title  FROM ReviewedProposal o Where o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
+            return getObjects("SELECT o._id,o.submitted.proposal.title  FROM ReviewedProposal o Where o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
     }
 
 

@@ -37,7 +37,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     {
         //Consider writing an SQL/Hibernate query string for this search
 
-        List<SupportingDocument> supportingDocuments = super.findObject(ObservingProposal.class, proposalCode)
+        List<SupportingDocument> supportingDocuments = findObject(ObservingProposal.class, proposalCode)
                 .getSupportingDocuments();
 
         List<ObjectIdentifier> response = new ArrayList<>();
@@ -71,7 +71,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         return findSupportingDocument(
-                super.findObject(ObservingProposal.class, proposalCode).getSupportingDocuments(), id, proposalCode
+                findObject(ObservingProposal.class, proposalCode).getSupportingDocuments(), id, proposalCode
         );
     }
 
@@ -87,7 +87,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         proposal.addToSupportingDocuments(supportingDocument);
 
-        return super.mergeObject(proposal);
+        return mergeObject(proposal);
     }
 
     @DELETE
@@ -98,7 +98,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                              @PathParam("id") Long id)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         SupportingDocument supportingDocument =
                 findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
         observingProposal.removeFromSupportingDocuments(supportingDocument);
@@ -115,7 +115,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                                    String replacementTitle)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         SupportingDocument supportingDocument =
                 findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
         supportingDocument.setTitle(replacementTitle);
@@ -132,7 +132,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                                       String replacementLocation)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         SupportingDocument supportingDocument =
                 findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
         supportingDocument.setLocation(replacementLocation);

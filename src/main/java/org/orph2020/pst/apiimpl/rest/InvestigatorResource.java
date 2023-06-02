@@ -42,11 +42,11 @@ public class InvestigatorResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (fullName == null) {
-            return super.getObjects(
+            return getObjects(
                     "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' ORDER BY p.fullName"
             );
         } else {
-            return super.getObjects(
+            return getObjects(
                     "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' and p.fullName like '"+fullName+"' ORDER BY p.fullName"
             );
         }
@@ -72,7 +72,7 @@ public class InvestigatorResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        return super.addNewChildObject(proposal, investigator, proposal::addToInvestigators);
+        return addNewChildObject(proposal, investigator, proposal::addToInvestigators);
     }
 
     @DELETE
@@ -83,7 +83,7 @@ public class InvestigatorResource extends ObjectResourceBase {
                                        @PathParam("investigatorId") Long id)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = super.findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
         Investigator investigator = findInvestigatorFromList(observingProposal.getInvestigators(), id);
 
@@ -96,7 +96,7 @@ public class InvestigatorResource extends ObjectResourceBase {
 
         observingProposal.removeFromInvestigators(investigator);
 
-        return super.emptyResponse204();
+        return emptyResponse204();
     }
 
 
@@ -112,7 +112,7 @@ public class InvestigatorResource extends ObjectResourceBase {
     {
         Investigator investigator = findInvestigatorByQuery(proposalCode, id);
         investigator.setType(replacementKind);
-        return super.responseWrapper(investigator, 201);
+        return responseWrapper(investigator, 201);
     }
 
     @PUT
@@ -128,6 +128,6 @@ public class InvestigatorResource extends ObjectResourceBase {
         Investigator investigator = findInvestigatorByQuery(proposalCode, id);
         investigator.setForPhD(replacementForPhD);
 
-        return super.responseWrapper(investigator, 201);
+        return responseWrapper(investigator, 201);
     }
 }
