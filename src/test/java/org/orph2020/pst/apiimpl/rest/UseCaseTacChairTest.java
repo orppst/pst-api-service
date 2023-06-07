@@ -147,8 +147,51 @@ public class UseCaseTacChairTest {
             .statusCode(201)
             .log().body(); // TODO not sure that we want to return this all...
 
+   }
+
+   @Test
+   void allocateProposal(){
+      long revId = given()
+            .when()
+            .get("proposalCycles/" + cycleId + "/proposalsInReview")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", greaterThan(0)
+            )
+            .extract().jsonPath().getLong("[0].dbid");
 
 
+
+      ReviewedProposal revprop = given()
+            .when()
+            .get("proposalCycles/" + cycleId + "/proposalsInReview/" + revId)
+            .then()
+            .statusCode(200)
+            .extract().as(ReviewedProposal.class, raObjectMapper);
+
+      ProposalCycle cycle = given()
+            .when()
+            .get("proposalCycles/" + cycleId )
+            .then()
+            .statusCode(200)
+            .extract().as(ProposalCycle.class, raObjectMapper);
+
+
+      long subId = revprop.getSubmitted().getId();
+
+      fail("need api to allocate proposals");//FIXME  create new allocated proposal by submitting just the submitted proposal ID
+
+      //IMPL have chosen the first of everything here - in GUI each will be a list.
+      AllocatedBlock allocation = AllocatedBlock.createAllocatedBlock(
+            a -> {
+               a.grade = cycle.getPossibleGrades().get(0); //TODO would be nice if the API allowed to just get the grades - ProposalCycle is a big object
+               a.mode = cycle.getObservingModes().get(0); //TODO nice iF API allows to just get the modes - ditto
+               Resource res = new Resource(48.0, cycle.getAvailableResources().getResources().get(0).getType()); // FIXME need API to list the resource types.
+               a.resource = res;
+            }
+      );
+      // FIXME API to add allocation to the  allocation proposal.
    }
 
 
