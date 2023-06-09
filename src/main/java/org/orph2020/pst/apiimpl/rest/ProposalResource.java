@@ -123,9 +123,9 @@ public class ProposalResource extends ObjectResourceBase {
     @GET
     @Path(proposalRoot + "/title")
     @Operation(summary = "get the title of the ObservingProposal specified by 'proposalCode'")
-    public String getObservingProposalTitle(@PathParam("proposalCode") Long proposalCode) {
+    public Response getObservingProposalTitle(@PathParam("proposalCode") Long proposalCode) {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        return proposal.getTitle();
+        return responseWrapper(proposal.getTitle(), 200);
     }
 
 
