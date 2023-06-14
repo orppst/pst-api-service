@@ -41,37 +41,18 @@ public class ObservingModeResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "get all the ObservingMode identifiers associated with the given ProposalCycle")
-    public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId,
-                                                               @RestQuery String modeName)
+    public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
     {
-        if(modeName == null) {
-            return super.getObjects("SELECT om._id,om.name FROM ProposalCycle c Inner Join c.observingModes om WHERE c._id = '"+cycleId+"' ORDER BY om.name");
-        } else {
-            return super.getObjects("SELECT om._id,om.name FROM ProposalCycle c Inner Join c.observingModes om WHERE c._id = '"+cycleId+"' and om.name like '"+modeName+"' ORDER BY om.name");
-        }
+        return getObjects("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = '"+cycleId+"' order by o.name");
     }
 
     @GET
     @Path("{modeId}")
-    @Operation(summary = "get a synopsis of the ObservingMode specified by 'modeId'")
-    public List<ObservingConfigurationSynopsis> getCycleObservingMode(@PathParam("cycleId") Long cycleId,
-                                                                      @PathParam("modeId") Long modeId)
+    @Operation(summary = "get the ObservingMode specified by 'modeId'")
+    public ObservingMode getCycleObservingMode(@PathParam("cycleId") Long cycleId,
+                                               @PathParam("modeId") Long modeId)
             throws WebApplicationException
     {
-        ObservingMode observingMode = findObservingModeByQuery(cycleId, modeId);
-
-        List<ObservingConfiguration> observingConfigurations = observingMode.getConfigurations();
-
-        List<ObservingConfigurationSynopsis> result = new ArrayList<>();
-
-        for (ObservingConfiguration c : observingConfigurations) {
-            result.add(
-                    new ObservingConfigurationSynopsis(c.getId(),
-                            c.getTelescope().getName(), c.getInstrument().getName(),
-                            c.getBackend().getName())
-            );
-        }
-
-        return result;
+        return findObservingModeByQuery(cycleId, modeId);
     }
 }

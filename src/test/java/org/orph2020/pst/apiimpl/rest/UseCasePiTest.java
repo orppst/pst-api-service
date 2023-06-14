@@ -69,7 +69,7 @@ public class UseCasePiTest {
         String randomText4 = "Superman licks windows";
 
 
-        // che4ck initial conditions
+        // check initial conditions
         given()
               .when()
               .get("proposals")
@@ -106,7 +106,7 @@ public class UseCasePiTest {
                 ).extract().as(Person.class, raObjectMapper);
 
 
-
+        //create minimal proposal
         ObservingProposal prop = new ObservingProposal().withTitle("My New Proposal")
                 .withKind(ProposalKind.STANDARD)
                 .withSummary("search for something new")
@@ -116,11 +116,11 @@ public class UseCasePiTest {
 
         prop.setInvestigators(Arrays.asList(new Investigator(InvestigatorKind.PI,false,principalInvestigator)));
 
-        //create minimal proposal
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
+
         Integer proposalid =
                 given()
-                        .contentType("application/json; charset=UTF-16")
+                        .contentType("application/json")
                         .body(propjson)
                         .when()
                         .post("/proposals")

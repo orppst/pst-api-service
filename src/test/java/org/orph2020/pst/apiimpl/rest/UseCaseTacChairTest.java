@@ -5,10 +5,10 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import org.ivoa.dm.proposal.management.*;
+import org.ivoa.dm.proposal.prop.ObservingMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +21,6 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Use case that the TAC Chair will perform. Reviewing a proposal and allocating time.
@@ -100,7 +99,7 @@ public class UseCaseTacChairTest {
             .contentType("application/json; charset=UTF-16")
             .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(revp))
             .when()
-            .put("proposalCycles/" + cycleId + "/proposalsInReview")
+            .post("proposalCycles/" + cycleId + "/proposalsInReview")
             .then()
             .contentType(JSON)
             .statusCode(201)
@@ -141,16 +140,16 @@ public class UseCaseTacChairTest {
             .contentType("application/json; charset=UTF-16")
             .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(rev))
             .when()
-            .post("proposalCycles/" + cycleId + "/proposalsInReview/"+revId+"/reviews")
+            .post("proposalCycles/" + cycleId + "/proposalsInReview/"+revId)
             .then()
             .contentType(JSON)
-            .statusCode(201)
+            .statusCode(200)
             .log().body(); // TODO not sure that we want to return this all...
 
    }
 
    @Test
-   void allocateProposal(){
+   void allocateProposal() throws JsonProcessingException {
       long revId = given()
             .when()
             .get("proposalCycles/" + cycleId + "/proposalsInReview")
@@ -161,8 +160,6 @@ public class UseCaseTacChairTest {
             )
             .extract().jsonPath().getLong("[0].dbid");
 
-
-
       ReviewedProposal revprop = given()
             .when()
             .get("proposalCycles/" + cycleId + "/proposalsInReview/" + revId)
@@ -170,29 +167,88 @@ public class UseCaseTacChairTest {
             .statusCode(200)
             .extract().as(ReviewedProposal.class, raObjectMapper);
 
-      ProposalCycle cycle = given()
-            .when()
-            .get("proposalCycles/" + cycleId )
-            .then()
-            .statusCode(200)
-            .extract().as(ProposalCycle.class, raObjectMapper);
-
-
       long subId = revprop.getSubmitted().getId();
 
-      fail("need api to allocate proposals");//FIXME  create new allocated proposal by submitting just the submitted proposal ID
+      //push reviewed proposal to 'allocatedProposals' list
+      given()
+              .when()
+              .body(subId)
+              .put("proposalCycles/" + cycleId + "/allocatedProposals")
+              .then()
+              .statusCode(201);
 
+      //Create a new AllocatedBlock
       //IMPL have chosen the first of everything here - in GUI each will be a list.
+      Integer gradeId = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/grades")
+              .then()
+              .body(
+                      "$.size()", greaterThan(0)
+              )
+              .extract().jsonPath().getInt("[0].dbid");
+
+      AllocationGrade grade = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/grades/" + gradeId)
+              .then()
+              .statusCode(200)
+              .extract().as(AllocationGrade.class, raObjectMapper);
+
+
+      Integer modeId = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/observingModes")
+              .then()
+              .body(
+                      "$.size()", greaterThan(0)
+              )
+              .extract().jsonPath().getInt("[0].dbid");
+
+      ObservingMode mode = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/observingModes/" + modeId)
+              .then()
+              .statusCode(200)
+              .extract().as(ObservingMode.class, raObjectMapper);
+
+      Integer resourceTypeId = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/availableResources/types" )
+              .then()
+              .body("$.size()", greaterThan(0))
+              .extract().jsonPath().getInt("[0].dbid");
+
+      ResourceType resourceType = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/availableResources/types/" + resourceTypeId)
+              .then()
+              .statusCode(200)
+              .extract().as(ResourceType.class, raObjectMapper);
+
       AllocatedBlock allocation = AllocatedBlock.createAllocatedBlock(
             a -> {
-               a.grade = cycle.getPossibleGrades().get(0); //TODO would be nice if the API allowed to just get the grades - ProposalCycle is a big object
-               a.mode = cycle.getObservingModes().get(0); //TODO nice iF API allows to just get the modes - ditto
-               Resource res = new Resource(48.0, cycle.getAvailableResources().getResources().get(0).getType()); // FIXME need API to list the resource types.
-               a.resource = res;
+               a.grade = grade;
+               a.mode = mode;
+               a.resource = new Resource(48.0, resourceType);
             }
       );
-      // FIXME API to add allocation to the  allocation proposal.
-   }
 
+      Integer allocatedId = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/allocatedProposals")
+              .then()
+              .body("$.size()", greaterThan(0))
+              .extract().jsonPath().getInt("[0].dbid");
+
+      given()
+              .when()
+              .body(mapper.writeValueAsString(allocation))
+              .contentType(JSON)
+              .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId)
+              .then()
+              .statusCode(200);
+
+   }
 
 }
