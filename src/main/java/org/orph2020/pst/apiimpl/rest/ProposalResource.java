@@ -394,7 +394,7 @@ public class ProposalResource extends ObjectResourceBase {
     @GET
     @Path(techGoalsRoot)
     @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
-    public List<TechnicalGoal> getTechGoals(@PathParam("proposalCode") Long proposalCode)
+    public List<TechnicalGoal> getTechnicalGoals(@PathParam("proposalCode") Long proposalCode)
     {
         TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = '" + proposalCode + "'", TechnicalGoal.class);
         return q.getResultList();
@@ -416,7 +416,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Consumes(MediaType.APPLICATION_JSON)
     @ResponseStatus(201)
     @Transactional
-    public TechnicalGoal addNewTechGoal(@PathParam("proposalCode") Long proposalCode, TechnicalGoal technicalGoal)
+    public TechnicalGoal addNewTechnicalGoal(@PathParam("proposalCode") Long proposalCode, TechnicalGoal technicalGoal)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
@@ -428,7 +428,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(techGoalsRoot+"/{techGoalId}")
     @Operation(summary = "remove the Technical Goal specified by 'techGoalId' from the given ObservingProposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response removeTechGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("techGoalId") Long techGoalId)
+    public Response removeTechnicalGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("techGoalId") Long techGoalId)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
