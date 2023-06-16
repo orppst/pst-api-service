@@ -6,7 +6,6 @@ import org.ivoa.dm.proposal.prop.*;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.persistence.NoResultException;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
@@ -46,9 +45,9 @@ public class InstrumentResource extends ObjectResourceBase {
                                                             @RestQuery String name)
     {
         if (name == null) {
-            return getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' ORDER BY i.name");
+            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' ORDER BY i.name");
         } else {
-            return getObjects("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' and i.name like '"+name+"' ORDER BY i.name");
+            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' and i.name like '"+name+"' ORDER BY i.name");
         }
     }
 

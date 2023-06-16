@@ -26,9 +26,9 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "get People from the database, optionally provide a name to find all the people with that name")
    public List<ObjectIdentifier> getPeople(@RestQuery String name) {
       if(name == null)
-         return getObjects("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
+         return getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
       else
-         return getObjects("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
+         return getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
    }
 
    @GET

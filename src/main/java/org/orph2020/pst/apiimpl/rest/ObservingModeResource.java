@@ -2,17 +2,12 @@ package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.prop.ObservingConfiguration;
 import org.ivoa.dm.proposal.prop.ObservingMode;
-import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ObservingConfigurationSynopsis;
 
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -43,7 +38,7 @@ public class ObservingModeResource extends ObjectResourceBase {
     @Operation(summary = "get all the ObservingMode identifiers associated with the given ProposalCycle")
     public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
     {
-        return getObjects("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = '"+cycleId+"' order by o.name");
+        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = '"+cycleId+"' order by o.name");
     }
 
     @GET

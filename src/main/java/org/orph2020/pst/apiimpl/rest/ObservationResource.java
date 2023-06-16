@@ -7,7 +7,6 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -45,9 +44,9 @@ public class ObservationResource extends ObjectResourceBase {
             tquery = " and Type(o) = "+type.name();
         }
         if (srcName == null) {
-            return getObjects("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" ORDER BY t.sourceName");
         } else {
-            return getObjects("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" and t.sourceName like '"+srcName+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" and t.sourceName like '"+srcName+"' ORDER BY t.sourceName");
         }
     }
 

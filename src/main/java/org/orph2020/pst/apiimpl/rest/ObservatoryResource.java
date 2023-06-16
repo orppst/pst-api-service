@@ -6,7 +6,6 @@ package org.orph2020.pst.apiimpl.rest;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.ivoa.Ivorn;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -30,9 +29,9 @@ public class ObservatoryResource extends ObjectResourceBase {
     )
     public List<ObjectIdentifier> getObservatories(@RestQuery String name){
         if (name == null) {
-            return getObjects("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
+            return getObjectIdentifiers("SELECT o._id,o.name FROM Observatory o ORDER BY o.name");
         } else {
-            return getObjects("SELECT o._id,o.name FROM Observatory o WHERE o.name like '" +name+ "'ORDER BY o.name");
+            return getObjectIdentifiers("SELECT o._id,o.name FROM Observatory o WHERE o.name like '" +name+ "'ORDER BY o.name");
         }
     }
 

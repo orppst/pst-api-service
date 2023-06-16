@@ -3,7 +3,6 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -32,7 +31,7 @@ abstract public class ObjectResourceBase {
     protected static final String NON_ASSOCIATE_NAME =
             "%s with identifier: %s is not associated with the %s with id: %d";
 
-    protected List<ObjectIdentifier> getObjects(String queryStr){
+    protected List<ObjectIdentifier> getObjectIdentifiers(String queryStr){
         List<ObjectIdentifier> result = new ArrayList<>();
         Query query = em.createQuery(queryStr);
         List<Object[]> results = query.getResultList();
@@ -56,18 +55,37 @@ abstract public class ObjectResourceBase {
         return object;
     }
 
+    protected <T,S> T findChildByQuery(Class<S> parentType, Class<T> childType, String childParameter,
+                                     long parentId, long childId)
+    {
+
+        String qlString = "select child from " + parentType.getName()
+                + " parent join parent." + childParameter + " child "
+                + " where parent._id = :pid and child._id = :cid";
+
+
+        TypedQuery<T> q = em.createQuery(
+                qlString,
+                childType
+        );
+
+        q.setParameter("pid", parentId);
+        q.setParameter("cid", childId);
+        return q.getSingleResult();
+    }
+
+
 
     protected <T> T queryObject(TypedQuery<T> q)
           throws WebApplicationException
     {
         try {
-            T object = q.getSingleResult(); //either returns a result or throws, does not return null
-
-            return object;
+            return q.getSingleResult(); //either returns a result or throws, does not return null
 
         } catch (NoResultException e) { //make the exception friendlier
+            //FIXME: this does not give the qlString and there is no 'getQueryString()' for TypedQuery<T>
             String ERR_NOT_FOUND = "%s does not find object";
-            throw new WebApplicationException(String.format(ERR_NOT_FOUND, q.toString()), 404);
+            throw new WebApplicationException(String.format(ERR_NOT_FOUND, q), 404);
         }
     }
 

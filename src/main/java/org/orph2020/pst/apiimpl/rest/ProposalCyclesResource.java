@@ -3,7 +3,6 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 20/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
-import io.quarkus.arc.All;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
@@ -75,9 +74,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the ProposalCycles")
     public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed) {
         if(includeClosed)
-            return super.getObjects("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
+            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
         else
-            return super.getObjects("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");//FIXME actually do only return open
+            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");//FIXME actually do only return open
     }
 
 
@@ -99,7 +98,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades")
     @Operation(summary = "List the possible grades of the given ProposalCycle")
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") long cycleCode) {
-        return getObjects("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = '"+cycleCode+"' Order by o.name");
+        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = '"+cycleCode+"' Order by o.name");
     }
 
     @GET
@@ -116,9 +115,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the Submitted Proposals")
     public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
         if(title == null)
-            return super.getObjects("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
+            return super.getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
         else
-            return super.getObjects("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
+            return super.getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
     }
 
     @PUT
@@ -143,9 +142,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the identifiers for the Proposals being reviewed")
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
         if(title == null)
-            return getObjects("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
         else
-            return getObjects("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o Where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o Where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
     }
 
 
@@ -189,9 +188,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public List<ObjectIdentifier> getAllocatedProposalsFromCycle(@PathParam("cycleCode") long cycleId,
                                                                  @RestQuery String title) {
         if (title == null) {
-            return getObjects("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
         } else {
-            return getObjects("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
         }
     }
 

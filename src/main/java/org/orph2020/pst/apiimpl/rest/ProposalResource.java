@@ -58,19 +58,6 @@ public class ProposalResource extends ObjectResourceBase {
         return result;
     }
 
-    //TODO: these private functions to find a Child object contained in the Parent object are being
-    //repeated often - could probably generalise this function in the 'ObjectResourceBase' class
-    private Target findTargetByQuery(long proposalCode, long targetId) {
-        TypedQuery<Target> q = em.createQuery(
-                "select t from ObservingProposal p join p.targets t where p._id = :pid and t._id = :tid",
-                Target.class
-        );
-        q.setParameter("pid", proposalCode);
-        q.setParameter("tid", targetId);
-        return q.getSingleResult();
-    }
-
-
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
@@ -306,9 +293,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (sourceName == null) {
-            return getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
         } else {
-            return getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
         }
 
     }
@@ -320,7 +307,8 @@ public class ProposalResource extends ObjectResourceBase {
                             @PathParam("targetId") Long targetId)
         throws WebApplicationException
     {
-        return findTargetByQuery(proposalCode, targetId);
+        return findChildByQuery(ObservingProposal.class, Target.class, "targets",
+                proposalCode, targetId);
     }
 
     @POST
@@ -363,9 +351,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (fieldName == null) {
-            return getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
+            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
         } else {
-            return getObjects("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
+            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
         }
 
     }
@@ -402,6 +390,7 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     // technicalGoals
+    //TODO - we should return a list of TechnicalGoal identifiers - problem is there is no natural name
     @GET
     @Path(techGoalsRoot)
     @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
@@ -409,6 +398,16 @@ public class ProposalResource extends ObjectResourceBase {
     {
         TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = '" + proposalCode + "'", TechnicalGoal.class);
         return q.getResultList();
+    }
+
+    @GET
+    @Path(techGoalsRoot + "/{technicalGoalId}")
+    @Operation(summary = "get a specific TechnicalGoal for the given ObservingProposal")
+    public TechnicalGoal getTechnicalGoal(@PathParam("proposalCode") Long proposalCode,
+                                          @PathParam("technicalGoalId") Long techGoalId)
+    {
+        return findChildByQuery(ObservingProposal.class, TechnicalGoal.class, "technicalGoals",
+                proposalCode, techGoalId);
     }
 
     @POST

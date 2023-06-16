@@ -21,7 +21,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @GET
     @Operation(summary= "get all Organizations stored in the database")
     public List<ObjectIdentifier> getOrganizations() {
-        return getObjects("SELECT o._id,o.name FROM Organization o ORDER BY o.name");
+        return getObjectIdentifiers("SELECT o._id,o.name FROM Organization o ORDER BY o.name");
     }
 
     @GET
