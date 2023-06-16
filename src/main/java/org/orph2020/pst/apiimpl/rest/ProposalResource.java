@@ -27,6 +27,8 @@ import java.util.List;
          https://gitlab.com/opticon-radionet-pilot/proposal-submission-tool/requirements/-/blob/main/UseCases.adoc
  */
 //TODO - should really ensure that submitted proposals are not editable even via the direct {proposalCode} route
+
+//TODO - split more parameters of ObservingProposals out of this source file into their own files and provide more specific tags
 @Path("proposals")
 @Tag(name = "proposals")
 @Produces(MediaType.APPLICATION_JSON)
@@ -54,6 +56,18 @@ public class ProposalResource extends ObjectResourceBase {
             );
         }
         return result;
+    }
+
+    //TODO: these private functions to find a Child object contained in the Parent object are being
+    //repeated often - could probably generalise this function in the 'ObjectResourceBase' class
+    private Target findTargetByQuery(long proposalCode, long targetId) {
+        TypedQuery<Target> q = em.createQuery(
+                "select t from ObservingProposal p join p.targets t where p._id = :pid and t._id = :tid",
+                Target.class
+        );
+        q.setParameter("pid", proposalCode);
+        q.setParameter("tid", targetId);
+        return q.getSingleResult();
     }
 
 
@@ -297,6 +311,16 @@ public class ProposalResource extends ObjectResourceBase {
             return getObjects("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
         }
 
+    }
+
+    @GET
+    @Path (targetsRoot + "/{targetId}")
+    @Operation(summary = "get a specific Target for the given ObservingProposal")
+    public Target getTarget(@PathParam("proposalCode") Long proposalCode,
+                            @PathParam("targetId") Long targetId)
+        throws WebApplicationException
+    {
+        return findTargetByQuery(proposalCode, targetId);
     }
 
     @POST
