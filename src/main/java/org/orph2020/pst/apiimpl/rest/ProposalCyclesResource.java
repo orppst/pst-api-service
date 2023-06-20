@@ -10,6 +10,7 @@ import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ProposalSynopsis;
 
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
@@ -65,6 +66,14 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
 
+    private ProposalSynopsis createSynopsisFromProposal(ObservingProposal proposal) {
+        return new ProposalSynopsis(
+                proposal.getId(), proposal.getTitle(), proposal.getSummary(), proposal.getKind(),
+                proposal.getSubmitted()
+        );
+    }
+
+
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
     }
@@ -112,12 +121,13 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Path("{cycleCode}/submittedProposals")
-    @Operation(summary = "List the Submitted Proposals")
-    public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
+    @Operation(summary = "list the SubmittedProposals")
+    public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId,
+                                                        @RestQuery String title) {
         if(title == null)
-            return super.getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
         else
-            return super.getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
     }
 
     @PUT
@@ -127,6 +137,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response submitProposal(@PathParam("cycleCode") long cycleId, long proposalId)
     {
+        //tried using addNewChildObject() here but persistence layer throws an error
+
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
         ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
@@ -134,13 +146,21 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         em.persist(pclone);
         SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
         cycle.addToSubmittedProposals(submittedProposal);
-        return mergeObject(cycle);
+        em.merge(cycle);
+
+        //get the proposal we have just submitted
+        List<SubmittedProposal> submittedProposals = cycle.getSubmittedProposals();
+        ObservingProposal responseProposal =
+                submittedProposals.get(submittedProposals.size() - 1).getProposal();
+
+        return responseWrapper(createSynopsisFromProposal(responseProposal), 201);
     }
 
     @GET
     @Path("{cycleCode}/proposalsInReview")
-    @Operation(summary = "List the identifiers for the Proposals being reviewed")
-    public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId, @RestQuery String title) {
+    @Operation(summary = "List the identifiers for the Proposals under review")
+    public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId,
+                                                       @RestQuery String title) {
         if(title == null)
             return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
         else
@@ -149,7 +169,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
 
     @POST
-    @Operation(summary = "add a submitted proposal to review")
+    @Operation(summary = "upgrade a submitted proposal to a proposal under review")
     @Path("{cycleCode}/proposalsInReview")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -158,13 +178,21 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         ProposalCycle cycle =  findObject(ProposalCycle.class, cycleId);
         revIn.setSuccessful(false); // newly added so cannot be successful yet.
         cycle.addToReviewedProposals(revIn);
-        return mergeObject(cycle);
+        em.merge(cycle);
+
+        //get the proposal we have just added to the 'reviewed' list
+        List<ReviewedProposal> reviewedProposals = cycle.getReviewedProposals();
+        ObservingProposal responseProposal = reviewedProposals.get(reviewedProposals.size() - 1)
+                .getSubmitted().getProposal();
+
+        return responseWrapper(createSynopsisFromProposal(responseProposal), 201);
     }
 
     @GET
-    @Operation(summary = "get a proposal in review")
+    @Operation(summary = "get a specific proposal under review")
     @Path("{cycleCode}/proposalsInReview/{reviewCode}")
-    public ReviewedProposal getReviewedProposal(@PathParam("cycleCode") long cycleId, @PathParam("reviewCode") long revId)
+    public ReviewedProposal getReviewedProposal(@PathParam("cycleCode") long cycleId,
+                                                @PathParam("reviewCode") long revId)
     {
         return findReviewedProposal(cycleId, revId);
     }
@@ -174,7 +202,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/proposalsInReview/{reviewCode}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalReview submitReviewOfProposal(@PathParam("cycleCode") long cycleId, @PathParam("reviewCode") long revId, ProposalReview revIn)
+    public ProposalReview submitReviewOfProposal(@PathParam("cycleCode") long cycleId,
+                                                 @PathParam("reviewCode") long revId,
+                                                 ProposalReview revIn)
     {
         ReviewedProposal reviewedProposal = findReviewedProposal(cycleId,revId);
         revIn.setReviewDate(new Date());
@@ -197,10 +227,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @PUT
     @Path("{cycleCode}/allocatedProposals")
-    @Operation(summary = "add a submitted proposal to the list of AllocatedProposals in the cycle")
+    @Operation(summary = "upgrade a proposal under review to an allocated proposal")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response allocatedProposalToCycle(@PathParam("cycleCode") long cycleCode,
+    public Response allocateProposalToCycle(@PathParam("cycleCode") long cycleCode,
                                                       long submittedId)
             throws WebApplicationException
     {
@@ -211,14 +241,19 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
         cycle.addToAllocatedProposals(allocatedProposal);
 
-        return mergeObject(cycle);
+        em.merge(cycle);
 
-        //return addNewChildObject(cycle, allocatedProposal, cycle::addToAllocatedProposals);
+        //get the allocated proposal just added to the 'allocated' list
+        List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
+        ObservingProposal responseValue = allocatedProposals.get(allocatedProposals.size() - 1)
+                .getSubmitted().getProposal();
+
+        return responseWrapper(createSynopsisFromProposal(responseValue), 201);
     }
 
     @POST
     @Path("{cycleCode}/allocatedProposals/{allocatedId}")
-    @Operation(summary = "add an AllocationBlock to the AllocatedProposal in the ProposalCycle")
+    @Operation(summary = "add an AllocationBlock to the specific AllocatedProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocatedBlock addAllocatedBlockToAllocatedProposal(@PathParam("cycleCode") long cycleCode,
