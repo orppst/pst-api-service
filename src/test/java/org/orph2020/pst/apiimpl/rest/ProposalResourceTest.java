@@ -137,7 +137,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(201)
                 .body(
-                        containsString("\"title\":\"replacement title\"")
+                        containsString("replacement title")
                 )
         ;
 

@@ -58,6 +58,11 @@ public class ProposalResource extends ObjectResourceBase {
         return result;
     }
 
+    private ProposalSynopsis createSynopsisFromProposal(ObservingProposal proposal) {
+        return new ProposalSynopsis(proposal.getId(), proposal.getTitle(), proposal.getSummary(),
+                proposal.getKind(), proposal.getSubmitted());
+    }
+
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
@@ -144,7 +149,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         proposal.setTitle(replacementTitle);
 
-        return responseWrapper(proposal, 201);
+        return responseWrapper(proposal.getTitle(), 201);
     }
 
     //********************** SUMMARY ***************************
@@ -160,7 +165,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         proposal.setSummary(replacementSummary);
 
-        return responseWrapper(proposal, 201);
+        return responseWrapper(proposal.getSummary(), 201);
     }
 
     //********************** KIND ***************************
@@ -189,7 +194,7 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException(e.getMessage(), 422);
         }
 
-        return responseWrapper(proposal, 201);
+        return responseWrapper(proposal.getKind(), 201);
     }
 
     //********************** JUSTIFICATIONS ***************************
@@ -280,7 +285,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         proposal.addToRelatedProposals(new RelatedProposal(relatedProposal));
 
-        return responseWrapper(proposal, 201);
+        return responseWrapper(createSynopsisFromProposal(relatedProposal), 201);
     }
 
     //********** Observation References ************************************
@@ -390,7 +395,8 @@ public class ProposalResource extends ObjectResourceBase {
 
 
     // technicalGoals
-    //TODO - we should return a list of TechnicalGoal identifiers - problem is there is no natural name
+    //if we were following the design pattern we should return a list of TechnicalGoal identifiers
+    // - problem is there is no natural name
     @GET
     @Path(techGoalsRoot)
     @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
