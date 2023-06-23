@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import javax.inject.Inject;
 import javax.ws.rs.core.MediaType;
 
+import java.util.Arrays;
+
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -24,15 +26,15 @@ public class ProposalResourceTest {
     String JSON_UTF16 = "application/json; charset=UTF-16";
     @Inject
     protected ObjectMapper mapper;
-
      private Integer proposalId;
      static Person person;
+   private io.restassured.mapper.ObjectMapper raObjectMapper;
 
    @BeforeEach
      void setup() {
-        io.restassured.mapper.ObjectMapper raObjectMapper = new Jackson2Mapper(((type, charset) -> {
-            return mapper;
-        }));
+      raObjectMapper = new Jackson2Mapper(((type, charset) -> {
+          return mapper;
+      }));
         proposalId = given()
               .when()
               .get("proposals")
@@ -259,4 +261,116 @@ public class ProposalResourceTest {
       ;
 
    }
+   @Test
+   void testListMultipleProposals() throws JsonProcessingException {
+      Integer personid = given()
+            .when()
+            .param("name","PI")
+            .get("people")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(1)
+            )
+            .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
+
+      System.out.println("personId="+personid);
+      //get the PI person
+      Person principalInvestigator = given()
+            .when()
+            .get("people/"+personid)
+            .then()
+            .statusCode(200)
+            .body(
+                  "fullName", equalTo("PI")
+            ).extract().as(Person.class, raObjectMapper);
+
+      Integer coiPersonId =
+            given()
+                  .when()
+                  .param("name","CO-I")
+                  .get("people")
+                  .then()
+                  .statusCode(200)
+                  .body(
+                        "$.size()", equalTo(1)
+                  )
+                  .extract().jsonPath().getInt("[0].dbid");
+
+      //get the Person object
+      Person coiPerson =
+            given()
+                  .when()
+                  .get("people/"+coiPersonId)
+                  .then()
+                  .statusCode(200)
+                  .body(
+                        "fullName", equalTo("CO-I")
+                  ).extract().as(Person.class, raObjectMapper);
+
+
+      //create minimal proposal
+      ObservingProposal prop = new ObservingProposal().withTitle("My New Proposal")
+            .withKind(ProposalKind.STANDARD)
+            .withSummary("search for something new")
+            .withScientificJustification(new Justification("scientific justification", TextFormats.ASCIIDOC))
+            .withTechnicalJustification(new Justification("technical justification", TextFormats.ASCIIDOC))
+            ;
+      prop.setInvestigators(Arrays.asList(new Investigator(InvestigatorKind.PI,false,principalInvestigator),
+            new Investigator(InvestigatorKind.COI,true,coiPerson)));
+
+      String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
+
+      Integer newProposalId =
+            given()
+                  .contentType("application/json")
+                  .body(propjson)
+                  .when()
+                  .post("/proposals")
+                  .then()
+                  .contentType(JSON)
+                  .body("title", equalTo("My New Proposal"))
+                  .extract()
+                  .path("_id");
+
+      given()
+            .when()
+            .get("proposals/")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(2)
+            );
+      given()
+            .when()
+            .param("title", "%")
+            .get("proposals/")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(2)
+            );
+      given()
+            .when()
+            .param("investigatorName", "%")
+            .get("proposals/")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(2)
+            );
+      given()
+            .when()
+            .param("investigatorName", "%")
+            .param("title", "%")           .get("proposals/")
+            .then()
+            .statusCode(200)
+            .body(
+                  "$.size()", equalTo(2)
+            );
+
+
+
+   }
+
 }

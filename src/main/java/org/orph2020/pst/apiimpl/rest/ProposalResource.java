@@ -72,9 +72,9 @@ public class ProposalResource extends ObjectResourceBase {
         boolean titleOnly = investigatorName == null && title != null;
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
-        String baseStr = "select o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o ";
+        String baseStr = "select distinct o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o ";
         String orderByStr = "order by o.title";
-        String investigatorLikeStr = "inner join o.investigators i where i.person.fullName like '" +investigatorName+ "' ";
+        String investigatorLikeStr = " ,Investigator i where i member of o.investigators  and i.person.fullName like '" +investigatorName+ "' ";
         String titleLikeStr = "o.title like '" +title+ "' ";
 
 
