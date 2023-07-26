@@ -42,7 +42,7 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "create a new Person in the database")
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response createPerson(Person person)
+   public Person createPerson(Person person)
          throws WebApplicationException
    {
       return persistObject(person);

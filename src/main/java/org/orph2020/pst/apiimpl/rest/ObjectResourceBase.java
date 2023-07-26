@@ -117,7 +117,7 @@ abstract public class ObjectResourceBase {
     }
 
 
-    protected <T> Response persistObject(T object)
+    protected <T> T persistObject(T object)
             throws WebApplicationException
     {
         try {
@@ -126,7 +126,7 @@ abstract public class ObjectResourceBase {
             throw new WebApplicationException(e.getMessage(), 400);
         }
 
-        return responseWrapper(object, 201);
+        return object; //responseWrapper(object, 201);
     }
 
     protected <T> Response removeObject(Class<T> type, Long id)

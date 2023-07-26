@@ -48,7 +48,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "create a new Observatory in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createObservatory(Observatory observatory)
+    public Observatory createObservatory(Observatory observatory)
             throws WebApplicationException
     {
         return persistObject(observatory);

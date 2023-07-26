@@ -37,7 +37,7 @@ public class OrganizationResource extends ObjectResourceBase {
     @Operation(summary = "create a new Organization in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createOrganization(Organization organization)
+    public Organization createOrganization(Organization organization)
         throws WebApplicationException
     {
         return persistObject(organization);

@@ -4,7 +4,10 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
@@ -107,7 +110,8 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "create a new Proposal in the database")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createObservingProposal(ObservingProposal op)
+    @ResponseStatus(value = 201)
+    public ObservingProposal createObservingProposal(ObservingProposal op)
             throws WebApplicationException
     {
         return persistObject(op);
