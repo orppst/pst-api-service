@@ -10,6 +10,7 @@ import org.orph2020.pst.apiimpl.entities.SubjectMap;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.util.List;
 
 @Path("subjectMap")
 @Tag(name="mapping between AAI user ids and People")
@@ -23,7 +24,14 @@ public class SubjectMapResource extends ObjectResourceBase {
     {
         TypedQuery<SubjectMap> q = em.createQuery("select o from SubjectMap o where o.uid = :uid", SubjectMap.class);
         q.setParameter("uid", id);
-        return q.getSingleResult();
+        List<SubjectMap> res = q.getResultList();
+        if (res.isEmpty()){
+            return new SubjectMap(null, id );
+        }
+        else {
+            return res.get(0);
+        }
+
     }
 
 }
