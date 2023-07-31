@@ -9,6 +9,7 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-graphql")
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-smallrye-jwt") // AAI
+    implementation("io.quarkus:quarkus-oidc")
 
     implementation("io.quarkus:quarkus-hibernate-orm")
     implementation("io.quarkus:quarkus-rest-client-jackson")

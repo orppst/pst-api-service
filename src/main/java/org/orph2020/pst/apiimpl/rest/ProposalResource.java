@@ -16,6 +16,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
+import javax.annotation.security.RolesAllowed;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
@@ -100,6 +101,7 @@ public class ProposalResource extends ObjectResourceBase {
             description = "get a single Proposal specified by the code"
     )
     @Path(proposalRoot)
+    @RolesAllowed("default-roles-orppst")
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
