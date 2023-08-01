@@ -24,6 +24,7 @@ dependencies {
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-resteasy-reactive")
     testImplementation("io.rest-assured:rest-assured")
+    testImplementation("io.quarkus:quarkus-test-security-oidc")
 }
 
 

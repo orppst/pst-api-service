@@ -2,7 +2,9 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
 import org.hamcrest.Matchers;
@@ -22,6 +24,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
 @QuarkusTest
+@TestSecurity(user = "pi", roles = "default-roles-orppst")
 public class ProposalResourceTest {
     String JSON_UTF16 = "application/json; charset=UTF-16";
     @Inject
