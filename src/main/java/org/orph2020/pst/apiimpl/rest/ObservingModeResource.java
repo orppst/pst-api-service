@@ -5,9 +5,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.ObservingMode;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.persistence.TypedQuery;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
+import jakarta.persistence.TypedQuery;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 
 

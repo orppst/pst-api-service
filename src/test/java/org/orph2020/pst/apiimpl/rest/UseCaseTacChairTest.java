@@ -12,7 +12,7 @@ import org.ivoa.dm.proposal.prop.ObservingMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import java.util.Calendar;
 import java.util.Date;

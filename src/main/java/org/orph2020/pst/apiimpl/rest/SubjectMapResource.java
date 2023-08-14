@@ -7,9 +7,9 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
-import javax.persistence.TypedQuery;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
+import jakarta.persistence.TypedQuery;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 
 @Path("subjectMap")

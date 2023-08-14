@@ -17,8 +17,8 @@ import org.ivoa.vodml.stdtypes.Unit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import javax.inject.Inject;
-import javax.ws.rs.core.MediaType;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.MediaType;
 
 import java.util.ArrayList;
 import java.util.Arrays;

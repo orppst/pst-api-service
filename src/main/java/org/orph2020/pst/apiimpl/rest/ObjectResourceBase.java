@@ -7,12 +7,12 @@ import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.inject.Inject;
-import javax.persistence.*;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.ext.ExceptionMapper;
-import javax.ws.rs.ext.Provider;
+import jakarta.inject.Inject;
+import jakarta.persistence.*;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;

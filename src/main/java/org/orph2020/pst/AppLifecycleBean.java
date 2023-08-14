@@ -12,12 +12,12 @@ import org.ivoa.dm.proposal.prop.Person;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
-import javax.transaction.Transactional;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class AppLifecycleBean {

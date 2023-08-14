@@ -7,10 +7,10 @@ import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.ivoa.Ivorn;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import javax.transaction.Transactional;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)

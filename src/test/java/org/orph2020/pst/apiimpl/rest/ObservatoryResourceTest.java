@@ -7,8 +7,8 @@ import org.ivoa.dm.proposal.prop.Backend;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import javax.inject.Inject;
-import javax.ws.rs.core.MediaType;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.MediaType;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
