@@ -12,17 +12,15 @@ dependencies {
     implementation("io.quarkus:quarkus-oidc")
 
     implementation("io.quarkus:quarkus-hibernate-orm")
-    implementation("io.quarkus:quarkus-rest-client-jackson")
-    implementation("io.quarkus:quarkus-rest-client")
+    implementation("io.quarkus:quarkus-rest-client-reactive-jackson")
     implementation("io.quarkus:quarkus-hibernate-validator")
-    implementation("io.quarkus:quarkus-rest-client-jaxb")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-kubernetes-service-binding")
 
 //    implementation("io.quarkiverse.helm:quarkus-helm:0.1.2")
 
     implementation("io.quarkus:quarkus-arc")
-    implementation("io.quarkus:quarkus-resteasy-reactive")
+    implementation("io.quarkus:quarkus-resteasy-reactive-jackson")
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.quarkus:quarkus-test-security-oidc")
 }
