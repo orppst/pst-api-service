@@ -304,9 +304,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (sourceName == null) {
-            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = "+proposalCode+" ORDER BY t.sourceName");
         } else {
-            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = '"+proposalCode+"' and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = "+proposalCode+" and t.sourceName like '"+sourceName+"' ORDER BY t.sourceName");
         }
 
     }
@@ -362,9 +362,9 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (fieldName == null) {
-            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' ORDER BY t.name");
+            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = "+proposalCode+" ORDER BY t.name");
         } else {
-            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = '"+proposalCode+"' and t.name like '"+fieldName+"' ORDER BY t.name");
+            return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = "+proposalCode+" and t.name like '"+fieldName+"' ORDER BY t.name");
         }
 
     }
@@ -408,7 +408,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
     public List<TechnicalGoal> getTechnicalGoals(@PathParam("proposalCode") Long proposalCode)
     {
-        TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = '" + proposalCode + "'", TechnicalGoal.class);
+        TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = " + proposalCode , TechnicalGoal.class);
         return q.getResultList();
     }
 

@@ -43,11 +43,11 @@ public class InvestigatorResource extends ObjectResourceBase {
     {
         if (fullName == null) {
             return getObjectIdentifiers(
-                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' ORDER BY p.fullName"
+                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = "+proposalCode+" ORDER BY p.fullName"
             );
         } else {
             return getObjectIdentifiers(
-                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = '"+proposalCode+"' and p.fullName like '"+fullName+"' ORDER BY p.fullName"
+                    "Select i._id,p.fullName From ObservingProposal o Inner join o.investigators i Inner join i.person p where o._id = "+proposalCode+" and p.fullName like '"+fullName+"' ORDER BY p.fullName"
             );
         }
     }

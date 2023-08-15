@@ -44,9 +44,9 @@ public class ObservationResource extends ObjectResourceBase {
             tquery = " and Type(o) = "+type.name();
         }
         if (srcName == null) {
-            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = "+proposalCode+" "+tquery+" ORDER BY t.sourceName");
         } else {
-            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = '"+proposalCode+"' "+tquery+" and t.sourceName like '"+srcName+"' ORDER BY t.sourceName");
+            return getObjectIdentifiers("SELECT o._id,t.sourceName FROM ObservingProposal p Inner Join p.observations o Inner Join  o.target t WHERE p._id = "+proposalCode+" "+tquery+" and t.sourceName like '"+srcName+"' ORDER BY t.sourceName");
         }
     }
 

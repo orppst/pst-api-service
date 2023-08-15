@@ -16,6 +16,8 @@ import jakarta.inject.Inject;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
+import  static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 public class ProposalCycleResourceTest {
@@ -60,7 +62,9 @@ public class ProposalCycleResourceTest {
                   .get("proposalCycles/"+cycleId+"/TAC")
                   .then()
                   .statusCode(200)
+                  .log().body()
                   .extract().as(TAC.class, raObjectMapper);
+  // actually this is fine - ids will be quite low in db as each table indexed separately   assertTrue(tac.getMembers().get(0).getId() > 1, "the id from the database should be more than one" );
 
    }
 
