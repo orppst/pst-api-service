@@ -6,6 +6,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
 import org.ivoa.dm.ivoa.RealQuantity;
@@ -59,6 +60,7 @@ public class UseCasePiTest {
     }
 
     @Test
+    @TestSecurity(user = "PI", roles = {"default-roles-orppst"})
     void testCreateProposal() throws JsonProcessingException {
 
         String JSON_UTF16 = "application/json; charset=UTF-16";
