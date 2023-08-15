@@ -107,7 +107,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades")
     @Operation(summary = "List the possible grades of the given ProposalCycle")
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") long cycleCode) {
-        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = '"+cycleCode+"' Order by o.name");
+        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name");
     }
 
     @GET
@@ -125,9 +125,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId,
                                                         @RestQuery String title) {
         if(title == null)
-            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' ORDER BY o.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = "+cycleId+" ORDER BY o.proposal.title");
         else
-            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = '"+cycleId+"' and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = "+cycleId+" and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
     }
 
     @PUT
@@ -162,9 +162,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId,
                                                        @RestQuery String title) {
         if(title == null)
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = "+cycleId+" ORDER BY o.submitted.proposal.title");
         else
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o Where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o Where p._id = "+cycleId+" and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
     }
 
 
@@ -218,9 +218,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public List<ObjectIdentifier> getAllocatedProposalsFromCycle(@PathParam("cycleCode") long cycleId,
                                                                  @RestQuery String title) {
         if (title == null) {
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = "+cycleId+" ORDER BY o.submitted.proposal.title");
         } else {
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = '"+cycleId+"' and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
+            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = "+cycleId+" and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
         }
     }
 

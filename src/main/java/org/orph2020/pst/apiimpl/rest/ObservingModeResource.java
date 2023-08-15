@@ -38,7 +38,7 @@ public class ObservingModeResource extends ObjectResourceBase {
     @Operation(summary = "get all the ObservingMode identifiers associated with the given ProposalCycle")
     public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
     {
-        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = '"+cycleId+"' order by o.name");
+        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = "+cycleId+" order by o.name");
     }
 
     @GET
