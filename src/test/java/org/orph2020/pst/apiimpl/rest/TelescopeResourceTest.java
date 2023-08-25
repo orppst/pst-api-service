@@ -1,17 +1,29 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.ivoa.dm.ivoa.RealQuantity;
+import org.ivoa.vodml.stdtypes.Unit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.ws.rs.core.MediaType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 public class TelescopeResourceTest {
+
+    @Inject
+    protected ObjectMapper mapper;
 
     private Integer observatoryId;
 
@@ -80,6 +92,7 @@ public class TelescopeResourceTest {
                 );
     }
 
+
     @Test
     void testUpdateTelescopeName() {
         String replacementName = "Beowulf";
@@ -107,12 +120,31 @@ public class TelescopeResourceTest {
                 );
     }
 
-    @Test
-    void testUpdateTelescopeLocationXYZ() {
-        String replacementLocationXYZ =
-                "[{\"value\":42.0,\"unit\":\"ft\"},{\"value\":87.0,\"unit\":\"m\"},{\"value\":99.0,\"unit\":\"m\"}]";
 
-        String textToCheck = "\"x\":{\"unit\":{\"value\":\"ft\"},\"value\":42.0}";
+    @Test
+    void testUpdateTelescopeLocationXYZ() throws JsonProcessingException {
+
+        RealQuantity x = RealQuantity.createRealQuantity((r) ->{
+            r.value = 42.0;
+            r.unit = new Unit("ft");
+        });
+
+        RealQuantity y = RealQuantity.createRealQuantity((r) ->{
+            r.value = 87.0;
+            r.unit = new Unit("m");
+        });
+
+        RealQuantity z = RealQuantity.createRealQuantity((r) ->{
+            r.value = 99.0;
+            r.unit = new Unit("m");
+        });
+
+        List<RealQuantity> xyz = new ArrayList<>();
+        xyz.add(x);
+        xyz.add(y);
+        xyz.add(z);
+
+        String textToCheck = "\"x\":{\"@type\":\"ivoa:RealQuantity\",\"unit\":{\"value\":\"ft\"},\"value\":42.0}";
 
         Integer telescopeId =
                 given()
@@ -125,8 +157,10 @@ public class TelescopeResourceTest {
                         )
                         .extract().jsonPath().getInt("[0].dbid");
 
+
         given()
-                .body(replacementLocationXYZ)
+                //api requires @type: RealQuantity in the JSON string - this is how to do it for a List
+                .body(mapper.writerFor(new TypeReference<List<RealQuantity>>() {}).writeValueAsString(xyz))
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .put("observatories/" + observatoryId + "/telescopes/" + telescopeId + "/location/xyz")
@@ -136,4 +170,6 @@ public class TelescopeResourceTest {
                         containsString(textToCheck)
                 );
     }
+
+
 }
