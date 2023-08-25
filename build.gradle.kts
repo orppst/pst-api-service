@@ -24,6 +24,8 @@ dependencies {
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.quarkus:quarkus-test-security-oidc")
     testImplementation("io.quarkus:quarkus-test-security")
+
+    implementation("uk.ac.starlink:stil:4.1.4")
 }
 
 
