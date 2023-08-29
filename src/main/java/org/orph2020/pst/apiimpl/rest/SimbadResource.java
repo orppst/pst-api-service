@@ -101,6 +101,16 @@ public class SimbadResource {
             System.out.println(e.getMessage());
         }
 
+        try
+        {
+            System.out.println(":::::::GENERIC:::::::");
+            voTableReader.genericProcessing(theUrl);
+        }
+        catch(Exception e)
+        {
+            System.out.println(e.getMessage());
+        }
+
         // FIXME change to use the actual target requested by the SIMBAD query
 
         //Faked target to pass the SimbadResourceTest unit test

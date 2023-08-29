@@ -1,5 +1,5 @@
 /*
- FIXME: WIP - simply tests the Starlink Tables Infrastructure Library using the SAX and DOM interfaces
+ FIXME: WIP - simply tests the Starlink Tables Infrastructure Library using the Generic, SAX and DOM interfaces
                 we need to extract the relevant information to create a proposal::Target
  */
 
@@ -11,7 +11,10 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import uk.ac.starlink.table.RowSequence;
 import uk.ac.starlink.table.StarTable;
+import uk.ac.starlink.table.StoragePolicy;
+import uk.ac.starlink.util.DataSource;
 import uk.ac.starlink.votable.*;
+
 
 import javax.xml.parsers.SAXParserFactory;
 import java.io.IOException;
@@ -19,6 +22,40 @@ import java.net.URL;
 import java.util.Arrays;
 
 public class voTableReader {
+
+    private static void
+    printStarTable(StarTable starTable) throws IOException {
+        int nCol = starTable.getColumnCount();
+        for ( int iCol = 0; iCol < nCol; iCol++) {
+            String colName = starTable.getColumnInfo( iCol ).getName();
+            System.out.print( colName + "\t");
+        }
+        System.out.println();
+
+        for (RowSequence rSeq = starTable.getRowSequence(); rSeq.next();) {
+            Object[] row = rSeq.getRow();
+            for (int iCol = 0; iCol < nCol; iCol++) {
+                System.out.print( row[iCol] + "\t\t");
+            }
+            System.out.println();
+        }
+    }
+
+    public static
+    void genericProcessing(String theUrl) throws Exception {
+        VOTableBuilder voTableBuilder = new VOTableBuilder();
+        DataSource dataSource = DataSource.makeDataSource(new URL(theUrl));
+        StoragePolicy storagePolicy = StoragePolicy.getDefaultPolicy();
+
+        try (StarTable starTable = voTableBuilder.makeStarTable(dataSource, false, storagePolicy))
+        {
+            printStarTable(starTable);
+        }
+        catch(Exception e)
+        {
+            System.out.println(e.getMessage());
+        }
+    }
 
     public static
     void saxProcessing(String theUrl) throws Exception {
@@ -68,20 +105,7 @@ public class voTableReader {
         TableElement tableElement = (TableElement) tables[0];
 
         try (StarTable starTable = new VOStarTable( tableElement )){
-            int nCol = starTable.getColumnCount();
-            for ( int iCol = 0; iCol < nCol; iCol++) {
-                String colName = starTable.getColumnInfo( iCol ).getName();
-                System.out.print( colName + "\t");
-            }
-            System.out.println();
-
-            for (RowSequence rSeq = starTable.getRowSequence(); rSeq.next();) {
-                Object[] row = rSeq.getRow();
-                for (int iCol = 0; iCol < nCol; iCol++) {
-                    System.out.print( row[iCol] + "\t");
-                }
-                System.out.println();
-            }
+            printStarTable(starTable);
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
