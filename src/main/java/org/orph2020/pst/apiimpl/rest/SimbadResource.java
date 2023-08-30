@@ -9,8 +9,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.Target;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.orph2020.pst.common.json.SimbadTargetResult;
 
 
 @Produces(MediaType.APPLICATION_JSON)
@@ -23,7 +23,7 @@ public class SimbadResource {
     @APIResponse(
             responseCode = "200"
     )
-    public Target simbadFindTarget(@RestQuery String targetName) throws WebApplicationException
+    public SimbadTargetResult simbadFindTarget(@RestQuery String targetName) throws WebApplicationException
     {
         //build the SIMBAD url with query string - for now only sim-id query, output format votable
         String baseUrl = "https://simbad.cds.unistra.fr/simbad/";

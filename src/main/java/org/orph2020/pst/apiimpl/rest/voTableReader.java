@@ -1,9 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import org.ivoa.dm.ivoa.RealQuantity;
-import org.ivoa.dm.proposal.prop.CelestialTarget;
-import org.ivoa.dm.stc.coords.*;
-import org.ivoa.vodml.stdtypes.Unit;
+import org.orph2020.pst.common.json.SimbadTargetResult;
 import uk.ac.starlink.table.RowSequence;
 import uk.ac.starlink.table.StarTable;
 import uk.ac.starlink.table.StoragePolicy;
@@ -55,7 +52,7 @@ public class voTableReader {
     }
 
 
-    public static CelestialTarget convertToTarget(String theUrl) throws Exception {
+    public static SimbadTargetResult convertToTarget(String theUrl) throws Exception {
         VOTableBuilder voTableBuilder = new VOTableBuilder();
         DataSource dataSource = DataSource.makeDataSource(new URL(theUrl));
         StoragePolicy storagePolicy = StoragePolicy.getDefaultPolicy();
@@ -117,30 +114,7 @@ public class voTableReader {
             double raDegrees = (double) starTable.getCell(0, raIndex);
             double decDegrees = (double) starTable.getCell(0, decIndex);
 
-            //default SIMBAD values: equinox="2000", epoch="J2000", system="ICRS"
-            SpaceSys ICRS_SYS = new SpaceSys(new CartesianCoordSpace(),
-                    new SpaceFrame(
-                            new StdRefLocation("TOPOCENTRE"), "ICRS",
-                            null, "")
-            );
-
-            Unit degrees = new Unit("degrees");
-
-            return CelestialTarget.createCelestialTarget((c) -> {
-                c.sourceName = targetName;
-                c.sourceCoordinates = new EquatorialPoint(
-                        new RealQuantity(raDegrees, degrees),
-                        new RealQuantity(decDegrees, degrees),
-                        ICRS_SYS
-                );
-                c.positionEpoch = new Epoch("J2000");
-            });
-
-        }
-        catch(Exception e)
-        {
-            System.out.println(e.getMessage());
-            throw e;
+            return new SimbadTargetResult(targetName, "ICRS", "J2000", raDegrees, decDegrees);
         }
     }
 
