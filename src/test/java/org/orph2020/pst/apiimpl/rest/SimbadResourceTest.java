@@ -20,7 +20,7 @@ public class SimbadResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("someTarget")
+                        containsString("m31")
                 );
     }
 }

@@ -1,63 +1,152 @@
-/*
- FIXME: WIP - simply tests the Starlink Tables Infrastructure Library using the Generic, SAX and DOM interfaces
-                we need to extract the relevant information to create a proposal::Target
- */
-
 package org.orph2020.pst.apiimpl.rest;
 
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
+import org.ivoa.dm.ivoa.RealQuantity;
+import org.ivoa.dm.proposal.prop.CelestialTarget;
+import org.ivoa.dm.stc.coords.*;
+import org.ivoa.vodml.stdtypes.Unit;
 import uk.ac.starlink.table.RowSequence;
 import uk.ac.starlink.table.StarTable;
 import uk.ac.starlink.table.StoragePolicy;
 import uk.ac.starlink.util.DataSource;
 import uk.ac.starlink.votable.*;
 
-
-import javax.xml.parsers.SAXParserFactory;
-import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
 
 public class voTableReader {
 
-    private static void
-    printStarTable(StarTable starTable) throws IOException {
+    private static int
+    findColumnIndex(StarTable starTable, String columnName) throws Exception {
+        int iCol = 0;
         int nCol = starTable.getColumnCount();
-        for ( int iCol = 0; iCol < nCol; iCol++) {
-            String colName = starTable.getColumnInfo( iCol ).getName();
-            System.out.print( colName + "\t");
-        }
-        System.out.println();
 
-        for (RowSequence rSeq = starTable.getRowSequence(); rSeq.next();) {
-            Object[] row = rSeq.getRow();
-            for (int iCol = 0; iCol < nCol; iCol++) {
-                System.out.print( row[iCol] + "\t\t");
-            }
-            System.out.println();
+        while (iCol < nCol && !starTable.getColumnInfo(iCol).getName().equals(columnName))
+        {
+            iCol++;
         }
+
+        if (iCol >= nCol)
+        {
+            throw new Exception(String.format("error: cannot find %s column in the table", columnName));
+        }
+
+        return iCol;
     }
 
-    public static
-    void genericProcessing(String theUrl) throws Exception {
+    private static long getRows(StarTable starTable) throws Exception {
+        long nRow = starTable.getRowCount(); //can return a -1 if row count is not easily determined
+
+        if (nRow == -1)
+        {
+            //determine row count using a 'RowSequence' - initial position is before the first row
+            RowSequence rowSequence = starTable.getRowSequence();
+            nRow = 0;
+            while (rowSequence.next())
+            {
+                nRow++;
+            }
+            rowSequence.close();
+        }
+
+        if (nRow == 0)
+        {
+            throw new Exception("error: table has no row data");
+        }
+        return nRow;
+    }
+
+
+    public static CelestialTarget convertToTarget(String theUrl) throws Exception {
         VOTableBuilder voTableBuilder = new VOTableBuilder();
         DataSource dataSource = DataSource.makeDataSource(new URL(theUrl));
         StoragePolicy storagePolicy = StoragePolicy.getDefaultPolicy();
 
         try (StarTable starTable = voTableBuilder.makeStarTable(dataSource, false, storagePolicy))
         {
-            printStarTable(starTable);
+            int nCol = starTable.getColumnCount();
+
+            if (nCol == 0)
+            {
+                throw new Exception("error: table has zero columns");
+            }
+            else if (nCol < 3)
+            {
+                throw new Exception("error: table is required to have at least 3 columns");
+            }
+
+            long nRow = getRows(starTable);
+
+            if (nRow > 1)
+            {
+                System.out.println("warning: table has more than one row - using the first row only");
+            }
+
+            //printStarTable(starTable);
+            //need to extract RA,DEC from the starTable
+
+            // find the indices of the columns representing RA/DEC, use on the row data
+
+            int raIndex = findColumnIndex(starTable, "RA_d");
+            int decIndex = findColumnIndex(starTable, "DEC_d");
+
+            //target name either found in column "TYPED_ID" meaning the SIMBAD query input or --
+            // found in column "MAIN_ID" which is the name as stored in the database.
+
+            String rawName;
+
+            try
+            {
+                int nameIndex = findColumnIndex(starTable, "TYPED_ID");
+                rawName = (String) starTable.getCell(0, nameIndex);
+            }
+            catch (Exception e1)
+            {
+                try
+                {
+                    int nameIndex = findColumnIndex(starTable, "MAIN_ID");
+                    rawName = (String) starTable.getCell(0, nameIndex);
+                }
+                catch (Exception e2)
+                {
+                    throw new Exception("error: no name data could be found in the table");
+                }
+            }
+
+            //format the name to be lower case with no whitespace
+            String targetName = rawName.replaceAll("\\s", "").toLowerCase();
+
+            double raDegrees = (double) starTable.getCell(0, raIndex);
+            double decDegrees = (double) starTable.getCell(0, decIndex);
+
+            //default SIMBAD values: equinox="2000", epoch="J2000", system="ICRS"
+            SpaceSys ICRS_SYS = new SpaceSys(new CartesianCoordSpace(),
+                    new SpaceFrame(
+                            new StdRefLocation("TOPOCENTRE"), "ICRS",
+                            null, "")
+            );
+
+            Unit degrees = new Unit("degrees");
+
+            return CelestialTarget.createCelestialTarget((c) -> {
+                c.sourceName = targetName;
+                c.sourceCoordinates = new EquatorialPoint(
+                        new RealQuantity(raDegrees, degrees),
+                        new RealQuantity(decDegrees, degrees),
+                        ICRS_SYS
+                );
+                c.positionEpoch = new Epoch("J2000");
+            });
+
         }
         catch(Exception e)
         {
             System.out.println(e.getMessage());
+            throw e;
         }
     }
 
-    public static
+
+
+/*    public static
     void saxProcessing(String theUrl) throws Exception {
         TableHandler tableHandler = new TableHandler() {
 
@@ -65,9 +154,13 @@ public class voTableReader {
 
             @Override
             public void startTable(StarTable metadata) throws SAXException {
-                rowCount = 0;
-                System.out.println("Table: " + metadata.getName());
-
+                //metadata does not contain actual row data - hence the name
+                try {
+                    printStarTable(metadata);
+                } catch (IOException e)
+                {
+                    System.out.println(e.getMessage());
+                }
             }
 
             @Override
@@ -90,9 +183,9 @@ public class voTableReader {
         xmlReader.setContentHandler(tableContentHandler);
 
         xmlReader.parse( theUrl );
-    }
+    }*/
 
-    public static
+/*    public static
     void domProcessing(String theUrl) throws IOException, SAXException
     {
         VOElement top = new VOElementFactory().makeVOElement(new URL(theUrl));
@@ -109,5 +202,23 @@ public class voTableReader {
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
-    }
+    }*/
+
+/*    private static void
+    printStarTable(StarTable starTable) throws IOException {
+        int nCol = starTable.getColumnCount();
+        for ( int iCol = 0; iCol < nCol; iCol++) {
+            String colName = starTable.getColumnInfo( iCol ).getName();
+            System.out.print( colName + "\t");
+        }
+        System.out.println();
+
+        for (RowSequence rSeq = starTable.getRowSequence(); rSeq.next();) {
+            Object[] row = rSeq.getRow();
+            for (int iCol = 0; iCol < nCol; iCol++) {
+                System.out.print( row[iCol] + "\t\t");
+            }
+            System.out.println();
+        }
+    }*/
 }
