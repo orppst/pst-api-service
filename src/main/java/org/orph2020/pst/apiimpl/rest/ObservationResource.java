@@ -50,6 +50,17 @@ public class ObservationResource extends ObjectResourceBase {
         }
     }
 
+    @GET
+    @Path("/{observationId}")
+    @Operation(summary = "get the Observation specified by the DB id belonging to the given proposal")
+    public Observation getObservation(@PathParam("proposalCode") Long proposalCode,
+                                      @PathParam("observationId") Long observationId)
+        throws WebApplicationException
+    {
+        return findChildByQuery(ObservingProposal.class, Observation.class, "observations",
+                proposalCode, observationId);
+    }
+
 
 
     @POST

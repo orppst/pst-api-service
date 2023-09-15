@@ -251,6 +251,7 @@ public class ProposalResourceTest {
    void testListObservations() {
 
       //valid request
+       long observationId =
       given()
             .when()
             .get("proposals/" + proposalId + "/observations")
@@ -259,10 +260,18 @@ public class ProposalResourceTest {
             .log().body()
             .body(
                   "$.size()", greaterThan(0)
-            );
+            )
+            .extract().jsonPath().getLong("[0].dbid");
 
-      ;
-
+       //the example creates a target with the name "fictional"
+       given()
+               .when()
+               .get("proposals/" + proposalId + "/observations/" + observationId)
+               .then()
+               .statusCode(200)
+               .body(
+                       containsString("fictional")
+               );
    }
    @Test
    void testListProposals() throws JsonProcessingException {
