@@ -349,7 +349,7 @@ public class ProposalResource extends ObjectResourceBase {
                         String.format(NON_ASSOCIATE_ID, "Target", targetId, "ObservingProposal", proposalCode)
                 ));
         observingProposal.removeFromTargets(target);
-        return responseWrapper(observingProposal, 201);
+        return deleteChildObject(observingProposal, target, observingProposal::removeFromTargets);
     }
 
 

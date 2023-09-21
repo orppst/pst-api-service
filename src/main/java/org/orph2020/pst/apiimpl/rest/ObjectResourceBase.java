@@ -153,6 +153,14 @@ abstract public class ObjectResourceBase {
         return child;
     }
 
+    protected <T,S> Response deleteChildObject(T parent, S child, Consumer<S> remover)
+    {
+
+        em.remove(child);
+        remover.accept(child);
+        em.merge(parent);
+        return emptyResponse204();
+    }
 
 
     //--------------------------------------------------------------------------------

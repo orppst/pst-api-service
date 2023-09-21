@@ -110,10 +110,7 @@ public class ObservationResource extends ObjectResourceBase {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
-
-        observingProposal.removeFromObservations(observation);
-
-        return responseWrapper(observingProposal, 201);
+        return deleteChildObject(observingProposal,observation, observingProposal::removeFromObservations);
     }
 
     @PUT
