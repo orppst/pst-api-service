@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /*
    For use cases see:
@@ -344,11 +345,20 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
+        List<Observation> observations = observingProposal.getObservations();
+
+        for (Observation o : observations) {
+            if(Objects.equals(targetId, o.getTarget().getId())) {
+                throw new BadRequestException(
+                        "Target cannot be deleted as it is currently referred to by at least one Observation");
+            }
+        }
+
         Target target = observingProposal.getTargets().stream().filter(o -> targetId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
                         String.format(NON_ASSOCIATE_ID, "Target", targetId, "ObservingProposal", proposalCode)
                 ));
-        observingProposal.removeFromTargets(target);
+
         return deleteChildObject(observingProposal, target, observingProposal::removeFromTargets);
     }
 
