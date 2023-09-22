@@ -175,7 +175,7 @@ abstract public class ObjectResourceBase {
 
         @Override
         public Response toResponse(Exception e) {
-            LOGGER.error("Failed to handle request", e);
+            LOGGER.error(e.getMessage(), e);
 
             int code = 500;
             if (e instanceof WebApplicationException) {
@@ -187,7 +187,7 @@ abstract public class ObjectResourceBase {
             exceptionJson.put("statusCode", code);
 
             if (e.getMessage() != null) {
-                exceptionJson.put("error", e.getMessage());
+                exceptionJson.put("message", e.getMessage());
             }
 
             return Response.status(code).entity(exceptionJson).build();
