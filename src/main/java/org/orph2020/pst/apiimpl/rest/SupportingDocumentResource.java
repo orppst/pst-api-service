@@ -58,7 +58,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                                          @RestQuery String title)
             throws WebApplicationException
     {
-        //Consider writing an SQL/Hibernate query string for this search
         if (title == null) {
             return getObjectIdentifiers("SELECT s._id,s.title FROM ObservingProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" ORDER BY s.title");
         } else {
