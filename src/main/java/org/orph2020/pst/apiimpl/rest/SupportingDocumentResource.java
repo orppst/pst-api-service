@@ -1,32 +1,55 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
+import org.jboss.resteasy.reactive.PartType;
+import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
+
+import java.io.File;
 import java.util.List;
+
+/*
+    Policy: make supporting document titles unique within a proposal - meaning we need to check for
+    uniqueness when a supporting document is uploaded or when a user decides to change the title of
+    an existing document.
+
+    Uniqueness should be case-sensitive, and with leading and trailing white space ignored
+ */
 
 @Path("proposals/{proposalCode}/supportingDocuments")
 @Tag(name = "proposals-supportingDocuments")
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
 
-    private SupportingDocument findSupportingDocument(List<SupportingDocument> supportingDocuments, Long id,
-                                                      Long proposalCode)
-            throws WebApplicationException
+    //FIXME: need to confirm a path location on our server for this
+    private static final String documentStoreRoot = "/tmp/documentStore/";
+
+    private
+    String sanitiseTitle(String input, ObservingProposal proposal)
     {
-        return supportingDocuments.stream().filter(o -> id.equals(o.getId())).findAny()
-                .orElseThrow(() -> new WebApplicationException(
-                        String.format(NON_ASSOCIATE_ID, "SupportingDocument", id, "ObservingProposal", proposalCode)
-                ));
+        //we could add more restrictions if needed
+        String result = input.trim();
+        for (SupportingDocument s : proposal.getSupportingDocuments()) {
+            if (s.getTitle().equals(input)) {
+                throw new WebApplicationException(
+                        "'" + input + "'" +
+                                " already exists, please provide a unique title for your supporting document",
+                        400);
+            }
+        }
+        return result;
     }
 
     @GET
@@ -36,31 +59,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         //Consider writing an SQL/Hibernate query string for this search
-
-        List<SupportingDocument> supportingDocuments = findObject(ObservingProposal.class, proposalCode)
-                .getSupportingDocuments();
-
-        List<ObjectIdentifier> response = new ArrayList<>();
         if (title == null) {
-
-            for (SupportingDocument s : supportingDocuments) {
-                response.add(new ObjectIdentifier(s.getId(), s.getTitle()));
-            }
-
+            return getObjectIdentifiers("SELECT s._id,s.title FROM ObservingProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" ORDER BY s.title");
         } else {
-
-            //search the list of SupportingDocuments for the queried title
-            SupportingDocument supportingDocument = supportingDocuments
-                    .stream().filter(o -> title.equals(o.getTitle())).findAny()
-                    .orElseThrow(() -> new WebApplicationException(
-                            String.format(NON_ASSOCIATE_NAME, "SupportingDocument", title, "ObservingProposal",
-                                    proposalCode), 404
-                    ));
-
-            //return value is a list of ObjectIdentifiers with one element
-            response.add(new ObjectIdentifier(supportingDocument.getId(), supportingDocument.getTitle()));
+            return getObjectIdentifiers("SELECT s._id,s.title FROM ObservingProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" and s.title like '"+title+"' ORDER BY s.title");
         }
-        return response;
     }
 
     @GET
@@ -70,25 +73,111 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                                     @PathParam("id") Long id)
             throws WebApplicationException
     {
-        return findSupportingDocument(
-                findObject(ObservingProposal.class, proposalCode).getSupportingDocuments(), id, proposalCode
-        );
+        return findChildByQuery(ObservingProposal.class, SupportingDocument.class, "supportingDocuments",
+                proposalCode, id);
     }
+
+    //required to make form-upload input work
+    @Schema(type = SchemaType.STRING, format = "binary")
+    public static class UploadItemSchema {}
 
     @POST
-    @Operation(summary = "add a new SupportingDocument to the ObservingProposal specified")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "upload a new SupportingDocument to the ObservingProposal specified")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewSupportingDocument(@PathParam("proposalCode") Long proposalCode,
-                                             SupportingDocument supportingDocument)
+    public SupportingDocument uploadSupportingDocument(@PathParam("proposalCode") Long proposalCode,
+                                             @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+                                             FileUpload fileUpload,
+                                             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
+
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
 
-        proposal.addToSupportingDocuments(supportingDocument);
+        String _title = sanitiseTitle(title, proposal);
 
-        return mergeObject(proposal);
+        //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
+        SupportingDocument result =
+                addNewChildObject(proposal, new SupportingDocument(_title, ""),
+                        proposal::addToSupportingDocuments);
+
+        //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
+        // is deleted on return from this request (quarkus configuration)
+
+        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + result.getId();
+
+        File destinationPath = new File(destinationStr);
+
+        if (destinationPath.exists())
+        {
+            throw new WebApplicationException(destinationStr + " exists - how'd that happen?!", 400);
+        }
+
+        if (!destinationPath.mkdirs())
+        {
+            throw new WebApplicationException("Unable to create path " + destinationPath);
+        }
+
+        //create the file-location
+        File destination = new File(destinationStr, fileUpload.fileName());
+
+        //move the uploaded file to the new destination
+        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        {
+            throw new
+                    WebApplicationException("Unable to save file " + fileUpload.fileName(), 400);
+        }
+        //else all good, set the location for the result
+        result.setLocation(destination.toString());
+
+        return result;
     }
+
+    @PUT
+    @Path("/{id}")
+    @Operation(summary = "replace the supporting document with a new file upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceSupportingDocument(@PathParam("proposalCode") Long proposalCode,
+                                              @PathParam("id") Long id,
+                                              @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+                                                  FileUpload fileUpload
+                                              )
+    {
+        SupportingDocument supportingDocument =
+                findChildByQuery(ObservingProposal.class, SupportingDocument.class,
+                        "supportingDocuments", proposalCode, id);
+
+        // first save the "new" upload file in the related directory of the store
+        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + id ;
+
+        File destination = new File(destinationStr, fileUpload.fileName());
+
+        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        {
+            throw new
+                    WebApplicationException("Unable to save (new) file "
+                    + fileUpload.fileName(), 400);
+        }
+
+        // second if the files names are different remove the "old" file from the store and
+        // update the SupportingDocument location else, do nothing - file replaced and
+        // locations the same
+        File oldFile = new File(supportingDocument.getLocation());
+
+        if (!oldFile.getName().equals(fileUpload.fileName()))
+        {
+            if (!oldFile.delete())
+            {
+                throw new WebApplicationException("Unable to delete (old) file " + oldFile.getName());
+            }
+
+            supportingDocument.setLocation(destination.getAbsolutePath());
+        }
+
+        return responseWrapper(supportingDocument, 201);
+    }
+
 
     @DELETE
     @Path("/{id}")
@@ -98,11 +187,31 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                              @PathParam("id") Long id)
             throws WebApplicationException
     {
+        //remove the associated document from the document store
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         SupportingDocument supportingDocument =
-                findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
-        observingProposal.removeFromSupportingDocuments(supportingDocument);
-        return responseWrapper(observingProposal, 201);
+                findChildByQuery(ObservingProposal.class, SupportingDocument.class, "supportingDocuments",
+                        proposalCode, id);
+
+        File fileToRemove = new File(supportingDocument.getLocation());
+
+        if (!fileToRemove.delete())
+        {
+            throw new WebApplicationException("unable to delete file: " + fileToRemove.getName(), 400);
+        }
+
+        String pathStr = fileToRemove.getAbsolutePath();
+        String parentDirStr = pathStr.substring(0, pathStr.lastIndexOf('/'));
+
+        File dirToRemove = new File(parentDirStr);
+
+        if (!dirToRemove.delete())
+        {
+            throw new WebApplicationException("unable to delete directory: " + parentDirStr, 400);
+        }
+
+        return deleteChildObject(observingProposal, supportingDocument,
+                observingProposal::removeFromSupportingDocuments);
     }
 
     @PUT
@@ -110,32 +219,20 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     @Operation(summary = "replace the title of the SupportingDocument specified by the 'id'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceSupportingDocumentTitle(@PathParam("proposalCode") Long proposalCode,
+    public SupportingDocument replaceSupportingDocumentTitle(@PathParam("proposalCode") Long proposalCode,
                                                    @PathParam("id") Long id,
                                                    String replacementTitle)
             throws WebApplicationException
     {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        SupportingDocument supportingDocument =
-                findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
-        supportingDocument.setTitle(replacementTitle);
-        return responseWrapper(observingProposal, 201);
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+
+        String _title = sanitiseTitle(replacementTitle, proposal);
+
+        SupportingDocument supportingDocument = findChildByQuery(ObservingProposal.class,
+                SupportingDocument.class, "supportingDocuments", proposalCode, id);
+
+        supportingDocument.setTitle(_title);
+        return supportingDocument;
     }
 
-    @PUT
-    @Path("/{id}/location")
-    @Operation(summary = "replace the location of the SupportingDocument specified by the 'id'")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceSupportingDocumentLocation(@PathParam("proposalCode") Long proposalCode,
-                                                      @PathParam("id") Long id,
-                                                      String replacementLocation)
-            throws WebApplicationException
-    {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        SupportingDocument supportingDocument =
-                findSupportingDocument(observingProposal.getSupportingDocuments(), id, proposalCode);
-        supportingDocument.setLocation(replacementLocation);
-        return responseWrapper(observingProposal, 201);
-    }
 }
