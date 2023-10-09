@@ -234,4 +234,28 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         return supportingDocument;
     }
 
+    //------Download file-----//
+    @GET
+    @Operation(summary = "download the document file associated with the SupportingDocument 'id'")
+    @Path("{id}/get-file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response downloadSupportingDocument(@PathParam("proposalCode") Long proposalCode,
+                                               @PathParam("id") Long id)
+    {
+        SupportingDocument supportingDocument = findChildByQuery(ObservingProposal.class,
+                SupportingDocument.class, "supportingDocuments", proposalCode, id);
+
+        File fileDownload = new File(supportingDocument.getLocation());
+
+        if(!fileDownload.exists())
+        {
+            throw new WebApplicationException("Cannot find " + fileDownload.getName(), 400);
+        }
+
+        Response.ResponseBuilder response = Response.ok((Object) fileDownload);
+        response.header("Content-Disposition", "attachment;filename=" + fileDownload.getName());
+
+        return response.build();
+    }
+
 }
