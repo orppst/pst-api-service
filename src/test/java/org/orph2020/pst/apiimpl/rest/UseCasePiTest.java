@@ -9,6 +9,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
+import org.apache.commons.io.FileUtils;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
@@ -21,12 +22,12 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.http.ContentType.JSON;
-import static io.restassured.http.ContentType.TEXT;
+import static io.restassured.http.ContentType.*;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -186,19 +187,19 @@ public class UseCasePiTest {
         String jsonSupportingDocument =
                 mapper.writerWithDefaultPrettyPrinter().writeValueAsString(supportingDocument);
 
-        Response response3 =
-                given()
-                        .body(jsonSupportingDocument)
-                        .contentType(JSON_UTF16)
-                        .when()
-                        .post("proposals/"+proposalid+"/supportingDocuments")
-                        .then()
-                        .contentType(JSON)
-                        .body(
-                                containsString(randomText1)
-                        )
-                        .extract().response();
+        final File testFile = new File("./README.md");
 
+        //this test checks that the title we get in the response is that we set in the request
+        given()
+                .multiPart("document", testFile)
+                .multiPart("title", randomText1)
+                .when()
+                .post("proposals/"+proposalid+"/supportingDocuments")
+                .then()
+                .contentType(JSON)
+                .body(
+                        containsString(randomText1)
+                );
 
         Integer supportingDocumentId =
                 given()
@@ -222,6 +223,13 @@ public class UseCasePiTest {
                                 containsString(randomText2)
                         )
                         .extract().response();
+
+        //use the API to clean up the file - note any intermediate directories will remain on your system
+        given()
+                .when()
+                .delete("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId)
+                .then()
+                .statusCode(204);
 
 
         // add a related proposal - the related proposal should already exist and/or be submitted?

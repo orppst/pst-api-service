@@ -90,6 +90,9 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                                              @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
+        if(fileUpload == null) {
+          throw new WebApplicationException("No file uploaded", 400);
+        }
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
 
@@ -194,6 +197,9 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         File fileToRemove = new File(supportingDocument.getLocation());
 
+        Response response = deleteChildObject(observingProposal, supportingDocument,
+                observingProposal::removeFromSupportingDocuments);
+
         if (!fileToRemove.delete())
         {
             throw new WebApplicationException("unable to delete file: " + fileToRemove.getName(), 400);
@@ -209,8 +215,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throw new WebApplicationException("unable to delete directory: " + parentDirStr, 400);
         }
 
-        return deleteChildObject(observingProposal, supportingDocument,
-                observingProposal::removeFromSupportingDocuments);
+        return response;
     }
 
     @PUT

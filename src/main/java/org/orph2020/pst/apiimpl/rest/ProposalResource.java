@@ -412,14 +412,13 @@ public class ProposalResource extends ObjectResourceBase {
 
     // technicalGoals
     //if we were following the design pattern we should return a list of TechnicalGoal identifiers
-    // - problem is there is no natural name
+    // - problem is there is no natural name so cast id to string
     @GET
     @Path(techGoalsRoot)
     @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
-    public List<TechnicalGoal> getTechnicalGoals(@PathParam("proposalCode") Long proposalCode)
+    public List<ObjectIdentifier> getTechnicalGoals(@PathParam("proposalCode") Long proposalCode)
     {
-        TypedQuery<TechnicalGoal> q = em.createQuery("SELECT t FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = " + proposalCode , TechnicalGoal.class);
-        return q.getResultList();
+        return getObjectIdentifiers("SELECT t._id,cast(t._id as string) FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = "+proposalCode);
     }
 
     @GET
@@ -455,12 +454,12 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
-        TechnicalGoal target = observingProposal.getTechnicalGoals().stream().filter(o -> techGoalId.equals(o.getId())).findAny()
+        TechnicalGoal technicalGoal = observingProposal.getTechnicalGoals().stream().filter(o -> techGoalId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
                         String.format(NON_ASSOCIATE_ID, "Technical Goal", techGoalId, "ObservingProposal", proposalCode)
                 ));
-        observingProposal.removeFromTechnicalGoals(target);
-        return responseWrapper(observingProposal, 201);
+
+        return deleteChildObject(observingProposal, technicalGoal, observingProposal::removeFromTechnicalGoals);
     }
 
     //Other fields of an ObservingProposal have been split out into their own source file
