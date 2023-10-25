@@ -181,16 +181,15 @@ public class ObservationResource extends ObjectResourceBase {
     @Operation(summary = "add a new Constraint to the Observation specified by 'id' in the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addNewConstraint(@PathParam("proposalCode") Long proposalCode, @PathParam("observationId") Long id,
+    public Constraint addNewConstraint(@PathParam("proposalCode") Long proposalCode, @PathParam("observationId") Long id,
                                      Constraint constraint)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
-        observation.addToConstraints(constraint);
 
-        return mergeObject(observingProposal);
+        return addNewChildObject(observation, constraint, observation::addToConstraints);
     }
 
     @DELETE
