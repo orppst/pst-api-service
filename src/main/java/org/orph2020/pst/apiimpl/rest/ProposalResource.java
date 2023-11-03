@@ -4,10 +4,7 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.media.Content;
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
@@ -18,7 +15,6 @@ import org.orph2020.pst.common.json.ProposalSynopsis;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -48,7 +44,6 @@ public class ProposalResource extends ObjectResourceBase {
 
     private static final String targetsRoot = proposalRoot + "/targets";
     private static final String fieldsRoot = proposalRoot + "/fields";
-    private static final String techGoalsRoot = proposalRoot + "/technicalGoals";
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -410,57 +405,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
 
-    // technicalGoals
-    //if we were following the design pattern we should return a list of TechnicalGoal identifiers
-    // - problem is there is no natural name so cast id to string
-    @GET
-    @Path(techGoalsRoot)
-    @Operation(summary = "get the list of TechnicalGoals associated with the given ObservingProposal")
-    public List<ObjectIdentifier> getTechnicalGoals(@PathParam("proposalCode") Long proposalCode)
-    {
-        return getObjectIdentifiers("SELECT t._id,cast(t._id as string) FROM ObservingProposal o Inner Join o.technicalGoals t WHERE o._id = "+proposalCode);
-    }
 
-    @GET
-    @Path(techGoalsRoot + "/{technicalGoalId}")
-    @Operation(summary = "get a specific TechnicalGoal for the given ObservingProposal")
-    public TechnicalGoal getTechnicalGoal(@PathParam("proposalCode") Long proposalCode,
-                                          @PathParam("technicalGoalId") Long techGoalId)
-    {
-        return findChildByQuery(ObservingProposal.class, TechnicalGoal.class, "technicalGoals",
-                proposalCode, techGoalId);
-    }
-
-    @POST
-    @Path(techGoalsRoot)
-    @Operation(summary = "add a new technical goal to the given ObservingProposal")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ResponseStatus(201)
-    @Transactional
-    public TechnicalGoal addNewTechnicalGoal(@PathParam("proposalCode") Long proposalCode, TechnicalGoal technicalGoal)
-            throws WebApplicationException
-    {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        return addNewChildObject(observingProposal,technicalGoal, observingProposal::addToTechnicalGoals);
-    }
-
-
-    @DELETE
-    @Path(techGoalsRoot+"/{techGoalId}")
-    @Operation(summary = "remove the Technical Goal specified by 'techGoalId' from the given ObservingProposal")
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response removeTechnicalGoal(@PathParam("proposalCode") Long proposalCode, @PathParam("techGoalId") Long techGoalId)
-            throws WebApplicationException
-    {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-
-        TechnicalGoal technicalGoal = observingProposal.getTechnicalGoals().stream().filter(o -> techGoalId.equals(o.getId())).findAny()
-                .orElseThrow(() -> new WebApplicationException(
-                        String.format(NON_ASSOCIATE_ID, "Technical Goal", techGoalId, "ObservingProposal", proposalCode)
-                ));
-
-        return deleteChildObject(observingProposal, technicalGoal, observingProposal::removeFromTechnicalGoals);
-    }
 
     //Other fields of an ObservingProposal have been split out into their own source file
 }
