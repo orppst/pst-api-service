@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.MediaType;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.*;
@@ -303,7 +304,6 @@ public class UseCasePiTest {
                 p.representativeSpectralPoint = new RealQuantity(1.9, ghz);
             });
             g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                ssw.index = 98;
                 ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
                     sw.start = new RealQuantity(1.4, ghz);
                     sw.end = new RealQuantity(2.2, ghz);
@@ -312,7 +312,6 @@ public class UseCasePiTest {
                     sw.polarization = PolStateEnum.LR;
                 });
             }), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                ssw.index = 99;
                 ssw.expectedSpectralLine = Arrays.asList(ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
                     sl.restFrequency = new RealQuantity(1.8472, ghz);
                     sl.description = "ALIENS";
@@ -358,6 +357,64 @@ public class UseCasePiTest {
                         .statusCode(201)
                         .extract().response();
 
+        long observationId =
+                given()
+                        .when()
+                        .get("proposals/"+proposalid+"/observations")
+                        .then()
+                        .statusCode(200)
+                        .body("$.size()", greaterThan(0))
+                        .extract().jsonPath().getLong("[0].dbid");
+
+        //create a TimingWindow constraint
+        TimingWindow timingWindow = TimingWindow.createTimingWindow((tw) -> {
+            tw.startTime = null;
+            tw.endTime = null;
+            tw.isAvoidConstraint = false;
+            tw.note = "number 1";
+        });
+
+        //post the timing window to the observation
+        given()
+                .body(mapper.writeValueAsString(timingWindow))
+                .contentType(JSON)
+                .post("proposals/"+proposalid+"/observations/"+observationId+"/constraints")
+                .then()
+                .statusCode(200);
+
+        //check the timing window values (we only have 1 timing window at this point)
+        given()
+                .when()
+                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/1")
+                .then()
+                .statusCode(200)
+                .body("note", equalTo("number 1"))
+                .body("isAvoidConstraint", equalTo(false));
+
+        //create a new timing window to update the one just posted
+        TimingWindow timingWindowUpdate = TimingWindow.createTimingWindow((tw) -> {
+            tw.startTime = new Date(0);
+            tw.endTime = new Date(0);
+            tw.note = "number 1 update";
+            tw.isAvoidConstraint = true;
+        });
+
+        //update the TimingWindow with new values
+        given()
+                .body(mapper.writeValueAsString(timingWindowUpdate))
+                .contentType(JSON)
+                .put("proposals/"+proposalid+"/observations/"+observationId+"/timingWindows/1")
+                .then()
+                .statusCode(200);
+
+        //check the TimingWindow values
+        given()
+                .when()
+                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/1")
+                .then()
+                .statusCode(200)
+                .body("note", equalTo("number 1 update"))
+                .body("isAvoidConstraint", equalTo(true));
 
 
        //finally submit the proposal.
