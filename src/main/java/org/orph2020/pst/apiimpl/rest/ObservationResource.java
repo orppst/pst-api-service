@@ -153,7 +153,7 @@ public class ObservationResource extends ObjectResourceBase {
     @GET
     @Path("/{observationId}/constraints")
     @Operation(summary = "get the list of Constraints for the given Observation in the given ObservingProposal")
-    public List<Constraint> getConstraints(@PathParam("proposalCode") Long proposalCode,
+    public List<ObservingConstraint> getConstraints(@PathParam("proposalCode") Long proposalCode,
                                            @PathParam("observationId") Long observationId)
             throws WebApplicationException
     {
@@ -165,11 +165,11 @@ public class ObservationResource extends ObjectResourceBase {
     @GET
     @Path("/{observationId}/constraints/{constraintId}")
     @Operation(summary = "get the constraint referenced by the 'constraintId' for the given observation")
-    public Constraint getConstraint(@PathParam("observationId") Long observationId,
+    public ObservingConstraint getConstraint(@PathParam("observationId") Long observationId,
                                     @PathParam("constraintId") Long constraintId)
         throws WebApplicationException
     {
-        return findChildByQuery(Observation.class, Constraint.class,
+        return findChildByQuery(Observation.class, ObservingConstraint.class,
                 "constraints", observationId, constraintId);
     }
 
@@ -178,9 +178,9 @@ public class ObservationResource extends ObjectResourceBase {
     @Operation(summary = "add a new Constraint to the Observation specified by 'id' in the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Constraint addNewConstraint(@PathParam("proposalCode") Long proposalCode,
+    public ObservingConstraint addNewConstraint(@PathParam("proposalCode") Long proposalCode,
                                        @PathParam("observationId") Long id,
-                                       Constraint constraint)
+                                                ObservingConstraint constraint)
             throws WebApplicationException
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
@@ -202,9 +202,9 @@ public class ObservationResource extends ObjectResourceBase {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), observationId, proposalCode);
-        List<Constraint> constraints = observation.getConstraints();
+        List<ObservingConstraint> constraints = observation.getConstraints();
 
-        Constraint constraint = constraints
+        ObservingConstraint constraint = constraints
                 .stream().filter(o -> constraintId.equals(o.getId())).findAny()
                 .orElseThrow(() -> new WebApplicationException(
                         String.format(NON_ASSOCIATE_ID, "Constraint", constraintId,

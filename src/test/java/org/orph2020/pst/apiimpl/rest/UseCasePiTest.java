@@ -375,17 +375,20 @@ public class UseCasePiTest {
         });
 
         //post the timing window to the observation
-        given()
+        long constraintId =given()
                 .body(mapper.writeValueAsString(timingWindow))
                 .contentType(JSON)
                 .post("proposals/"+proposalid+"/observations/"+observationId+"/constraints")
                 .then()
-                .statusCode(200);
+                .statusCode(200)
+                .contentType(JSON)
+                .log().body()
+                .extract().as(TimingWindow.class,raObjectMapper).getId();
 
-        //check the timing window values (we only have 1 timing window at this point)
+        //check the timing window values
         given()
                 .when()
-                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/1")
+                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/"+constraintId)
                 .then()
                 .statusCode(200)
                 .body("note", equalTo("number 1"))
@@ -394,7 +397,7 @@ public class UseCasePiTest {
         //create a new timing window to update the one just posted
         TimingWindow timingWindowUpdate = TimingWindow.createTimingWindow((tw) -> {
             tw.startTime = new Date(0);
-            tw.endTime = new Date(0);
+            tw.endTime = new Date(1);
             tw.note = "number 1 update";
             tw.isAvoidConstraint = true;
         });
@@ -403,14 +406,14 @@ public class UseCasePiTest {
         given()
                 .body(mapper.writeValueAsString(timingWindowUpdate))
                 .contentType(JSON)
-                .put("proposals/"+proposalid+"/observations/"+observationId+"/timingWindows/1")
+                .put("proposals/"+proposalid+"/observations/"+observationId+"/timingWindows/"+constraintId)
                 .then()
                 .statusCode(200);
 
         //check the TimingWindow values
         given()
                 .when()
-                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/1")
+                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/"+constraintId)
                 .then()
                 .statusCode(200)
                 .body("note", equalTo("number 1 update"))
