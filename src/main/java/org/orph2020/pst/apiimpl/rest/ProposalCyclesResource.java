@@ -10,6 +10,7 @@ import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ProposalCycleDates;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
 import jakarta.persistence.TypedQuery;
@@ -94,6 +95,15 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "Get proposal cycle")
     public ProposalCycle getProposalCycle(@PathParam("cycleCode") long cycleId) {
         return findObject(ProposalCycle.class,cycleId);
+    }
+
+    @GET
+    @Path("{cycleCode}/dates")
+    @Operation(summary = "Get the dates associated with a given ProposalCycle")
+    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") long cycleId) {
+        ProposalCycle fullCycle =  findObject(ProposalCycle.class,cycleId);
+        return new ProposalCycleDates(fullCycle.getTitle(), fullCycle.getSubmissionDeadline(),
+                fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd());
     }
 
     @GET
