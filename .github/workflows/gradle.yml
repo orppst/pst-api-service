@@ -52,4 +52,4 @@ jobs:
         cache-disabled: false
     - name: Run Gradle build
       working-directory: ./main
-      run: ./gradlew --info build
+      run: ./gradlew --info build testClasses -x test
