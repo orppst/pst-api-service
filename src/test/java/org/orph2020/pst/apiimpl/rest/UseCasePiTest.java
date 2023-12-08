@@ -382,7 +382,6 @@ public class UseCasePiTest {
                 .then()
                 .statusCode(200)
                 .contentType(JSON)
-                .log().body()
                 .extract().as(TimingWindow.class,raObjectMapper).getId();
 
         //check the timing window values
@@ -418,6 +417,27 @@ public class UseCasePiTest {
                 .statusCode(200)
                 .body("note", equalTo("number 1 update"))
                 .body("isAvoidConstraint", equalTo(true));
+
+
+        //clone the observation
+
+        Observation oldObservation = given()
+              .when()
+              .get("proposals/" + proposalid + "/observations/" + observationId)
+              .then()
+              .statusCode(200)
+              .contentType(JSON)
+              .extract().as(Observation.class, raObjectMapper);
+
+        Response response6 =
+              given()
+                    .body(mapper.writeValueAsString(oldObservation))
+                    .contentType(JSON)
+                    .post("proposals/"+proposalid+"/observations")
+                    .then()
+                    .statusCode(201)
+                    .extract().response();
+
 
 
        //finally submit the proposal.
