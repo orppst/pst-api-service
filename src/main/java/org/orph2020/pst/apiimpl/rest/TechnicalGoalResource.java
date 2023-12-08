@@ -48,7 +48,11 @@ public class TechnicalGoalResource extends ObjectResourceBase{
             throws WebApplicationException
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        return addNewChildObject(observingProposal,technicalGoal, observingProposal::addToTechnicalGoals);
+
+        //use copy constructor in case the front-end is attempting to clone the technical goal,
+        //for a completely new technical goal this is inefficient but livable.
+        return addNewChildObject(observingProposal, new TechnicalGoal(technicalGoal),
+                observingProposal::addToTechnicalGoals);
     }
 
 
