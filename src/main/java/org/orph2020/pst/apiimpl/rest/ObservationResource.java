@@ -76,7 +76,9 @@ public class ObservationResource extends ObjectResourceBase {
                                          Observation observation)
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        return addNewChildObject(observingProposal, observation,
+        //note the use of copyme to  clone any input observation in case it has been cloned in the GUI and has any database Ids in it.
+        // also note that if Observation were not abstract then copy constructor would be the correct thing to do.
+        return addNewChildObject(observingProposal, observation.copyMe(),
                 observingProposal::addToObservations);
     }
 
