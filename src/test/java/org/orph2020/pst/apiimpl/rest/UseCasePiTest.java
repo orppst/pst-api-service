@@ -8,24 +8,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.internal.mapping.Jackson2Mapper;
-import io.restassured.response.Response;
-import org.apache.commons.io.FileUtils;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
-import org.ivoa.dm.proposal.prop.Point;
 import org.ivoa.dm.stc.coords.*;
 import org.ivoa.vodml.stdtypes.Unit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.MediaType;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.*;
@@ -48,9 +45,7 @@ public class UseCasePiTest {
 
     @BeforeEach
     void setUp() {
-        raObjectMapper = new Jackson2Mapper(((type, charset) -> {
-            return mapper;
-        }));
+        raObjectMapper = new Jackson2Mapper(((type, charset) -> mapper));
         ghz = new Unit("ghz");
         degrees = new Unit("degrees");
         ICRS_SYS = given()
@@ -69,8 +64,6 @@ public class UseCasePiTest {
 
         String randomText1 = "Spiderman likes cats";
         String randomText2 = "Batman prefers dogs";
-        String randomText3 = "Wonderwoman drinks pints";
-        String randomText4 = "Superman licks windows";
 
 
         // check initial conditions
@@ -87,7 +80,7 @@ public class UseCasePiTest {
 
         //IMPL the principalInvestigator would usually be the logged-in person....
         //find the PI
-        Integer personid = given()
+        int personid = given()
                 .when()
                 .param("name","PI")
                 .get("people")
@@ -114,11 +107,16 @@ public class UseCasePiTest {
         ObservingProposal prop = new ObservingProposal().withTitle("My New Proposal")
                 .withKind(ProposalKind.STANDARD)
                 .withSummary("search for something new")
-                .withScientificJustification(new Justification("scientific justification", TextFormats.ASCIIDOC))
-                .withTechnicalJustification(new Justification("technical justification", TextFormats.ASCIIDOC))
+                .withScientificJustification(
+                        new Justification("scientific justification",
+                                TextFormats.ASCIIDOC))
+                .withTechnicalJustification(
+                        new Justification("technical justification",
+                                TextFormats.ASCIIDOC))
                 ;
 
-        prop.setInvestigators(Arrays.asList(new Investigator(InvestigatorKind.PI,false,principalInvestigator)));
+        prop.setInvestigators(List.of(
+                new Investigator(InvestigatorKind.PI, false, principalInvestigator)));
 
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
 
@@ -137,7 +135,7 @@ public class UseCasePiTest {
         System.out.println("proposalCode="+proposalid);
 
 
-        Integer coiPersonId =
+        int coiPersonId =
                 given()
                     .when()
                     .param("name","CO-I")
@@ -161,32 +159,27 @@ public class UseCasePiTest {
                     ).extract().as(Person.class, raObjectMapper);
 
         //create a new Investigator
-        Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, coiPerson);
+        Investigator coiInvestigator =
+                new Investigator(InvestigatorKind.COI, true, coiPerson);
 
         //convert to a JSON string
-        String jsonCoiInvestigator = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(coiInvestigator);
+        String jsonCoiInvestigator =
+                mapper.writerWithDefaultPrettyPrinter().writeValueAsString(coiInvestigator);
 
         //add new COI Investigator to the proposal
-        Response response1 =
-                given()
-                        .body(jsonCoiInvestigator)
-                        .contentType(JSON_UTF16)
-                        .when()
-                        .post("proposals/"+proposalid+"/investigators")
-                        .then()
-                        .contentType(JSON)
-                        .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
-                        .extract().response();
+        given()
+                .body(jsonCoiInvestigator)
+                .contentType(JSON_UTF16)
+                .when()
+                .post("proposals/"+proposalid+"/investigators")
+                .then()
+                .contentType(JSON)
+                .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
+                .extract().response();
 
 
         //add a new SupportingDocument to the proposal
        //FIXME real use case here will actually upload the document to the document store with http POST form multipart
-
-        SupportingDocument supportingDocument = new SupportingDocument(randomText1,
-                "void://fake/path/to/nonexistent/file");
-
-        String jsonSupportingDocument =
-                mapper.writerWithDefaultPrettyPrinter().writeValueAsString(supportingDocument);
 
         final File testFile = new File("./README.md");
 
@@ -202,7 +195,7 @@ public class UseCasePiTest {
                         containsString(randomText1)
                 );
 
-        Integer supportingDocumentId =
+        int supportingDocumentId =
                 given()
                         .when()
                         .param("title", randomText1)
@@ -214,21 +207,22 @@ public class UseCasePiTest {
                         .extract().jsonPath().getInt("[0].dbid");
 
         //change the title of the SupportingDocument
-        Response response4 =
-                given()
-                        .body(randomText2)
-                        .contentType(TEXT)
-                        .put("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId+"/title")
-                        .then()
-                        .body(
-                                containsString(randomText2)
-                        )
-                        .extract().response();
+        given()
+                .body(randomText2)
+                .contentType(TEXT)
+                .put("proposals/"+proposalid+"/supportingDocuments/"+
+                        supportingDocumentId+"/title")
+                .then()
+                .body(
+                        containsString(randomText2)
+                )
+                .extract().response();
 
         //use the API to clean up the file - note any intermediate directories will remain on your system
         given()
                 .when()
-                .delete("proposals/"+proposalid+"/supportingDocuments/"+supportingDocumentId)
+                .delete("proposals/"+proposalid+"/supportingDocuments/"+
+                        supportingDocumentId)
                 .then()
                 .statusCode(204);
 
@@ -245,20 +239,19 @@ public class UseCasePiTest {
                     .extract().jsonPath().getInt("[0].code");
 
 
-        ObservingProposal otherProposal =
-              given()
-                    .when()
-                    .get("proposals/"+relatedProposalId)
-                    .then()
-                    .statusCode(200)
-                    .extract().as(ObservingProposal.class, raObjectMapper);
-        RelatedProposal relatedProposal = new RelatedProposal(otherProposal);
+
+          given()
+                .when()
+                .get("proposals/"+relatedProposalId)
+                .then()
+                .statusCode(200)
+                .extract().as(ObservingProposal.class, raObjectMapper);
 
         given()
               .contentType("text/plain")
               .body(relatedProposalId) //IMPL - just sending the ID - however, when the related proposal contains more fields then this will need some JSON...
               .when()
-              .put("/proposals/"+String.valueOf(proposalid)+"/relatedProposals")
+              .put("/proposals/"+ proposalid +"/relatedProposals")
               .then()
               .statusCode(201)
               ;
@@ -303,16 +296,17 @@ public class UseCasePiTest {
                 p.desiredLargestScale = new RealQuantity(0.05, degrees);
                 p.representativeSpectralPoint = new RealQuantity(1.9, ghz);
             });
-            g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                ssw.spectralWindowSetup = SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
-                    sw.start = new RealQuantity(1.4, ghz);
-                    sw.end = new RealQuantity(2.2, ghz);
-                    sw.spectralResolution = new RealQuantity(0.3, ghz);
-                    sw.isSkyFrequency = false;
-                    sw.polarization = PolStateEnum.LR;
-                });
-            }), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
-                ssw.expectedSpectralLine = Arrays.asList(ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
+            g.spectrum = Arrays.asList(ScienceSpectralWindow.createScienceSpectralWindow(
+                    (ssw) -> ssw.spectralWindowSetup =
+                            SpectralWindowSetup.createSpectralWindowSetup((sw) -> {
+                sw.start = new RealQuantity(1.4, ghz);
+                sw.end = new RealQuantity(2.2, ghz);
+                sw.spectralResolution = new RealQuantity(0.3, ghz);
+                sw.isSkyFrequency = false;
+                sw.polarization = PolStateEnum.LR;
+            })), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
+                ssw.expectedSpectralLine = Collections.singletonList(
+                        ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
                     sl.restFrequency = new RealQuantity(1.8472, ghz);
                     sl.description = "ALIENS";
                     sl.splatalogId = new StringIdentifier("1000101");
@@ -338,24 +332,23 @@ public class UseCasePiTest {
                     .log().body()
                     .extract().as(TechnicalGoal.class,raObjectMapper);
 
-        //copied and edited from the EmerlinExample
+        //create a target observation
         TargetObservation targetObservation =
         TargetObservation.createTargetObservation((t) -> {
-
             t.target = createdTarget;
             t.field = createdField;
             t.technicalGoal = createdTechGoal;
-
         });
 
-        Response response5 =
-                given()
-                        .body(mapper.writeValueAsString(targetObservation))
-                        .contentType(JSON)
-                        .post("proposals/"+proposalid+"/observations")
-                        .then()
-                        .statusCode(201)
-                        .extract().response();
+        //post the target observation to the proposal
+
+        given()
+                .body(mapper.writeValueAsString(targetObservation))
+                .contentType(JSON)
+                .post("proposals/"+proposalid+"/observations")
+                .then()
+                .statusCode(201)
+                .extract().response();
 
         long observationId =
                 given()
@@ -375,7 +368,8 @@ public class UseCasePiTest {
         });
 
         //post the timing window to the observation
-        long constraintId =given()
+        long constraintId =
+                given()
                 .body(mapper.writeValueAsString(timingWindow))
                 .contentType(JSON)
                 .post("proposals/"+proposalid+"/observations/"+observationId+"/constraints")
@@ -387,7 +381,8 @@ public class UseCasePiTest {
         //check the timing window values
         given()
                 .when()
-                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/"+constraintId)
+                .get("proposals/"+proposalid+"/observations/"+observationId+
+                        "/constraints/"+constraintId)
                 .then()
                 .statusCode(200)
                 .body("note", equalTo("number 1"))
@@ -395,8 +390,8 @@ public class UseCasePiTest {
 
         //create a new timing window to update the one just posted
         TimingWindow timingWindowUpdate = TimingWindow.createTimingWindow((tw) -> {
-            tw.startTime = new Date(0);
-            tw.endTime = new Date(1);
+            tw.startTime = new Date(0); // posix epoch
+            tw.endTime = new Date(1000); // 1 second after posix epoch
             tw.note = "number 1 update";
             tw.isAvoidConstraint = true;
         });
@@ -405,22 +400,28 @@ public class UseCasePiTest {
         given()
                 .body(mapper.writeValueAsString(timingWindowUpdate))
                 .contentType(JSON)
-                .put("proposals/"+proposalid+"/observations/"+observationId+"/timingWindows/"+constraintId)
+                .put("proposals/"+proposalid+"/observations/"+observationId+
+                        "/timingWindows/"+constraintId)
                 .then()
                 .statusCode(200);
 
         //check the TimingWindow values
+        //issues with Dates, differences in the:
+        // 1. format of the date-time string;
+        // 2. and in the timezones (the string from Date seems to use BST)
         given()
                 .when()
-                .get("proposals/"+proposalid+"/observations/"+observationId+"/constraints/"+constraintId)
+                .get("proposals/"+proposalid+"/observations/"+observationId+
+                        "/constraints/"+constraintId)
                 .then()
                 .statusCode(200)
+                //.body("startTime", equalTo(new Date(0)))
+                //.body("endTime", equalTo(new Date(1000)))
                 .body("note", equalTo("number 1 update"))
                 .body("isAvoidConstraint", equalTo(true));
 
 
         //clone the observation
-
         Observation oldObservation = given()
               .when()
               .get("proposals/" + proposalid + "/observations/" + observationId)
@@ -429,20 +430,20 @@ public class UseCasePiTest {
               .contentType(JSON)
               .extract().as(Observation.class, raObjectMapper);
 
-        Response response6 =
-              given()
-                    .body(mapper.writeValueAsString(oldObservation))
-                    .contentType(JSON)
-                    .post("proposals/"+proposalid+"/observations")
-                    .then()
-                    .statusCode(201)
-                    .extract().response();
+
+        given()
+            .body(mapper.writeValueAsString(oldObservation))
+            .contentType(JSON)
+            .post("proposals/"+proposalid+"/observations")
+            .then()
+            .statusCode(201)
+            .extract().response();
 
 
 
        //finally submit the proposal.
 
-       Integer cycleId = given()
+       int cycleId = given()
              .when()
              .get("proposalCycles")
              .then()
@@ -456,7 +457,7 @@ public class UseCasePiTest {
              .contentType("text/plain")
              .body(proposalid)
              .when()
-             .put("/proposalCycles/"+String.valueOf(cycleId)+"/submittedProposals")
+             .put("/proposalCycles/"+cycleId+"/submittedProposals")
              .then()
              .statusCode(201)
        ;
