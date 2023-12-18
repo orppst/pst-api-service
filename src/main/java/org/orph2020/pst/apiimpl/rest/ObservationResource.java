@@ -235,7 +235,6 @@ public class ObservationResource extends ObjectResourceBase {
         TimingWindow window = findChildByQuery(Observation.class, TimingWindow.class,
                 "constraints", observationId, timingWindowId);
 
-        // only sets those members that are immediate children of the TimingWindow class
         window.updateUsing(replacementWindow);
 
         em.merge(window);

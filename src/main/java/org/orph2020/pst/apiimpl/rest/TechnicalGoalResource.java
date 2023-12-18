@@ -119,132 +119,97 @@ public class TechnicalGoalResource extends ObjectResourceBase{
     }
 
     @DELETE
-    @Path("{technicalGoalId}/spectrum/{windowIndex}/")
-    @Operation(summary = "remove the Spectrum at 'windowIndex' of the TechnicalGoal referred to by the 'technicalGoalId")
+    @Path("{technicalGoalId}/spectrum/{spectralWindowId}/")
+    @Operation(summary = "remove the ScienceSpectralWindow with 'spectralWindowId' from the given TechnicalGoal")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeSpectrum(@PathParam("proposalCode") Long proposalCode,
                                    @PathParam("technicalGoalId") Long technicalGoalId,
-                                   @PathParam("windowIndex") int windowIndex)
+                                   @PathParam("spectralWindowId") Long spectralWindowId)
             throws WebApplicationException
     {
         TechnicalGoal goal = findChildByQuery(ObservingProposal.class, TechnicalGoal.class,
                 "technicalGoals", proposalCode, technicalGoalId);
 
-        if (windowIndex < 0 || windowIndex >= goal.getSpectrum().size()) {
-            throw new WebApplicationException("index out-of-bounds", 400);
-        }
+        ScienceSpectralWindow spectralWindow =
+                findChildByQuery(TechnicalGoal.class, ScienceSpectralWindow.class,
+                        "spectrum", technicalGoalId, spectralWindowId);
 
-        return deleteChildObject(goal, goal.getSpectrum().get(windowIndex),
-                goal::removeFromSpectrum);
+        return deleteChildObject(goal, spectralWindow, goal::removeFromSpectrum);
     }
 
     @PUT
-    @Path("{technicalGoalId}/spectrum/{windowIndex}/")
-    @Operation(summary = "replace the Spectrum at 'windowIndex' of the TechnicalGoal referred to by the 'technicalGoalId")
+    @Path("{technicalGoalId}/spectrum/{spectralWindowId}/")
+    @Operation(summary = "replace the ScienceSpectralWindow with 'spectralWindowId' in the given TechnicalGoal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ScienceSpectralWindow replaceSpectrum(@PathParam("proposalCode") Long proposalCode,
-                                                 @PathParam("technicalGoalId") Long technicalGoalId,
-                                                 @PathParam("windowIndex") int windowIndex,
-                                                 ScienceSpectralWindow replacementWindow)
+    public ScienceSpectralWindow replaceSpectrum(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("technicalGoalId") Long technicalGoalId,
+            @PathParam("spectralWindowId") Long spectralWindowId,
+            ScienceSpectralWindow replacementWindow
+    )
             throws WebApplicationException
     {
         TechnicalGoal goal = findChildByQuery(ObservingProposal.class, TechnicalGoal.class,
                 "technicalGoals", proposalCode, technicalGoalId);
 
-        if (windowIndex < 0 || windowIndex >= goal.getSpectrum().size()) {
-            throw new WebApplicationException("index out-of-bounds", 400);
-        }
+        ScienceSpectralWindow spectralWindow =
+                findChildByQuery(TechnicalGoal.class, ScienceSpectralWindow.class,
+                        "spectrum", technicalGoalId, spectralWindowId);
 
-        // goal.getSpectrum() returns an immutable List.
-        // The following is what we want to do but can't:
-        // goal.getSpectrum().set(windowIndex, replacementWindow);
+        spectralWindow.updateUsing(replacementWindow);
 
-        // instead we copy the entire list except for replacing the element we wish to update...
-        List<ScienceSpectralWindow> replace = new ArrayList<>(goal.getSpectrum());
-        replace.set(windowIndex, replacementWindow);
-
-        //...then replace the entire list
-        goal.setSpectrum(replace);
-
-        return goal.getSpectrum().get(windowIndex);
+        return spectralWindow;
     }
 
-    //TechnicalGoal::Spectrum.at(index)::ExpectedSpectralLines (List<ExpectedSpectralLine>)
-
-    //work-around the immutable ExpectedSpectralLines list by creating a new, mutable copy of the list
-    private static List<ExpectedSpectralLine> getExpectedSpectralLines(int windowIndex, TechnicalGoal goal) {
-        List<ExpectedSpectralLine> currentSpectralLines =
-                goal.getSpectrum().get(windowIndex).getExpectedSpectralLine();
-
-        return new ArrayList<>(currentSpectralLines);
-    }
+    //ExpectedSpectralLines
 
     @POST
-    @Path("{technicalGoalId}/spectrum/{windowIndex}/expectedSpectralLine")
-    @Operation(summary = "add an expected spectral line to the spectral window at 'windowIndex' for the given TechnicalGoal")
+    @Path("{technicalGoalId}/spectrum/{spectralWindowId}/expectedSpectralLine")
+    @Operation(summary = "add an expected spectral line to the spectral window with 'spectralWindowId' for the given TechnicalGoal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ExpectedSpectralLine addExpectedSpectralLine(@PathParam("proposalCode") Long proposalCode,
-                                                        @PathParam("technicalGoalId") Long technicalGoalId,
-                                                        @PathParam("windowIndex") int windowIndex,
-                                                        ExpectedSpectralLine spectralLine)
+    public ExpectedSpectralLine addExpectedSpectralLine(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("technicalGoalId") Long technicalGoalId,
+            @PathParam("spectralWindowId") Long spectralWindowId,
+            ExpectedSpectralLine spectralLine
+    )
         throws WebApplicationException
     {
         TechnicalGoal goal = findChildByQuery(ObservingProposal.class, TechnicalGoal.class,
                 "technicalGoals", proposalCode, technicalGoalId);
 
-        if (windowIndex < 0 || windowIndex >= goal.getSpectrum().size()) {
-            throw new WebApplicationException("index out-of-bounds", 400);
-        }
+        ScienceSpectralWindow spectralWindow =
+                findChildByQuery(TechnicalGoal.class, ScienceSpectralWindow.class,
+                        "spectrum", technicalGoalId, spectralWindowId);
 
-        // Can't do this as returned list immutable
-        // goal.getSpectrum().get(windowIndex).getExpectedSpectralLine().add(spectralLine);
-
-        // Also there is no ScienceSpectralWindow::addToExpectedSpectralLines() so ...
-
-        //... instead copy the current ExpectedSpectralLines list...
-        List<ExpectedSpectralLine> newSpectralLines = getExpectedSpectralLines(windowIndex, goal);
-        // ... add the new spectralLine ...
-        newSpectralLines.add(spectralLine);
-
-        // ... replace the entire ExpectedSpectralLines list
-        goal.getSpectrum().get(windowIndex).setExpectedSpectralLine(newSpectralLines);
-
-        return spectralLine;
+        return addNewChildObject(spectralWindow, spectralLine, spectralWindow::addToExpectedSpectralLine);
     }
 
     @DELETE
-    @Path("{technicalGoalId}/spectrum/{windowIndex}/expectedSpectralLine/{lineIndex}")
-    @Operation(summary = "remove the expected spectral line at 'lineIndex' from the spectral window at 'windowIndex' of the given TechnicalGoal")
+    @Path("{technicalGoalId}/spectrum/{spectralWindowId}/expectedSpectralLine/{lineIndex}")
+    @Operation(summary = "remove the expected spectral line at 'lineIndex' from the spectral window with 'spectralWindowId' for the given TechnicalGoal")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response removeExpectedSpectralLine(@PathParam("proposalCode") Long proposalCode,
-                                               @PathParam("technicalGoalId") Long technicalGoalId,
-                                               @PathParam("windowIndex") int windowIndex,
-                                               @PathParam("lineIndex") int lineIndex)
+    public Response removeExpectedSpectralLine(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("technicalGoalId") Long technicalGoalId,
+            @PathParam("spectralWindowId") Long spectralWindowId,
+            @PathParam("lineIndex") int lineIndex
+    )
         throws WebApplicationException
     {
         TechnicalGoal goal = findChildByQuery(ObservingProposal.class, TechnicalGoal.class,
                 "technicalGoals", proposalCode, technicalGoalId);
 
-        if (windowIndex < 0 || windowIndex >= goal.getSpectrum().size()) {
-            throw new WebApplicationException("window index out-of-bounds", 400);
-        }
+        ScienceSpectralWindow spectralWindow =
+                findChildByQuery(TechnicalGoal.class, ScienceSpectralWindow.class,
+                        "spectrum", technicalGoalId, spectralWindowId);
 
-        if (lineIndex < 0 || lineIndex >= goal.getSpectrum().get(windowIndex).getExpectedSpectralLine().size()) {
-            throw new WebApplicationException("line index out-of-bounds", 400);
-        }
+        ExpectedSpectralLine line = spectralWindow.getExpectedSpectralLine().get(lineIndex);
 
-        List<ExpectedSpectralLine> mutableList = getExpectedSpectralLines(windowIndex, goal);
-        mutableList.remove(lineIndex);
-
-        goal.getSpectrum().get(windowIndex).setExpectedSpectralLine(mutableList);
-
-        return emptyResponse204();
+        return deleteChildObject(spectralWindow, line, spectralWindow::removeFromExpectedSpectralLine);
     }
 
-
     //no PUT method - we don't replace spectral lines, we only ever add or remove them
-
-
 }
