@@ -6,7 +6,7 @@ import org.ivoa.dm.proposal.prop.Observatory;
 import org.ivoa.dm.proposal.prop.Telescope;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.CoordSys;
-import org.ivoa.dm.stc.coords.GeocentricPoint;
+import org.ivoa.dm.stc.coords.RealCartesianPoint;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -154,7 +154,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocation(@PathParam("observatoryId") Long observatoryId,
                                    @PathParam("telescopeId") Long telescopeId,
-                                   GeocentricPoint replacementLocation)
+                                            RealCartesianPoint replacementLocation)
             throws WebApplicationException
     {
         Telescope telescope = findTelescopeByQuery(observatoryId, telescopeId);
