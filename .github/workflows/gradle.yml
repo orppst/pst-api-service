@@ -49,10 +49,10 @@ jobs:
       uses: gradle/gradle-build-action@bd5760595778326ba7f1441bcf7e88b49de61a25 # v2.6.0
       with:
         build-root-directory: main
-        cache-disabled: false
+        cache-disabled: true
     - name: Run Gradle build
       working-directory: ./main
-      run: ./gradlew --info build 
+      run: ./gradlew -U --info build
 
     - name: Upload interface definition
       uses: actions/upload-artifact@v3.1.3
