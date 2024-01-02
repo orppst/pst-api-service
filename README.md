@@ -1,5 +1,6 @@
 # pst-api-service Project
 
+[![main build](https://github.com/orppst/pst-api-service/actions/workflows/gradle.yml/badge.svg)](https://github.com/orppst/pst-api-service/actions/workflows/gradle.yml/)
 
 This service provides the main API to the proposal store
 
@@ -75,19 +76,5 @@ If you want to learn more about building native executables, please consult http
 ## Related Guides
 
 - SmallRye GraphQL ([guide](https://quarkus.io/guides/microprofile-graphql)): Create GraphQL Endpoints using the code-first approach from MicroProfile GraphQL
-- Apache Kafka Streams ([guide](https://quarkus.io/guides/kafka-streams)): Implement stream processing applications based on Apache Kafka
 - SmallRye JWT ([guide](https://quarkus.io/guides/security-jwt)): Secure your applications with JSON Web Token
 
-## Provided Code
-
-### RESTEasy Reactive
-
-Easily start your Reactive RESTful Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
-
-### SmallRye GraphQL
-
-Start coding with this Hello GraphQL Query
-
-[Related guide section...](https://quarkus.io/guides/smallrye-graphql)
