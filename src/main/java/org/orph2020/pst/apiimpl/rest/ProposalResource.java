@@ -64,7 +64,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     @GET
-    @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals")
+    @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Only returns source proposals, not submitted copies.")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
 
         boolean noQuery = investigatorName == null && title == null;
@@ -73,19 +73,19 @@ public class ProposalResource extends ObjectResourceBase {
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
         String baseStr = "select distinct o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o ";
+        String submittedStr = "o.submitted is null ";
         String orderByStr = "order by o.title";
-        String investigatorLikeStr = " ,Investigator i where i member of o.investigators  and i.person.fullName like '" +investigatorName+ "' ";
-        String titleLikeStr = "o.title like '" +title+ "' ";
-
+        String investigatorLikeStr = ", Investigator i where i member of o.investigators and i.person.fullName like '%" +investigatorName+ "%' ";
+        String titleLikeStr = "o.title like '%" +title+ "%' ";
 
         if (noQuery) {
-            return getSynopses(baseStr + orderByStr);
+            return getSynopses(baseStr + "where " + submittedStr + orderByStr);
         } else if (investigatorOnly) {
-            return getSynopses(baseStr + investigatorLikeStr + orderByStr);
+            return getSynopses(baseStr + investigatorLikeStr + "and " + submittedStr + orderByStr);
         } else if (titleOnly) {
-            return getSynopses(baseStr + "where " + titleLikeStr + orderByStr);
+            return getSynopses(baseStr + "where " + titleLikeStr + "and " + submittedStr + orderByStr);
         } else { //name and title given as queries
-            return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr + orderByStr);
+            return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
         }
     }
 
