@@ -7,11 +7,12 @@ import jakarta.ws.rs.Path;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 import java.util.List;
 
 @Path("admin")
-public class RolesResource {
+public class KeycloakResource {
 
     Keycloak keycloak;
 
@@ -36,5 +37,11 @@ public class RolesResource {
     @Path("/roles")
     public List<RoleRepresentation> getRoles() {
         return keycloak.realm("orppst").roles().list();
+    }
+
+    @GET
+    @Path("/userRepresentations")
+    public List<UserRepresentation> getUserRepresentation() {
+        return keycloak.realm("orppst").users().list();
     }
 }
