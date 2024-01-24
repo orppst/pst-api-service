@@ -23,6 +23,7 @@ public class KeycloakResource {
                 .realm("master")
                 .clientId("admin-cli")
                 .grantType("password")
+                //fixme: we probably don't want hardcoded admin username and password :)
                 .username("admin")
                 .password("admin")
                 .build();
@@ -32,6 +33,7 @@ public class KeycloakResource {
     public void closeKeycloak() {
         keycloak.close();
     }
+
 
     @GET
     @Path("/roles")
@@ -44,4 +46,5 @@ public class KeycloakResource {
     public List<UserRepresentation> getUserRepresentation() {
         return keycloak.realm("orppst").users().list();
     }
+
 }
