@@ -129,12 +129,14 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "uploads an proposal")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @Path("proposals/uploadProposal")
     @ResponseStatus(value = 201)
     public void uploadProposal(
             @RestForm("document")
             @Schema(implementation = SupportingDocumentResource.UploadItemSchema.class)
             FileUpload fileUpload,
-            @RestForm @PartType(MediaType.APPLICATION_JSON) String updateSubmittedFlag)
+            @RestForm @PartType(MediaType.APPLICATION_JSON)
+            String updateSubmittedFlag)
                 throws WebApplicationException {
         // verify there's a file to read.
         if(fileUpload == null) {
@@ -150,7 +152,6 @@ public class ProposalResource extends ObjectResourceBase {
                 fileUpload.uploadedFile().toFile());
             ZipInputStream zipInputStream = new ZipInputStream(fileInputStream);
             ZipEntry entry = zipInputStream.getNextEntry();
-            entry.getName()
         } catch (FileNotFoundException e) {
             throw new WebApplicationException("file not found error", 400);
         } catch (IOException e) {
