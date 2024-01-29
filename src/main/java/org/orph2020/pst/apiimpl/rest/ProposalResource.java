@@ -4,6 +4,7 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -129,7 +130,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary = "uploads an proposal")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @Path("proposals/uploadProposal")
+    @Path("/uploadProposal")
     @ResponseStatus(value = 201)
     public void uploadProposal(
             @RestForm("document")
@@ -138,14 +139,16 @@ public class ProposalResource extends ObjectResourceBase {
             @RestForm @PartType(MediaType.APPLICATION_JSON)
             String updateSubmittedFlag)
                 throws WebApplicationException {
+
+        logger.info("entered submit proposal state");
         // verify there's a file to read.
         if(fileUpload == null) {
             throw new WebApplicationException("No file uploaded", 400);
         }
-        logger.debug("submit proposal state");
-        logger.debug(fileUpload);
-        logger.debug(fileUpload.uploadedFile().toFile());
-        logger.debug(updateSubmittedFlag);
+        logger.info("submit proposal state");
+        logger.info(fileUpload);
+        logger.info(fileUpload.uploadedFile().toFile());
+        logger.info(updateSubmittedFlag);
 
         try {
             FileInputStream fileInputStream = new FileInputStream(
