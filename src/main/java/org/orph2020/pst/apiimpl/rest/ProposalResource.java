@@ -4,7 +4,6 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -25,14 +24,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 /*
    For use cases see:
@@ -140,26 +134,18 @@ public class ProposalResource extends ObjectResourceBase {
             String updateSubmittedFlag)
                 throws WebApplicationException {
 
-        logger.info("entered submit proposal state");
+        logger.debug("entered submit proposal state");
         // verify there's a file to read.
         if(fileUpload == null) {
             throw new WebApplicationException("No file uploaded", 400);
         }
-        logger.info("submit proposal state");
-        logger.info(fileUpload);
-        logger.info(fileUpload.uploadedFile().toFile());
-        logger.info(updateSubmittedFlag);
+        logger.debug("submit proposal state");
+        logger.debug(fileUpload);
+        logger.debug(fileUpload.uploadedFile().toFile());
+        logger.debug(updateSubmittedFlag);
 
-        try {
-            FileInputStream fileInputStream = new FileInputStream(
-                fileUpload.uploadedFile().toFile());
-            ZipInputStream zipInputStream = new ZipInputStream(fileInputStream);
-            ZipEntry entry = zipInputStream.getNextEntry();
-        } catch (FileNotFoundException e) {
-            throw new WebApplicationException("file not found error", 400);
-        } catch (IOException e) {
-            throw new WebApplicationException(e, 400);
-        }
+        ProposalUploader.uploadProposal(
+                fileUpload, updateSubmittedFlag);
     }
 
     @DELETE
