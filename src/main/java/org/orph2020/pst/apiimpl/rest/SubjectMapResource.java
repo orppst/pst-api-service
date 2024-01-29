@@ -6,11 +6,13 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -22,6 +24,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Path("subjectMap")
 @Tag(name="mapping between AAI user ids and People")
@@ -52,6 +55,51 @@ public class SubjectMapResource extends ObjectResourceBase {
         keycloak.close();
     }
 
+
+    @GET
+    @Operation(summary = "get a list of the SubjectMaps stored in the database, optionally provide a 'uid' to get that specific SubjectMap")
+    public List<SubjectMap> subjectMapList(@RestQuery String uid) {
+
+        String selectStr = "select o from SubjectMap o";
+        String uidSearchStr = uid != null ? " where o.uid = :uid" : "";
+
+        TypedQuery<SubjectMap> q = em.createQuery(
+                selectStr + uidSearchStr, SubjectMap.class
+        );
+
+        if (uid != null) {
+            q.setParameter("uid", uid);
+        }
+
+        List<SubjectMap> usersInDB = q.getResultList();
+
+        //list all users in the keycloak realm
+        List<UserRepresentation> usersInRealm = realm.users().list();
+
+        //deal with superuser
+        usersInRealm.removeIf(ur->ur.getUsername().equals("superuser"));
+
+        if (usersInDB.size() > usersInRealm.size())
+        {
+            int diff = usersInDB.size() - usersInRealm.size();
+            int count = 0;
+
+            // we have people in DB that are not in the keycloak realm,
+            // find which ones and take appropriate action
+            for(SubjectMap sm : usersInDB)
+            {
+                if (usersInRealm.stream().noneMatch(ur -> sm.uid.equals(ur.getId())))
+                {
+                    sm.setInKeycloakRealm(false);
+                    count++;
+                }
+                if (count == diff) break;
+            }
+        }
+
+        return usersInDB;
+    }
+
     @GET
     @Path("{id}")
     @Operation(summary = "get the SubjectMap specified by the 'id'")
@@ -66,6 +114,19 @@ public class SubjectMapResource extends ObjectResourceBase {
         else {
             return res.get(0);
         }
+    }
+
+    @GET
+    @Path("keycloakUserUIDs")
+    @Operation(summary = "get the unique IDs of existing keycloak realm users")
+    public List<String> existingUserUIDs()
+    {
+        List<UserRepresentation> userRepresentations = realm.users().list();
+
+        return userRepresentations
+                .stream()
+                .map(UserRepresentation::getId)
+                .collect(Collectors.toList());
     }
 
 
@@ -111,4 +172,31 @@ public class SubjectMapResource extends ObjectResourceBase {
 
         return result.get();
     }
+
+    @DELETE
+    @Path("cleanUsers")
+    @Operation(summary = "admin only: cleans up users that have been removed from the keycloak realm")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response cleanUsers()
+            throws WebApplicationException
+    {
+        //query to get all SubjectMap objects in DB
+        TypedQuery<SubjectMap> q = em.createQuery(
+                "select o from SubjectMap o", SubjectMap.class
+        );
+        List<SubjectMap> usersInDB = q.getResultList();
+
+        for (SubjectMap subjectMap : usersInDB) {
+            if (!subjectMap.inKeycloak()) {
+                //remove the current SubjectMap AND related Person
+                Person person = findObject(Person.class, subjectMap.getPerson().getId());
+                em.remove(person);
+                em.remove(subjectMap);
+            }
+        }
+
+        return emptyResponse204();
+    }
+
+
 }
