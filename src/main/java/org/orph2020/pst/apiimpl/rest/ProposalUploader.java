@@ -96,7 +96,6 @@ public class ProposalUploader {
         // create a proposal and save it so that we have a working id.
         ObservingProposal newProposal = new ObservingProposal();
         logger.info(newProposal);
-        newProposal = proposalResource.persistObject(newProposal);
 
         // save proposal specific data items.
         this.saveProposalSpecific(
@@ -236,7 +235,8 @@ public class ProposalUploader {
         List<ObjectIdentifier> possiblePeeps =
             personResource.getPeople(fullName);
         for (ObjectIdentifier possiblePeep: possiblePeeps) {
-            if (possiblePeep.code.equals(orcid)) {
+            // TODO not sure about this check.
+            if (possiblePeep.code != null && possiblePeep.code.equals(orcid)) {
                 return true;
             }
         }
