@@ -3,6 +3,8 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -38,6 +40,7 @@ import java.util.Objects;
 @Path("proposals")
 @Tag(name = "proposals")
 @Produces(MediaType.APPLICATION_JSON)
+@ApplicationScoped
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -49,6 +52,20 @@ public class ProposalResource extends ObjectResourceBase {
 
     private static final String targetsRoot = proposalRoot + "/targets";
     private static final String fieldsRoot = proposalRoot + "/fields";
+
+    // needed for import
+    @Inject
+    PersonResource personResource;
+
+    //needed for import.
+    @Inject
+    InvestigatorResource investigatorResource;
+
+    @Inject
+    TechnicalGoalResource technicalGoalResource;
+
+    @Inject
+    ObservationResource observationResource;
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -149,7 +166,9 @@ public class ProposalResource extends ObjectResourceBase {
 
         // kick off the uploader process.
         ProposalUploader uploader = new ProposalUploader();
-        uploader.uploadProposal(fileUpload, updateSubmittedFlag, this);
+        uploader.uploadProposal(
+            fileUpload, updateSubmittedFlag, this, personResource,
+            investigatorResource, technicalGoalResource, observationResource);
     }
 
     @DELETE

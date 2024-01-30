@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Investigator;
@@ -18,6 +19,7 @@ import java.util.List;
 @Path("proposals/{proposalCode}/investigators")
 @Tag(name = "proposals-investigators")
 @Produces(MediaType.APPLICATION_JSON)
+@ApplicationScoped
 public class InvestigatorResource extends ObjectResourceBase {
 
     private Investigator findInvestigatorFromList(List<Investigator> investigators, long id) {

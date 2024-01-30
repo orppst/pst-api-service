@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.ivoa.dm.ivoa.Ivorn;
 import org.ivoa.dm.ivoa.StringIdentifier;
@@ -32,6 +33,13 @@ public class ProposalUploader {
     // hard coded filename for the proposal in json format.
     private static final String PROPOSAL_JSON_FILE_NAME = "proposal.json";
 
+    // stored to help data movement. contains the different resources needed
+    private PersonResource personResource;
+    private InvestigatorResource investigatorResource;
+    private ProposalResource proposalResource;
+    private TechnicalGoalResource technicalGoalResource;
+    private ObservationResource observationResource;
+
     /**
      * default constructor.
      */
@@ -48,10 +56,20 @@ public class ProposalUploader {
      */
     public void uploadProposal(
             FileUpload fileUpload, String updateSubmittedFlag,
-            ProposalResource proposalResource)
+            ProposalResource proposalResource, PersonResource personResource,
+            InvestigatorResource investigatorResource,
+            TechnicalGoalResource technicalGoalResource,
+            ObservationResource observationResource)
             throws WebApplicationException {
         byte[] proposalData = this.readFile(
             fileUpload, ProposalUploader.PROPOSAL_JSON_FILE_NAME);
+
+        // for easier movement, moved to class level scope.
+        this.personResource = personResource;
+        this.investigatorResource = investigatorResource;
+        this.proposalResource = proposalResource;
+        this.technicalGoalResource = technicalGoalResource;
+        this.observationResource = observationResource;
 
         // check for failed read in.
         if (proposalData == null) {
@@ -83,7 +101,7 @@ public class ProposalUploader {
         // save proposal specific data items.
         this.saveProposalSpecific(
             newProposal, proposalJSON,
-            Boolean.parseBoolean(updateSubmittedFlag), proposalResource);
+            Boolean.parseBoolean(updateSubmittedFlag));
         this.saveProposalTargets(newProposal, proposalJSON);
         this.saveProposalTechnicals(newProposal, proposalJSON);
         this.saveProposalObservations(newProposal, proposalJSON);
@@ -99,16 +117,16 @@ public class ProposalUploader {
      * @param proposalJSON: the json object holding new data.
      * @param modifySubmitted: boolean stating if the submitted field should
      *                      be changed.
-     * @param  proposalResource: the proposal resource.
      */
     private void saveProposalSpecific(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            boolean modifySubmitted, ProposalResource proposalResource) {
+            boolean modifySubmitted) {
         /////////////////// simple strings.
         newProposal.setSummary(proposalJSON.getString("summary"));
         newProposal.setKind(
             ProposalKind.valueOf(proposalJSON.getString("kind")));
         newProposal.setTitle(proposalJSON.getString("title"));
+        proposalResource.persistObject(newProposal);
 
         // check for the submitted flag.
         if (modifySubmitted) {
@@ -173,7 +191,7 @@ public class ProposalUploader {
         Person newPerson = new Person();
         JSONObject jsonPerson = investigator.getJSONObject("person");
         newPerson.setEMail(jsonPerson.getString("eMail"));
-        newPerson.setFullName("fullName");
+        newPerson.setFullName(jsonPerson.getString("fullName"));
         newPerson.setOrcidId(new StringIdentifier(
             jsonPerson.getJSONObject("orcidId").getString("value")));
         newPerson.setXmlId(String.valueOf(jsonPerson.getInt("_id")));
@@ -198,10 +216,8 @@ public class ProposalUploader {
         // update database positions if required
         if (foundPerson(newPerson.getFullName(),
                         newPerson.getOrcidId().value())) {
-            PersonResource personResource = new PersonResource();
             personResource.createPerson(newPerson);
         }
-        InvestigatorResource investigatorResource = new InvestigatorResource();
         investigatorResource.addPersonAsInvestigator(
             proposalCode, newInvestigator);
 
@@ -216,9 +232,9 @@ public class ProposalUploader {
      * @return boolean, true if found, false otherwise.
      */
     private boolean foundPerson(String fullName, String orcid) {
-        PersonResource personResource = new PersonResource();
+        logger.info("fullname = " + fullName);
         List<ObjectIdentifier> possiblePeeps =
-            personResource.getObjectIdentifiers(fullName);
+            personResource.getPeople(fullName);
         for (ObjectIdentifier possiblePeep: possiblePeeps) {
             if (possiblePeep.code.equals(orcid)) {
                 return true;
