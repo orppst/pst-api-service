@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class ProposalUploader extends ObjectResourceBase {
+public class ProposalUploader {
 
     // the logger.
     private static final Logger logger =
@@ -42,11 +42,13 @@ public class ProposalUploader extends ObjectResourceBase {
      *
      * @param fileUpload zip file.
      * @param updateSubmittedFlag if we should remove the submitted flag.
+     * @param proposalResource: the proposal resource.
      * @throws WebApplicationException when:
      * no file is found: 400
      */
     public void uploadProposal(
-            FileUpload fileUpload, String updateSubmittedFlag)
+            FileUpload fileUpload, String updateSubmittedFlag,
+            ProposalResource proposalResource)
             throws WebApplicationException {
         byte[] proposalData = this.readFile(
             fileUpload, ProposalUploader.PROPOSAL_JSON_FILE_NAME);
@@ -75,12 +77,13 @@ public class ProposalUploader extends ObjectResourceBase {
 
         // create a proposal and save it so that we have a working id.
         ObservingProposal newProposal = new ObservingProposal();
-        newProposal = persistObject(newProposal);
+        logger.info(newProposal);
+        newProposal = proposalResource.persistObject(newProposal);
 
         // save proposal specific data items.
         this.saveProposalSpecific(
             newProposal, proposalJSON,
-            Boolean.parseBoolean(updateSubmittedFlag));
+            Boolean.parseBoolean(updateSubmittedFlag), proposalResource);
         this.saveProposalTargets(newProposal, proposalJSON);
         this.saveProposalTechnicals(newProposal, proposalJSON);
         this.saveProposalObservations(newProposal, proposalJSON);
@@ -96,10 +99,11 @@ public class ProposalUploader extends ObjectResourceBase {
      * @param proposalJSON: the json object holding new data.
      * @param modifySubmitted: boolean stating if the submitted field should
      *                      be changed.
+     * @param  proposalResource: the proposal resource.
      */
     private void saveProposalSpecific(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            boolean modifySubmitted) {
+            boolean modifySubmitted, ProposalResource proposalResource) {
         /////////////////// simple strings.
         newProposal.setSummary(proposalJSON.getString("summary"));
         newProposal.setKind(
@@ -107,7 +111,7 @@ public class ProposalUploader extends ObjectResourceBase {
         newProposal.setTitle(proposalJSON.getString("title"));
 
         // check for the submitted flag.
-        if (!modifySubmitted) {
+        if (modifySubmitted) {
             newProposal.setSubmitted(proposalJSON.getBoolean("submitted"));
         }
 
@@ -140,9 +144,10 @@ public class ProposalUploader extends ObjectResourceBase {
             }
 
             // persist new changes
-            persistObject(newProposal);
-
+            proposalResource.persistObject(newProposal);
         } catch (Exception e) {
+            logger.error("failed with error: " + e.getMessage());
+            e.printStackTrace();
             throw new WebApplicationException(e.getMessage());
         }
     }
@@ -157,7 +162,10 @@ public class ProposalUploader extends ObjectResourceBase {
             JSONObject investigator, Long proposalCode) {
         // create new investigator.
         Investigator newInvestigator = new Investigator();
-        newInvestigator.setForPhD(investigator.getBoolean("forPhD"));
+
+        if (investigator.get("forPhD") != null) {
+            newInvestigator.setForPhD(investigator.optBoolean("forPhD"));
+        }
         newInvestigator.setType(InvestigatorKind.valueOf(
             investigator.getString("type")));
 
@@ -168,7 +176,7 @@ public class ProposalUploader extends ObjectResourceBase {
         newPerson.setFullName("fullName");
         newPerson.setOrcidId(new StringIdentifier(
             jsonPerson.getJSONObject("orcidId").getString("value")));
-        newPerson.setXmlId(jsonPerson.getString("_id"));
+        newPerson.setXmlId(String.valueOf(jsonPerson.getInt("_id")));
 
         // create new institute
         JSONObject orgJSON = jsonPerson.getJSONObject("homeInstitute");
@@ -177,7 +185,7 @@ public class ProposalUploader extends ObjectResourceBase {
         org.setIvoid(new Ivorn(
             orgJSON.getJSONObject("ivoid").getString("value")));
         org.setName(orgJSON.getString("name"));
-        org.setXmlId(orgJSON.getString("_id"));
+        org.setXmlId(String.valueOf(orgJSON.getInt("_id")));
 
         if (orgJSON.optString("wikiId") != null) {
             org.setWikiId(new WikiDataId(orgJSON.optString("wikiId")));

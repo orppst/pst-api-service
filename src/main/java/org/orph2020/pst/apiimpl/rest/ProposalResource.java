@@ -149,7 +149,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         // kick off the uploader process.
         ProposalUploader uploader = new ProposalUploader();
-        uploader.uploadProposal(fileUpload, updateSubmittedFlag);
+        uploader.uploadProposal(fileUpload, updateSubmittedFlag, this);
     }
 
     @DELETE
