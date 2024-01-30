@@ -128,24 +128,28 @@ public class ProposalResource extends ObjectResourceBase {
     @ResponseStatus(value = 201)
     public void uploadProposal(
             @RestForm("document")
-            @Schema(implementation = SupportingDocumentResource.UploadItemSchema.class)
+            @Schema(implementation =
+                SupportingDocumentResource.UploadItemSchema.class)
             FileUpload fileUpload,
             @RestForm @PartType(MediaType.APPLICATION_JSON)
             String updateSubmittedFlag)
                 throws WebApplicationException {
-
         logger.debug("entered submit proposal state");
+
         // verify there's a file to read.
         if(fileUpload == null) {
             throw new WebApplicationException("No file uploaded", 400);
         }
+
+        // debug statements to verify data.
         logger.debug("submit proposal state");
         logger.debug(fileUpload);
         logger.debug(fileUpload.uploadedFile().toFile());
         logger.debug(updateSubmittedFlag);
 
-        ProposalUploader.uploadProposal(
-                fileUpload, updateSubmittedFlag);
+        // kick off the uploader process.
+        ProposalUploader uploader = new ProposalUploader();
+        uploader.uploadProposal(fileUpload, updateSubmittedFlag);
     }
 
     @DELETE
