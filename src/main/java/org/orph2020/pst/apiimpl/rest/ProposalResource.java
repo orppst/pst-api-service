@@ -67,6 +67,9 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     ObservationResource observationResource;
 
+    @Inject
+    SupportingDocumentResource supportingDocumentResource;
+
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
         Query query = em.createQuery(queryStr);
@@ -168,7 +171,8 @@ public class ProposalResource extends ObjectResourceBase {
         ProposalUploader uploader = new ProposalUploader();
         uploader.uploadProposal(
             fileUpload, updateSubmittedFlag, this, personResource,
-            investigatorResource, technicalGoalResource, observationResource);
+            investigatorResource, technicalGoalResource, observationResource,
+            supportingDocumentResource);
     }
 
     @DELETE

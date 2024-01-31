@@ -6,6 +6,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -18,6 +19,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 /*
@@ -32,6 +35,9 @@ import java.util.List;
 @Tag(name = "proposals-supportingDocuments")
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
+
+    private static final Logger logger =
+        Logger.getLogger(SupportingDocumentResource.class.getName());
 
     //FIXME: need to confirm a path location on our server for this
     private static final String documentStoreRoot = "/tmp/documentStore/";
@@ -84,10 +90,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     @Operation(summary = "upload a new SupportingDocument to the ObservingProposal specified")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public SupportingDocument uploadSupportingDocument(@PathParam("proposalCode") Long proposalCode,
-                                             @RestForm("document") @Schema(implementation = UploadItemSchema.class)
-                                             FileUpload fileUpload,
-                                             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
+    public SupportingDocument uploadSupportingDocument(
+            @PathParam("proposalCode") Long proposalCode,
+            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            FileUpload fileUpload,
+            @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
         if(fileUpload == null) {
@@ -95,23 +102,51 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
         String _title = sanitiseTitle(title, proposal);
 
         //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
         SupportingDocument result =
-                addNewChildObject(proposal, new SupportingDocument(_title, ""),
-                        proposal::addToSupportingDocuments);
+            addNewChildObject(proposal, new SupportingDocument(_title, ""),
+                proposal::addToSupportingDocuments);
 
+        File destination = createDestination(
+            title, proposal, proposalCode, fileUpload.fileName(),
+            result.getId());
+
+        //move the uploaded file to the new destination
+        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        {
+            throw new WebApplicationException(
+                "Unable to save file " + fileUpload.fileName(), 400);
+        }
+        //else all good, set the location for the result
+        result.setLocation(destination.toString());
+
+        return result;
+    }
+
+    /**
+     * creates the destination location file as needed.
+     *
+     * @param title: the title of the document.
+     * @param proposal: the proposal object.
+     * @param proposalCode: the proposal code.
+     * @param fileName: the filename for the destination.
+     * @return The destination file.
+     */
+    private File createDestination(
+            String title, ObservingProposal proposal, Long proposalCode,
+            String fileName, long resultId) {
         //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
         // is deleted on return from this request (quarkus configuration)
 
-        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + result.getId();
+        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + resultId;
 
         File destinationPath = new File(destinationStr);
 
         if (destinationPath.exists())
         {
+            logger.info("destination str = " + destinationStr);
             throw new WebApplicationException(destinationStr + " exists - how'd that happen?!", 400);
         }
 
@@ -121,17 +156,36 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
 
         //create the file-location
-        File destination = new File(destinationStr, fileUpload.fileName());
+        return new File(destinationStr, fileName);
+    }
 
-        //move the uploaded file to the new destination
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
-        {
-            throw new
-                    WebApplicationException("Unable to save file " + fileUpload.fileName(), 400);
-        }
+    /**
+     * provides a supporting method to upload a supporting document from a zip
+     * file.
+     *
+     * @param proposal: the proposal object.
+     * @param docData: the raw byte[] data.
+     * @param docTitle: the doc title.
+     * @return the supporting document object.
+     * @throws IOException when the writing fails.
+     */
+    public SupportingDocument uploadSupportingDocumentFromZip(
+        ObservingProposal proposal, byte[] docData, String docTitle
+    ) throws IOException {
+        String _title = sanitiseTitle(docTitle, proposal);
+
+        //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
+        SupportingDocument result =
+            addNewChildObject(proposal, new SupportingDocument(_title, ""),
+                proposal::addToSupportingDocuments);
+
+        File destinationFile = this.createDestination(
+            docTitle, proposal, proposal.getId(), docTitle, result.getId());
+
+        Files.write(destinationFile.toPath(), docData);
+
         //else all good, set the location for the result
-        result.setLocation(destination.toString());
-
+        result.setLocation(destinationFile.toString());
         return result;
     }
 

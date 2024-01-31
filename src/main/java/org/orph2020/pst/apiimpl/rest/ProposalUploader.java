@@ -61,6 +61,11 @@ public class ProposalUploader {
      * @param fileUpload zip file.
      * @param updateSubmittedFlag if we should remove the submitted flag.
      * @param proposalResource: the proposal resource.
+     * @param investigatorResource: the investigator resource.
+     * @param observationResource: the observation resource.
+     * @param personResource: the person resource.
+     * @param technicalGoalResource: the technical resource.
+     * @param supportingDocumentResource: the supporting document resource.
      * @throws WebApplicationException when:
      * no file is found: 400
      */
@@ -69,7 +74,8 @@ public class ProposalUploader {
             ProposalResource proposalResource, PersonResource personResource,
             InvestigatorResource investigatorResource,
             TechnicalGoalResource technicalGoalResource,
-            ObservationResource observationResource)
+            ObservationResource observationResource,
+            SupportingDocumentResource supportingDocumentResource)
             throws WebApplicationException {
         byte[] proposalData = this.readFile(
             fileUpload, ProposalUploader.PROPOSAL_JSON_FILE_NAME);
@@ -124,7 +130,8 @@ public class ProposalUploader {
             newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON,
             technicalMapToReal, technicalMapToJSON);
         this.saveProposalTimingWindows(newProposal, proposalJSON);
-        this.saveProposalDocuments(newProposal, proposalJSON, fileUpload);
+        this.saveProposalDocuments(
+            newProposal, proposalJSON, fileUpload, supportingDocumentResource);
     }
 
     /**
@@ -734,11 +741,35 @@ public class ProposalUploader {
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
      * @param fileUpload: the zip file containing supporting documents.
+     * @param supportingDocumentResource: the supporting doc resource.
      */
     private void saveProposalDocuments(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            FileUpload fileUpload) {
-
+            FileUpload fileUpload,
+            SupportingDocumentResource supportingDocumentResource) {
+        JSONArray supportingDocuments =
+            proposalJSON.optJSONArray("supportingDocuments");
+        if(supportingDocuments != null && supportingDocuments.length() != 0) {
+            for (int supDocIndex = 0;
+                 supDocIndex < supportingDocuments.length();
+                 supDocIndex++) {
+                JSONObject jsonDoc =
+                    supportingDocuments.getJSONObject(supDocIndex);
+                String docTitle = jsonDoc.getString("title");
+                String docTitleToSearchFor = "SUPPORTING_DOC_" + docTitle;
+                byte[] docData = this.readFile(
+                    fileUpload, docTitleToSearchFor);
+                try {
+                    supportingDocumentResource.uploadSupportingDocumentFromZip(
+                        newProposal, docData, docTitle);
+                } catch (IOException e) {
+                    throw new WebApplicationException(
+                        "the writing of the supporting doc to disk failed" +
+                            " for reason: " + e.getMessage()
+                    );
+                }
+            }
+        }
     }
 
     /**
