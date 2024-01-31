@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.StringIdentifier;
@@ -35,6 +36,12 @@ public class SubjectMapResource extends ObjectResourceBase {
 
     RealmResource realm;
 
+    @ConfigProperty(name = "keycloak.admin-username")
+    String admin_username;
+
+    @ConfigProperty(name = "keycloak.admin-password")
+    String admin_password;
+
     @PostConstruct
     public void initKeyCloak() {
         keycloak = KeycloakBuilder.builder()
@@ -42,9 +49,8 @@ public class SubjectMapResource extends ObjectResourceBase {
                 .realm("master")
                 .clientId("admin-cli")
                 .grantType("password")
-                //fixme: we probably don't want hardcoded admin username and password :)
-                .username("admin")
-                .password("admin")
+                .username(admin_username)
+                .password(admin_password)
                 .build();
 
         realm = keycloak.realm("orppst");

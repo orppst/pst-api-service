@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.representations.idm.RoleRepresentation;
@@ -16,6 +17,12 @@ public class KeycloakResource {
 
     Keycloak keycloak;
 
+    @ConfigProperty(name = "keycloak.admin-username")
+    String admin_username;
+
+    @ConfigProperty(name = "keycloak.admin-password")
+    String admin_password;
+
     @PostConstruct
     public void initKeyCloak() {
         keycloak = KeycloakBuilder.builder()
@@ -23,9 +30,8 @@ public class KeycloakResource {
                 .realm("master")
                 .clientId("admin-cli")
                 .grantType("password")
-                //fixme: we probably don't want hardcoded admin username and password :)
-                .username("admin")
-                .password("admin")
+                .username(admin_username)
+                .password(admin_password)
                 .build();
     }
 
