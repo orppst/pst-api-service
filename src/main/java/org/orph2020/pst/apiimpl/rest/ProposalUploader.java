@@ -12,10 +12,13 @@ import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.PerformanceParameters;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.ProposalKind;
+import org.ivoa.dm.proposal.prop.ScienceSpectralWindow;
+import org.ivoa.dm.proposal.prop.SpectralWindowSetup;
 import org.ivoa.dm.proposal.prop.TechnicalGoal;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
+import org.ivoa.dm.stc.coords.PolStateEnum;
 import org.ivoa.vodml.stdtypes.Unit;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -120,7 +123,6 @@ public class ProposalUploader {
         this.saveProposalObservations(
             newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON,
             technicalMapToReal, technicalMapToJSON);
-        this.saveProposalSpectralWindows(newProposal, proposalJSON);
         this.saveProposalTimingWindows(newProposal, proposalJSON);
         this.saveProposalDocuments(newProposal, proposalJSON, fileUpload);
     }
@@ -148,11 +150,13 @@ public class ProposalUploader {
             newProposal.setSubmitted(proposalJSON.getBoolean("submitted"));
         }
 
-        ////////////////// arrays.
-        // Due to the vulnerabilities described below, wrapped with a try catch
-        // Vulnerable API usage
-        // Cx08fcacc9-cb99 7.5 Uncaught Exception vulnerability
-        // Cx08fcacc9-cb99 7.5 Uncaught Exception vulnerability
+        /*
+        //////////////// arrays.
+         Due to the vulnerabilities described below, wrapped with a try catch
+         Vulnerable API usage
+         Cx08fcacc9-cb99 7.5 Uncaught Exception vulnerability
+         Cx08fcacc9-cb99 7.5 Uncaught Exception vulnerability
+        */
         try {
             // array of related proposals.
             JSONArray relatedProposals =
@@ -475,9 +479,14 @@ public class ProposalUploader {
                  tgIndex++) {
                 JSONObject jsonTechnicalGoal =
                     jsonTechnicalGoals.getJSONObject(tgIndex);
+
+                // create the basic technical goal.
                 TechnicalGoal tg = technicalGoalResource.addNewChildObject(
                     newProposal, createNewTechnicalGoal(
                     jsonTechnicalGoal), newProposal::addToTechnicalGoals);
+                handleSpectralWindows(jsonTechnicalGoal, tg);
+
+                // update maps.
                 technicalMapToJSON.put(
                     tg.getId(), jsonTechnicalGoal.getLong("_id"));
                 technicalMapToReal.put(
@@ -509,6 +518,105 @@ public class ProposalUploader {
             goal.setPerformance(pp);
         }
         return goal;
+    }
+
+    /**
+     * handles windows.
+     *
+     * @param jsonTechnicalGoal: the json.
+     * @param goal: the technical goal.
+     */
+    private void handleSpectralWindows(
+            JSONObject jsonTechnicalGoal, TechnicalGoal goal) {
+        // handle the windows.
+        JSONArray jsonSpectrum = jsonTechnicalGoal.getJSONArray("spectrum");
+        if (jsonSpectrum != null && jsonSpectrum.length() != 0) {
+
+            for (int spectrumIndex = 0; spectrumIndex < jsonSpectrum.length();
+                 spectrumIndex++) {
+                JSONObject jsonSsw = jsonSpectrum.getJSONObject(spectrumIndex);
+                JSONObject jsonSp =
+                    jsonSsw.getJSONObject("spectralWindowSetup");
+                logger.info("json sp is " + jsonSp);
+                ScienceSpectralWindow ssw = new ScienceSpectralWindow();
+                SpectralWindowSetup sw = new SpectralWindowSetup();
+                setStart(sw, jsonSp);
+                setEnd(sw, jsonSp);
+                setSpectralResolution(sw, jsonSp);
+                setExpectedSpectralLines(ssw, jsonSp);
+
+                // set easy ones.
+                sw.setIsSkyFrequency(jsonSp.getBoolean("isSkyFrequency"));
+                sw.setPolarization(PolStateEnum.valueOf(
+                    jsonSp.getString("polarization")));
+
+                // set the objects correctly.
+                ssw.setSpectralWindowSetup(sw);
+
+                // update database.
+                technicalGoalResource.addNewChildObject(
+                    goal, ssw, goal::addToSpectrum);
+            }
+        }
+    }
+
+    /**
+     * creates the expected spectral lines for the technical goal.
+     *
+     * @param ssw the spectral window container.
+     * @param jsonSp the json.
+     */
+    private void setExpectedSpectralLines(
+            ScienceSpectralWindow ssw, JSONObject jsonSp) {
+        JSONArray lines = jsonSp.optJSONArray("expectedSpectralLine");
+        if(lines != null && lines.length() != 0) {
+            throw new WebApplicationException(
+                "dont know what to do with these");
+        }
+    }
+
+    /**
+     * sets the start of a spectrum from json.
+     * @param sw the spectrum params object.
+     * @param jsonSp: the json.
+     */
+    private void setStart(
+        SpectralWindowSetup sw, JSONObject jsonSp) {
+        JSONObject jsonStart = jsonSp.optJSONObject("start");
+        if (jsonStart != null) {
+            RealQuantity start = this.createRealQuantity(jsonStart);
+            sw.setStart(start);
+        }
+    }
+
+    /**
+     * sets the end of a spectrum from json.
+     * @param sw the spectrum params object.
+     * @param jsonSp: the json.
+     */
+    private void setEnd(
+        SpectralWindowSetup sw, JSONObject jsonSp) {
+        JSONObject jsonEnd = jsonSp.optJSONObject("end");
+        if (jsonEnd != null) {
+            RealQuantity end = this.createRealQuantity(jsonEnd);
+            sw.setEnd(end);
+        }
+    }
+
+    /**
+     * sets the SpectralResolution of a spectrum from json.
+     * @param sw the spectrum params object.
+     * @param jsonSp: the json.
+     */
+    private void setSpectralResolution(
+        SpectralWindowSetup sw, JSONObject jsonSp) {
+        JSONObject jsonSpectralResolution =
+            jsonSp.optJSONObject("spectralResolution");
+        if (jsonSpectralResolution != null) {
+            RealQuantity spectralResolution =
+                this.createRealQuantity(jsonSpectralResolution);
+            sw.setSpectralResolution(spectralResolution);
+        }
     }
 
     /**
@@ -608,16 +716,6 @@ public class ProposalUploader {
             HashMap<Long, Long> targetIdMapToJSON,
             HashMap<Long, Long> technicalMapToReal,
             HashMap<Long, Long> technicalMapToJSON) {
-
-    }
-
-    /**
-     * saves the proposal's spectral windows.
-     * @param newProposal: the new proposal to persist state in.
-     * @param proposalJSON: the json object holding new data.
-     */
-    private void saveProposalSpectralWindows(
-        ObservingProposal newProposal, JSONObject proposalJSON) {
 
     }
 
