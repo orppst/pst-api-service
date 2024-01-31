@@ -9,8 +9,10 @@ import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Organization;
+import org.ivoa.dm.proposal.prop.PerformanceParameters;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.ProposalKind;
+import org.ivoa.dm.proposal.prop.TechnicalGoal;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
@@ -24,6 +26,7 @@ import org.orph2020.pst.common.json.ObjectIdentifier;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -75,6 +78,11 @@ public class ProposalUploader {
         this.technicalGoalResource = technicalGoalResource;
         this.observationResource = observationResource;
 
+        HashMap<Long, Long> targetIdMapToReal = new HashMap<>();
+        HashMap<Long, Long> targetIdMapToJSON = new HashMap<>();
+        HashMap<Long, Long> technicalMapToReal = new HashMap<>();
+        HashMap<Long, Long> technicalMapToJSON = new HashMap<>();
+
         // check for failed read in.
         if (proposalData == null) {
             throw new WebApplicationException("No proposal data was found.");
@@ -105,9 +113,13 @@ public class ProposalUploader {
         this.saveProposalSpecific(
             newProposal, proposalJSON,
             Boolean.parseBoolean(updateSubmittedFlag));
-        this.saveProposalTargets(newProposal, proposalJSON);
-        this.saveProposalTechnicals(newProposal, proposalJSON);
-        this.saveProposalObservations(newProposal, proposalJSON);
+        this.saveProposalTargets(
+            newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON);
+        this.saveProposalTechnicals(
+            newProposal, proposalJSON, technicalMapToReal, technicalMapToJSON);
+        this.saveProposalObservations(
+            newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON,
+            technicalMapToReal, technicalMapToJSON);
         this.saveProposalSpectralWindows(newProposal, proposalJSON);
         this.saveProposalTimingWindows(newProposal, proposalJSON);
         this.saveProposalDocuments(newProposal, proposalJSON, fileUpload);
@@ -249,9 +261,13 @@ public class ProposalUploader {
      * are working at moment.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
+     * @param targetIdMapToReal: map for the json and real ids to real.
+     * @param targetIdMapToJSON: map for the real and json ids, to json.
      */
     private void saveProposalTargets(
-            ObservingProposal newProposal, JSONObject proposalJSON) {
+            ObservingProposal newProposal, JSONObject proposalJSON,
+            HashMap<Long, Long> targetIdMapToReal,
+            HashMap<Long, Long> targetIdMapToJSON) {
         // array of targets.
         JSONArray targets = proposalJSON.optJSONArray("targets");
         if(targets != null && targets.length() != 0) {
@@ -276,8 +292,14 @@ public class ProposalUploader {
                         this.setPositionEpoch(jsonTarget, cTarget);
 
                         // save to database
-                        proposalResource.addNewChildObject(
+                        cTarget = proposalResource.addNewChildObject(
                             newProposal, cTarget, newProposal::addToTargets);
+                        
+                        // track ids for when observations come about.
+                        targetIdMapToReal.put(
+                            jsonTarget.getLong("_id"), cTarget.getId());
+                        targetIdMapToJSON.put(cTarget.getId(), 
+                            jsonTarget.getLong("_id"));
                         break;
                     default:
                         throw new WebApplicationException(
@@ -437,19 +459,155 @@ public class ProposalUploader {
      * saves the proposal's technical goals.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
+     * @param technicalMapToJSON: map between ids for the technicals in json
+     *                         vs real.
+     * @param technicalMapToReal: map between ids for the technicals in json
+     *                            vs real.
      */
     private void saveProposalTechnicals(
-        ObservingProposal newProposal, JSONObject proposalJSON) {
+            ObservingProposal newProposal, JSONObject proposalJSON,
+            HashMap<Long, Long> technicalMapToReal,
+            HashMap<Long, Long> technicalMapToJSON) {
+        JSONArray jsonTechnicalGoals =
+            proposalJSON.getJSONArray("technicalGoals");
+        if (jsonTechnicalGoals != null && jsonTechnicalGoals.length() != 0) {
+            for (int tgIndex = 0; tgIndex < jsonTechnicalGoals.length();
+                 tgIndex++) {
+                JSONObject jsonTechnicalGoal =
+                    jsonTechnicalGoals.getJSONObject(tgIndex);
+                TechnicalGoal tg = technicalGoalResource.addNewChildObject(
+                    newProposal, createNewTechnicalGoal(
+                    jsonTechnicalGoal), newProposal::addToTechnicalGoals);
+                technicalMapToJSON.put(
+                    tg.getId(), jsonTechnicalGoal.getLong("_id"));
+                technicalMapToReal.put(
+                    jsonTechnicalGoal.getLong("_id"), tg.getId());
+            }
+        }
+    }
 
+    /**
+     * builds a new technical goal from json.
+     *
+     * @param jsonTechnicalGoal the json to build the technical goal from.
+     * @return the new technical goal.
+     */
+    private TechnicalGoal createNewTechnicalGoal(
+            JSONObject jsonTechnicalGoal) {
+        TechnicalGoal goal = new TechnicalGoal();
+
+        // performance params.
+        JSONObject jsonPerformanceParams =
+            jsonTechnicalGoal.getJSONObject("performance");
+        if (jsonPerformanceParams != null) {
+            PerformanceParameters pp = new PerformanceParameters();
+            setDesiredDynamicRange(pp, jsonPerformanceParams);
+            setDesiredLargestScale(pp, jsonPerformanceParams);
+            setRepresentativeSpectralPoint(pp, jsonPerformanceParams);
+            setDesiredSensitivity(pp, jsonPerformanceParams);
+            setDesiredAngularResolution(pp, jsonPerformanceParams);
+            goal.setPerformance(pp);
+        }
+        return goal;
+    }
+
+    /**
+     * sets the DesiredDynamicRange of a performance params from json.
+     * @param pp the performance params object.
+     * @param jsonPP: the json.
+     */
+    private void setDesiredDynamicRange(
+            PerformanceParameters pp, JSONObject jsonPP) {
+        JSONObject jsonDesiredDynamicRange =
+            jsonPP.optJSONObject("desiredDynamicRange");
+        if (jsonDesiredDynamicRange != null) {
+            RealQuantity ddr =
+                this.createRealQuantity(jsonDesiredDynamicRange);
+            pp.setDesiredDynamicRange(ddr);
+        }
+    }
+
+    /**
+     * sets the DesiredLargestScale of a performance params from json.
+     * @param pp the performance params object.
+     * @param jsonPP: the json.
+     */
+    private void setDesiredLargestScale(
+        PerformanceParameters pp, JSONObject jsonPP) {
+        JSONObject jsonDesiredLargestScale =
+            jsonPP.optJSONObject("desiredLargestScale");
+        if (jsonDesiredLargestScale != null) {
+            RealQuantity dls =
+                this.createRealQuantity(jsonDesiredLargestScale);
+            pp.setDesiredLargestScale(dls);
+        }
+    }
+
+    /**
+     * sets the RepresentativeSpectralPoint of a performance params from json.
+     * @param pp the performance params object.
+     * @param jsonPP: the json.
+     */
+    private void setRepresentativeSpectralPoint(
+        PerformanceParameters pp, JSONObject jsonPP) {
+        JSONObject jsonRepresentativeSpectralPoint =
+            jsonPP.optJSONObject("representativeSpectralPoint");
+        if (jsonRepresentativeSpectralPoint != null) {
+            RealQuantity rsp =
+                this.createRealQuantity(jsonRepresentativeSpectralPoint);
+            pp.setRepresentativeSpectralPoint(rsp);
+        }
+    }
+
+    /**
+     * sets the DesiredSensitivity of a performance params from json.
+     * @param pp the performance params object.
+     * @param jsonPP: the json.
+     */
+    private void setDesiredSensitivity(
+        PerformanceParameters pp, JSONObject jsonPP) {
+        JSONObject jsonDesiredSensitivity =
+            jsonPP.optJSONObject("desiredSensitivity");
+        if (jsonDesiredSensitivity != null) {
+            RealQuantity ds =
+                this.createRealQuantity(jsonDesiredSensitivity);
+            pp.setDesiredSensitivity(ds);
+        }
+    }
+
+    /**
+     * sets the DesiredAngularResolution of a performance params from json.
+     * @param pp the performance params object.
+     * @param jsonPP: the json.
+     */
+    private void setDesiredAngularResolution(
+        PerformanceParameters pp, JSONObject jsonPP) {
+        JSONObject jsonDesiredAngularResolution =
+            jsonPP.optJSONObject("desiredAngularResolution");
+        if (jsonDesiredAngularResolution != null) {
+            RealQuantity dar =
+                this.createRealQuantity(jsonDesiredAngularResolution);
+            pp.setDesiredAngularResolution(dar);
+        }
     }
 
     /**
      * saves the proposal's observations.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
+     * @param targetIdMapToReal: map for the json and real ids to real.
+     * @param targetIdMapToJSON: map for the real and json ids, to json.
+     * @param technicalMapToJSON: map between ids for the technicals in json
+     *                            vs real.
+     * @param technicalMapToReal: map between ids for the technicals in json
+     *                            vs real.
      */
     private void saveProposalObservations(
-        ObservingProposal newProposal, JSONObject proposalJSON) {
+            ObservingProposal newProposal, JSONObject proposalJSON,
+            HashMap<Long, Long> targetIdMapToReal,
+            HashMap<Long, Long> targetIdMapToJSON,
+            HashMap<Long, Long> technicalMapToReal,
+            HashMap<Long, Long> technicalMapToJSON) {
 
     }
 
