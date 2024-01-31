@@ -1,16 +1,22 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.ivoa.dm.ivoa.Ivorn;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
+import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.ProposalKind;
+import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.proposal.prop.WikiDataId;
+import org.ivoa.dm.stc.coords.CoordSys;
+import org.ivoa.dm.stc.coords.Epoch;
+import org.ivoa.dm.stc.coords.EquatorialPoint;
+import org.ivoa.vodml.stdtypes.Unit;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.json.JSONArray;
@@ -159,9 +165,6 @@ public class ProposalUploader {
                         investigator, newProposal.getId()));
                 }
             }
-
-            // persist new changes
-            proposalResource.persistObject(newProposal);
         } catch (Exception e) {
             logger.error("failed with error: " + e.getMessage());
             e.printStackTrace();
@@ -231,7 +234,7 @@ public class ProposalUploader {
      * @return boolean, true if found, false otherwise.
      */
     private boolean foundPerson(String fullName, String orcid) {
-        logger.info("fullname = " + fullName);
+        logger.info("full name = " + fullName);
         List<ObjectIdentifier> possiblePeeps =
             personResource.getPeople(fullName);
         for (ObjectIdentifier possiblePeep: possiblePeeps) {
@@ -244,13 +247,192 @@ public class ProposalUploader {
     }
 
     /**
-     * saves the proposal's targets.
+     * saves the proposal's targets. NOTE only CelestialTarget's
+     * are working at moment.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
      */
     private void saveProposalTargets(
             ObservingProposal newProposal, JSONObject proposalJSON) {
+        // array of targets.
+        JSONArray targets = proposalJSON.optJSONArray("targets");
+        if(targets != null && targets.length() != 0) {
+            for (int targetIndex = 0; targetIndex < targets.length();
+                    targetIndex++) {
+                JSONObject jsonTarget = targets.getJSONObject(targetIndex);
+                String type = jsonTarget.getString("@type");
+                switch (type) {
+                    case "proposal:CelestialTarget":
+                        CelestialTarget cTarget = new CelestialTarget();
 
+                        // name
+                        cTarget.setSourceName(
+                            jsonTarget.getString("sourceName"));
+
+                        // set the states.
+                        this.setParallax(jsonTarget, cTarget);
+                        this.setSourceCoordinates(jsonTarget, cTarget);
+                        this.setPmRA(jsonTarget, cTarget);
+                        this.setSourceVelocity(jsonTarget, cTarget);
+                        this.setPmDec(jsonTarget, cTarget);
+                        this.setPositionEpoch(jsonTarget, cTarget);
+
+                        // save to database
+                        proposalResource.addNewChildObject(
+                            newProposal, cTarget, newProposal::addToTargets);
+                        break;
+                    default:
+                        throw new WebApplicationException(
+                            "dont recognise this target type.");
+                }
+            }
+        }
+    }
+
+    /**
+     * sets the target position epoch.
+     *
+     * @param jsonTarget the json target containing the position epoch.
+     * @param cTarget the target.
+     */
+    private void setPositionEpoch(
+        JSONObject jsonTarget, CelestialTarget cTarget) {
+        JSONObject jsonPE = jsonTarget.optJSONObject("positionEpoch");
+        if (jsonPE != null) {
+            cTarget.setPositionEpoch(new Epoch(jsonPE.getString("value")));
+        }
+    }
+
+    /**
+     * sets the target source velocity.
+     *
+     * @param jsonTarget the json target containing the source velocity.
+     * @param cTarget the target.
+     */
+    private void setSourceVelocity(
+            JSONObject jsonTarget, CelestialTarget cTarget) {
+        JSONObject jsonSV = jsonTarget.optJSONObject("sourceVelocity");
+        if (jsonSV != null) {
+            RealQuantity sv = this.createRealQuantity(jsonSV);
+            cTarget.setSourceVelocity(sv);
+        }
+    }
+
+    /**
+     * sets the target pmdec.
+     *
+     * @param jsonTarget the json target containing the pmdec.
+     * @param cTarget the target.
+     */
+    private void setPmDec(
+        JSONObject jsonTarget, CelestialTarget cTarget) {
+        JSONObject jsonPmdec = jsonTarget.optJSONObject("pmDec");
+        if (jsonPmdec != null) {
+            RealQuantity pmdec = this.createRealQuantity(jsonPmdec);
+            cTarget.setPmDec(pmdec);
+        }
+    }
+
+    /**
+     * sets the target pmra.
+     *
+     * @param jsonTarget the json target containing the pmra.
+     * @param cTarget the target.
+     */
+    private void setPmRA(
+            JSONObject jsonTarget, CelestialTarget cTarget) {
+        JSONObject jsonPmra = jsonTarget.optJSONObject("pmRA");
+        if (jsonPmra != null) {
+            RealQuantity pmra = this.createRealQuantity(jsonPmra);
+            cTarget.setPmRA(pmra);
+        }
+    }
+
+    /**
+     * creates anew real quantity.
+     *
+     * @param json the json to convert into a real quantity.
+     * @return a real quantity object.
+     */
+    private RealQuantity createRealQuantity(JSONObject json) {
+        if (json != null) {
+            return new RealQuantity(
+                json.getDouble("value"),
+                new Unit(json.getJSONObject(
+                    "unit").getString("value"))
+            );
+        }
+        return null;
+    }
+
+    /**
+     * sets the source coords.
+     *
+     * @param jsonTarget the json target containing the source coords.
+     * @param cTarget the target.
+     */
+    private void setSourceCoordinates(
+            JSONObject jsonTarget, CelestialTarget cTarget) {
+        // source coordinates
+        JSONObject jsonSourceCoordinates =
+            jsonTarget.optJSONObject("sourceCoordinates");
+        if (jsonSourceCoordinates != null) {
+            String type = jsonSourceCoordinates.getString("@type");
+            logger.info("type is " + type);
+            switch(type) {
+                case "coords:EquatorialPoint":
+                    EquatorialPoint coords = new EquatorialPoint();
+
+                    // coords sys
+                    String coordSystem =
+                        jsonSourceCoordinates.optString("coordSys");
+                    logger.info("coordSystem is " + coordSystem);
+                    if (coordSystem != null && !coordSystem.equals("")) {
+                        throw new WebApplicationException(
+                            "dont know how to handle coordsystems.");
+                    }
+
+                    // longitude
+                    JSONObject jsonLongitude =
+                        jsonSourceCoordinates.optJSONObject("lon");
+                    if (jsonLongitude != null) {
+                        RealQuantity lon =
+                            this.createRealQuantity(jsonLongitude);
+                        coords.setLon(lon);
+                    }
+
+                    // latitude
+                    JSONObject jsonLatitude =
+                        jsonSourceCoordinates.optJSONObject("lon");
+                    if (jsonLatitude != null) {
+                        RealQuantity lat =
+                            this.createRealQuantity(jsonLatitude);
+                        coords.setLat(lat);
+                    }
+
+                    // update target
+                    cTarget.setSourceCoordinates(coords);
+                    break;
+                default:
+                    throw new WebApplicationException(
+                        "Dont recognise this source coordinate type.");
+            }
+        }
+    }
+
+    /**
+     * sets parallax.
+     *
+     * @param jsonTarget the json containing the target.
+     * @param cTarget the new target.
+     */
+    private void setParallax(JSONObject jsonTarget, CelestialTarget cTarget) {
+        JSONObject jsonParallax =
+            jsonTarget.optJSONObject("parallax");
+        if (jsonParallax != null) {
+            RealQuantity parallax = this.createRealQuantity(jsonParallax);
+            cTarget.setParallax(parallax);
+        }
     }
 
     /**
