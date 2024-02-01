@@ -143,20 +143,21 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode) {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         Boolean valid = true;
-        String info = "none";
-        String warn = "none";
-        String error = "none";
+        String info = "Your proposal is ready for submission";
+        String warn = "";
+        String error = "";
         //Count the targets
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
-        //List<ObjectIdentifier> targets = getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = " + proposalCode);
         if(targets.isEmpty()) {
             valid = false;
-            error = "There are no targets defined";
+            error = "No targets defined";
         }
 
         //List<ObjectIdentifier> observations =
 
-
+        if(!valid) {
+            info = "Your proposal is not ready for submission";
+        }
         ProposalValidation validationSummary = new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn, error);
         return (validationSummary);
     }
