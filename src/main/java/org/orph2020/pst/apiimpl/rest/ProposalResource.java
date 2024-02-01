@@ -19,6 +19,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.inject.Inject;
 import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.util.ArrayList;
@@ -41,6 +42,10 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
+    @Inject
+    private ObservationResource observationResource;
+    @Inject
+    private TechnicalGoalResource technicalGoalResource;
 
     private static final String proposalRoot = "{proposalCode}";
 
@@ -139,8 +144,8 @@ public class ProposalResource extends ObjectResourceBase {
 
     @GET
     @Path(proposalRoot + "/validate")
-    @Operation(summary = "validate the proposal, get a summary string of it's state")
-    public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode) {
+    @Operation(summary = "validate the proposal, get summary strings of it's state.  Optionally pass a cycle to compare dates with.")
+    public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         Boolean valid = true;
         String info = "Your proposal is ready for submission";
@@ -150,10 +155,25 @@ public class ProposalResource extends ObjectResourceBase {
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
         if(targets.isEmpty()) {
             valid = false;
-            error = "No targets defined";
+            error = "No targets defined.  ";
         }
 
-        //List<ObjectIdentifier> observations =
+        List<ObjectIdentifier> observations = observationResource.getObservations(proposalCode, null, null);
+        if(observations.isEmpty()) {
+            valid = false;
+            error += "No observations defined.  ";
+        }
+
+        List<ObjectIdentifier> technicalGoals = technicalGoalResource.getTechnicalGoals(proposalCode);
+        if(technicalGoals.isEmpty()) {
+            valid = false;
+            error += "No technical goals defined.  ";
+        }
+
+        if(cycleId != 0) {
+            //Compare timing windows with cycle dates and times.
+            warn += "Timing windows not checked yet.  ";
+        }
 
         if(!valid) {
             info = "Your proposal is not ready for submission";
