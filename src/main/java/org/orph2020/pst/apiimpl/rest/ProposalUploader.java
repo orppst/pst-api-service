@@ -337,27 +337,9 @@ public class ProposalUploader {
                 String type = jsonTarget.getString("@type");
                 switch (type) {
                     case "proposal:CelestialTarget":
-                        CelestialTarget cTarget = new CelestialTarget();
-
-                        // name
-                        cTarget.setSourceName(
-                            jsonTarget.getString("sourceName"));
-
-                        // set the states.
-                        this.setParallax(jsonTarget, cTarget);
-                        this.setSourceCoordinates(jsonTarget, cTarget);
-                        this.setPmRA(jsonTarget, cTarget);
-                        this.setSourceVelocity(jsonTarget, cTarget);
-                        this.setPmDec(jsonTarget, cTarget);
-                        this.setPositionEpoch(jsonTarget, cTarget);
-
-                        // save to database
-                        cTarget = proposalResource.addNewChildObject(
-                            newProposal, cTarget, newProposal::addToTargets);
-                        
-                        // track ids for when observations come about.
-                        targetIdMapToReal.put(
-                            jsonTarget.getLong("_id"), cTarget);
+                        this.createCelestialTarget(
+                            jsonTarget, newProposal, targetIdMapToReal,
+                            proposalResource);
                         break;
                     case "proposal:SolarSystemTarget":
                         throw new WebApplicationException(
@@ -370,6 +352,41 @@ public class ProposalUploader {
                 }
             }
         }
+    }
+
+    /**
+     * builds a celestial target.
+     *
+     * @param newProposal: the new proposal to persist state in.
+     * @param jsonTarget: the json object holding new target data.
+     * @param targetIdMapToReal: map for the json and real ids to real targets.
+     * @param proposalResource: the proposal resource to save to the database.
+     */
+    private void createCelestialTarget(
+            JSONObject jsonTarget, ObservingProposal newProposal,
+            HashMap<Long, Target> targetIdMapToReal,
+            ProposalResource proposalResource) {
+        CelestialTarget cTarget = new CelestialTarget();
+
+        // name
+        cTarget.setSourceName(
+            jsonTarget.getString("sourceName"));
+
+        // set the states.
+        this.setParallax(jsonTarget, cTarget);
+        this.setSourceCoordinates(jsonTarget, cTarget);
+        this.setPmRA(jsonTarget, cTarget);
+        this.setSourceVelocity(jsonTarget, cTarget);
+        this.setPmDec(jsonTarget, cTarget);
+        this.setPositionEpoch(jsonTarget, cTarget);
+
+        // save to database
+        cTarget = proposalResource.addNewChildObject(
+            newProposal, cTarget, newProposal::addToTargets);
+
+        // track ids for when observations come about.
+        targetIdMapToReal.put(
+            jsonTarget.getLong("_id"), cTarget);
     }
 
     /**
