@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.ivoa.StringIdentifier ;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.orph2020.pst.apiimpl.entities.SubjectMap;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import jakarta.transaction.Transactional;
@@ -48,6 +49,22 @@ public class PersonResource extends ObjectResourceBase {
          throws WebApplicationException
    {
       return persistObject(person);
+   }
+
+   @POST
+   @Path("{keycloakUid}")
+   @Operation(summary = "create a new Person in the database from a keycloak 'user'")
+   @Consumes(MediaType.APPLICATION_JSON)
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Person createPersonFromKeycloak(@PathParam("keycloakUid") String kcUid, Person person)
+           throws WebApplicationException
+   {
+      Person result = persistObject(person);
+
+      //store the user's keycloak UID
+      em.persist(new SubjectMap(person, kcUid));
+
+      return result;
    }
 
    @DELETE
