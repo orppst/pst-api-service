@@ -58,13 +58,6 @@ public class ProposalUploader {
     // string replacement to match ISO-8601 standard.
     private static final String TIMESTAMP_REPLACEMENT = "Z";
 
-    // stored to help data movement. contains the different resources needed
-    private PersonResource personResource;
-    private InvestigatorResource investigatorResource;
-    private ProposalResource proposalResource;
-    private TechnicalGoalResource technicalGoalResource;
-    private ObservationResource observationResource;
-
     /**
      * default constructor.
      */
@@ -94,13 +87,6 @@ public class ProposalUploader {
             throws WebApplicationException {
         byte[] proposalData = this.readFile(
             fileUpload, ProposalUploader.PROPOSAL_JSON_FILE_NAME);
-
-        // for easier movement, moved to class level scope.
-        this.personResource = personResource;
-        this.investigatorResource = investigatorResource;
-        this.proposalResource = proposalResource;
-        this.technicalGoalResource = technicalGoalResource;
-        this.observationResource = observationResource;
 
         HashMap<Long, Target> targetIdMapToReal = new HashMap<>();
         HashMap<Long, TechnicalGoal> technicalMapToReal = new HashMap<>();
@@ -134,13 +120,16 @@ public class ProposalUploader {
         // save proposal specific data items.
         this.saveProposalSpecific(
             newProposal, proposalJSON,
-            Boolean.parseBoolean(updateSubmittedFlag));
+            Boolean.parseBoolean(updateSubmittedFlag), proposalResource,
+            personResource, investigatorResource);
         this.saveProposalTargets(
-            newProposal, proposalJSON, targetIdMapToReal);
+            newProposal, proposalJSON, targetIdMapToReal, proposalResource);
         this.saveProposalTechnicals(
-            newProposal, proposalJSON, technicalMapToReal);
+            newProposal, proposalJSON, technicalMapToReal,
+            technicalGoalResource);
         this.saveProposalObservations(
-            newProposal, proposalJSON, targetIdMapToReal, technicalMapToReal);
+            newProposal, proposalJSON, targetIdMapToReal, technicalMapToReal,
+            observationResource);
         this.saveJustifications(newProposal, proposalJSON);
         this.saveProposalDocuments(
             newProposal, proposalJSON, fileUpload, supportingDocumentResource);
@@ -186,10 +175,15 @@ public class ProposalUploader {
      * @param proposalJSON: the json object holding new data.
      * @param modifySubmitted: boolean stating if the submitted field should
      *                      be changed.
+     * @param proposalResource: the proposal resource for saving to database.
+     * @param personResource: the person resource to save to the database.
+     * @param investigatorResource: the saving of investigators to the database.
      */
     private void saveProposalSpecific(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            boolean modifySubmitted) {
+            boolean modifySubmitted, ProposalResource proposalResource,
+            PersonResource personResource,
+            InvestigatorResource investigatorResource) {
         /////////////////// simple strings.
         newProposal.setSummary(proposalJSON.getString("summary"));
         newProposal.setKind(
@@ -229,12 +223,13 @@ public class ProposalUploader {
                     JSONObject investigator =
                         investigators.getJSONObject(investigatorIndex);
                     newProposal.addToInvestigators(createNewInvestigator(
-                        investigator, newProposal.getId()));
+                        investigator, newProposal.getId(),
+                        personResource, investigatorResource));
                 }
             }
         } catch (Exception e) {
             logger.error("failed with error: " + e.getMessage());
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new WebApplicationException(e.getMessage());
         }
     }
@@ -243,10 +238,15 @@ public class ProposalUploader {
      * creates a new investigator from a json investigator.
      * @param investigator json investigator.
      * @param proposalCode: the associated proposal code.
+     * @param personResource: the person resource to save to database.
+     * @param investigatorResource: the investigator resource to save
+     *                           to database.
      * @return new investigator object.
      */
     private Investigator createNewInvestigator(
-            JSONObject investigator, Long proposalCode) {
+            JSONObject investigator, Long proposalCode,
+            PersonResource personResource,
+            InvestigatorResource investigatorResource) {
         // create new investigator.
         Investigator newInvestigator = new Investigator();
 
@@ -283,8 +283,9 @@ public class ProposalUploader {
         newInvestigator.setPerson(newPerson);
 
         // update database positions if required
-        if (foundPerson(newPerson.getFullName(),
-                        newPerson.getOrcidId().value())) {
+        if (foundPerson(
+                newPerson.getFullName(), newPerson.getOrcidId().value(),
+                personResource)) {
             personResource.createPerson(newPerson);
         }
         investigatorResource.addPersonAsInvestigator(
@@ -298,9 +299,11 @@ public class ProposalUploader {
      *
      * @param fullName: person full name to find.
      * @param orcid: the orcid of said person.
+     * @param personResource: the person resource to save to the database.
      * @return boolean, true if found, false otherwise.
      */
-    private boolean foundPerson(String fullName, String orcid) {
+    private boolean foundPerson(
+            String fullName, String orcid, PersonResource personResource) {
         logger.info("full name = " + fullName);
         List<ObjectIdentifier> possiblePeeps =
             personResource.getPeople(fullName);
@@ -319,10 +322,12 @@ public class ProposalUploader {
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
      * @param targetIdMapToReal: map for the json and real ids to real targets.
+     * @param proposalResource: the proposal resource to save to the database.
      */
     private void saveProposalTargets(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            HashMap<Long, Target> targetIdMapToReal) {
+            HashMap<Long, Target> targetIdMapToReal,
+            ProposalResource proposalResource) {
         // array of targets.
         JSONArray targets = proposalJSON.optJSONArray("targets");
         if(targets != null && targets.length() != 0) {
@@ -520,11 +525,14 @@ public class ProposalUploader {
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
      * @param technicalMapToReal: map between ids for the technicals in json
-     *                            vs real.
+     *                            vs real technical goals.
+     * @param technicalGoalResource: the resource to save technical goals to
+     *                             the database.
      */
     private void saveProposalTechnicals(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            HashMap<Long, TechnicalGoal> technicalMapToReal) {
+            HashMap<Long, TechnicalGoal> technicalMapToReal,
+            TechnicalGoalResource technicalGoalResource) {
         JSONArray jsonTechnicalGoals =
             proposalJSON.getJSONArray("technicalGoals");
         if (jsonTechnicalGoals != null && jsonTechnicalGoals.length() != 0) {
@@ -537,7 +545,8 @@ public class ProposalUploader {
                 TechnicalGoal tg = technicalGoalResource.addNewChildObject(
                     newProposal, createNewTechnicalGoal(
                     jsonTechnicalGoal), newProposal::addToTechnicalGoals);
-                handleSpectralWindows(jsonTechnicalGoal, tg);
+                handleSpectralWindows(
+                    jsonTechnicalGoal, tg, technicalGoalResource);
 
                 // update maps.
                 technicalMapToReal.put(jsonTechnicalGoal.getLong("_id"), tg);
@@ -575,9 +584,12 @@ public class ProposalUploader {
      *
      * @param jsonTechnicalGoal: the json.
      * @param goal: the technical goal.
+     * @param technicalGoalResource: the resource to save technical goals to
+     *                            the database.
      */
     private void handleSpectralWindows(
-            JSONObject jsonTechnicalGoal, TechnicalGoal goal) {
+            JSONObject jsonTechnicalGoal, TechnicalGoal goal,
+            TechnicalGoalResource technicalGoalResource) {
         // handle the windows.
         JSONArray jsonSpectrum = jsonTechnicalGoal.getJSONArray("spectrum");
         if (jsonSpectrum != null && jsonSpectrum.length() != 0) {
@@ -754,14 +766,17 @@ public class ProposalUploader {
      * saves the proposal's observations.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
-     * @param targetIdMapToReal: map for the json and real ids to real.
+     * @param targetIdMapToReal: map for the json and real ids to real targets.
      * @param technicalMapToReal: map between ids for the technicals in json
-     *                            vs real.
+     *                            vs real technical goals.
+     * @param observationResource: the resource to save observations to the
+     *                          database.
      */
     private void saveProposalObservations(
             ObservingProposal newProposal, JSONObject proposalJSON,
             HashMap<Long, Target> targetIdMapToReal,
-            HashMap<Long, TechnicalGoal> technicalMapToReal) {
+            HashMap<Long, TechnicalGoal> technicalMapToReal,
+            ObservationResource observationResource) {
         JSONArray jsonObservations = proposalJSON.optJSONArray("observations");
         if(jsonObservations != null && jsonObservations.length() != 0) {
             for (int observationIndex = 0;
@@ -781,7 +796,8 @@ public class ProposalUploader {
                             newProposal::addToObservations);
                         this.saveConstraints(
                             observation,
-                            jsonObservation.getJSONArray("constraints")
+                            jsonObservation.getJSONArray("constraints"),
+                            observationResource
                         );
                         break;
                     case "proposal:CalibrationObservation":
@@ -799,7 +815,6 @@ public class ProposalUploader {
 
     /**
      * saves constraints.
-     *
      * NOTE: Be aware that the JSOn seems to be a bit corrupted in that it does
      * not follow the ISO instant formatter that formats or parses an
      * instant in UTC, such as '2011-12-03T10:15:30Z' which is the ISO-8601
@@ -809,9 +824,12 @@ public class ProposalUploader {
      *
      * @param observation: the observation object.
      * @param jsonConstraints: json containing the constraints.
+     * @param observationResource: the resource to save observations to the
+     *                          database.
      */
     private void saveConstraints(
-            TargetObservation observation, JSONArray jsonConstraints) {
+            TargetObservation observation, JSONArray jsonConstraints,
+            ObservationResource observationResource) {
         if(jsonConstraints != null && jsonConstraints.length() != 0) {
             for (int constraintIndex = 0;
                  constraintIndex < jsonConstraints.length();
