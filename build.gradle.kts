@@ -20,6 +20,7 @@ dependencies {
 //    implementation("io.quarkiverse.helm:quarkus-helm:0.1.2")
 
     implementation("io.quarkus:quarkus-arc")
+    implementation("io.quarkus:quarkus-keycloak-admin-client-reactive")
     implementation("io.quarkus:quarkus-resteasy-reactive-jackson")
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.quarkus:quarkus-test-security-oidc")
