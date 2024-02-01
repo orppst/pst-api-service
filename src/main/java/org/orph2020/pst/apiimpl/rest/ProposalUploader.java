@@ -7,6 +7,7 @@ import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
+import org.ivoa.dm.proposal.prop.Justification;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.PerformanceParameters;
@@ -14,11 +15,18 @@ import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.ProposalKind;
 import org.ivoa.dm.proposal.prop.ScienceSpectralWindow;
 import org.ivoa.dm.proposal.prop.SpectralWindowSetup;
+import org.ivoa.dm.proposal.prop.Target;
+import org.ivoa.dm.proposal.prop.TargetField;
+import org.ivoa.dm.proposal.prop.TargetObservation;
 import org.ivoa.dm.proposal.prop.TechnicalGoal;
+import org.ivoa.dm.proposal.prop.TextFormats;
+import org.ivoa.dm.proposal.prop.TimingWindow;
 import org.ivoa.dm.proposal.prop.WikiDataId;
+import org.ivoa.dm.stc.coords.Coordinate;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
 import org.ivoa.dm.stc.coords.PolStateEnum;
+import org.ivoa.dm.stc.coords.TimeStamp;
 import org.ivoa.vodml.stdtypes.Unit;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -29,11 +37,15 @@ import org.orph2020.pst.common.json.ObjectIdentifier;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+@SuppressWarnings("VulnerableCodeUsages")
 public class ProposalUploader {
 
     // the logger.
@@ -87,10 +99,8 @@ public class ProposalUploader {
         this.technicalGoalResource = technicalGoalResource;
         this.observationResource = observationResource;
 
-        HashMap<Long, Long> targetIdMapToReal = new HashMap<>();
-        HashMap<Long, Long> targetIdMapToJSON = new HashMap<>();
-        HashMap<Long, Long> technicalMapToReal = new HashMap<>();
-        HashMap<Long, Long> technicalMapToJSON = new HashMap<>();
+        HashMap<Long, Target> targetIdMapToReal = new HashMap<>();
+        HashMap<Long, TechnicalGoal> technicalMapToReal = new HashMap<>();
 
         // check for failed read in.
         if (proposalData == null) {
@@ -123,15 +133,54 @@ public class ProposalUploader {
             newProposal, proposalJSON,
             Boolean.parseBoolean(updateSubmittedFlag));
         this.saveProposalTargets(
-            newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON);
+            newProposal, proposalJSON, targetIdMapToReal);
         this.saveProposalTechnicals(
-            newProposal, proposalJSON, technicalMapToReal, technicalMapToJSON);
-        this.saveProposalObservations(
-            newProposal, proposalJSON, targetIdMapToReal, targetIdMapToJSON,
-            technicalMapToReal, technicalMapToJSON);
-        this.saveProposalTimingWindows(newProposal, proposalJSON);
+            newProposal, proposalJSON, technicalMapToReal);
+        this.saveJustifications(newProposal, proposalJSON);
         this.saveProposalDocuments(
             newProposal, proposalJSON, fileUpload, supportingDocumentResource);
+        try {
+            this.saveProposalObservations(
+                newProposal, proposalJSON, targetIdMapToReal,
+                technicalMapToReal);
+        } catch (ParseException e) {
+            throw new WebApplicationException(
+                "The constraints failed with date parsing errors." +
+                    " error was:" + e.getMessage());
+        }
+    }
+
+    /**
+     * saves the justifications.
+     * @param newProposal: the new proposal to persist state in.
+     * @param proposalJSON: the json object holding new data.
+     */
+    private void saveJustifications(
+            ObservingProposal newProposal, JSONObject proposalJSON) {
+        JSONObject scientificJustification =
+            proposalJSON.optJSONObject("scientificJustification");
+        JSONObject technicalJustification =
+            proposalJSON.optJSONObject("technicalJustification");
+
+        // attempt to fill in scientificJustification
+        if (scientificJustification != null) {
+            newProposal.setScientificJustification(new Justification(
+                scientificJustification.getString("text"), TextFormats.RST));
+            throw new WebApplicationException(
+                "scientificJustification have not been implemented correctly." +
+                    " Please contact devs."
+            );
+        }
+
+        // attempt to fill in technicalJustification
+        if (technicalJustification != null) {
+            newProposal.setTechnicalJustification(new Justification(
+                technicalJustification.getString("text"), TextFormats.RST));
+            throw new WebApplicationException(
+                "technicalJustification have not been implemented correctly." +
+                    " Please contact devs."
+            );
+        }
     }
 
     /**
@@ -170,7 +219,8 @@ public class ProposalUploader {
                 proposalJSON.optJSONArray("relatedProposals");
             if(relatedProposals != null && relatedProposals.length() != 0) {
                 throw new WebApplicationException(
-                    "Currently related proposals are not supported.");
+                    "Currently related proposals are not supported." +
+                        " Please contact the devs.");
             }
 
             // array of investigators.
@@ -272,13 +322,11 @@ public class ProposalUploader {
      * are working at moment.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
-     * @param targetIdMapToReal: map for the json and real ids to real.
-     * @param targetIdMapToJSON: map for the real and json ids, to json.
+     * @param targetIdMapToReal: map for the json and real ids to real targets.
      */
     private void saveProposalTargets(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            HashMap<Long, Long> targetIdMapToReal,
-            HashMap<Long, Long> targetIdMapToJSON) {
+            HashMap<Long, Target> targetIdMapToReal) {
         // array of targets.
         JSONArray targets = proposalJSON.optJSONArray("targets");
         if(targets != null && targets.length() != 0) {
@@ -308,13 +356,16 @@ public class ProposalUploader {
                         
                         // track ids for when observations come about.
                         targetIdMapToReal.put(
-                            jsonTarget.getLong("_id"), cTarget.getId());
-                        targetIdMapToJSON.put(cTarget.getId(), 
-                            jsonTarget.getLong("_id"));
+                            jsonTarget.getLong("_id"), cTarget);
                         break;
+                    case "proposal:SolarSystemTarget":
+                        throw new WebApplicationException(
+                            "dont know what to do with solar system type." +
+                                " Please contact the devs.");
                     default:
                         throw new WebApplicationException(
-                            "dont recognise this target type.");
+                            "dont recognise this target type." +
+                                " Please contact the devs.");
                 }
             }
         }
@@ -418,9 +469,10 @@ public class ProposalUploader {
                     String coordSystem =
                         jsonSourceCoordinates.optString("coordSys");
                     logger.info("coordSystem is " + coordSystem);
-                    if (coordSystem != null && !coordSystem.equals("")) {
+                    if (coordSystem != null && !coordSystem.isEmpty()) {
                         throw new WebApplicationException(
-                            "dont know how to handle coordsystems.");
+                            "dont know how to handle coordsystems. " +
+                                "Please contact the devs");
                     }
 
                     // longitude
@@ -446,7 +498,8 @@ public class ProposalUploader {
                     break;
                 default:
                     throw new WebApplicationException(
-                        "Dont recognise this source coordinate type.");
+                        "Dont recognise this source coordinate type." +
+                            " Please contact the devs.");
             }
         }
     }
@@ -470,15 +523,12 @@ public class ProposalUploader {
      * saves the proposal's technical goals.
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
-     * @param technicalMapToJSON: map between ids for the technicals in json
-     *                         vs real.
      * @param technicalMapToReal: map between ids for the technicals in json
      *                            vs real.
      */
     private void saveProposalTechnicals(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            HashMap<Long, Long> technicalMapToReal,
-            HashMap<Long, Long> technicalMapToJSON) {
+            HashMap<Long, TechnicalGoal> technicalMapToReal) {
         JSONArray jsonTechnicalGoals =
             proposalJSON.getJSONArray("technicalGoals");
         if (jsonTechnicalGoals != null && jsonTechnicalGoals.length() != 0) {
@@ -494,10 +544,7 @@ public class ProposalUploader {
                 handleSpectralWindows(jsonTechnicalGoal, tg);
 
                 // update maps.
-                technicalMapToJSON.put(
-                    tg.getId(), jsonTechnicalGoal.getLong("_id"));
-                technicalMapToReal.put(
-                    jsonTechnicalGoal.getLong("_id"), tg.getId());
+                technicalMapToReal.put(jsonTechnicalGoal.getLong("_id"), tg);
             }
         }
     }
@@ -578,7 +625,8 @@ public class ProposalUploader {
         JSONArray lines = jsonSp.optJSONArray("expectedSpectralLine");
         if(lines != null && lines.length() != 0) {
             throw new WebApplicationException(
-                "dont know what to do with these");
+                "dont know what to do with these for " + ssw +
+                    ". Please contact the devs.");
         }
     }
 
@@ -711,29 +759,119 @@ public class ProposalUploader {
      * @param newProposal: the new proposal to persist state in.
      * @param proposalJSON: the json object holding new data.
      * @param targetIdMapToReal: map for the json and real ids to real.
-     * @param targetIdMapToJSON: map for the real and json ids, to json.
-     * @param technicalMapToJSON: map between ids for the technicals in json
-     *                            vs real.
      * @param technicalMapToReal: map between ids for the technicals in json
      *                            vs real.
      */
     private void saveProposalObservations(
             ObservingProposal newProposal, JSONObject proposalJSON,
-            HashMap<Long, Long> targetIdMapToReal,
-            HashMap<Long, Long> targetIdMapToJSON,
-            HashMap<Long, Long> technicalMapToReal,
-            HashMap<Long, Long> technicalMapToJSON) {
-
+            HashMap<Long, Target> targetIdMapToReal,
+            HashMap<Long, TechnicalGoal> technicalMapToReal)
+                throws ParseException {
+        JSONArray jsonObservations = proposalJSON.optJSONArray("observations");
+        if(jsonObservations != null && jsonObservations.length() != 0) {
+            for (int observationIndex = 0;
+                 observationIndex < jsonObservations.length();
+                 observationIndex++) {
+                JSONObject jsonObservation =
+                    jsonObservations.getJSONObject(observationIndex);
+                String type = jsonObservation.getString("@type");
+                switch (type) {
+                    case "proposal:TargetObservation":
+                        TargetObservation observation =
+                            this.createTargetObservation(
+                                jsonObservation, targetIdMapToReal,
+                                technicalMapToReal);
+                        observationResource.addNewChildObject(
+                            newProposal, observation,
+                            newProposal::addToObservations);
+                        this.saveConstraints(
+                            observation,
+                            jsonObservation.getJSONArray("constraints")
+                        );
+                        break;
+                    case "proposal:CalibrationObservation":
+                        throw new WebApplicationException(
+                            "have not done CalibrationObservation observation" +
+                                " type. Please contact devs.");
+                    default:
+                        throw new WebApplicationException(
+                            "do not recognise this observation type. " +
+                                "Please contact devs.");
+                }
+            }
+        }
     }
 
     /**
-     * saves the proposal's spectral timing windows.
-     * @param newProposal: the new proposal to persist state in.
-     * @param proposalJSON: the json object holding new data.
+     * saves constraints.
+     *
+     * @param observation: the observation object.
+     * @param jsonConstraints: json containing the constraints.
      */
-    private void saveProposalTimingWindows(
-        ObservingProposal newProposal, JSONObject proposalJSON) {
+    private void saveConstraints(
+            TargetObservation observation, JSONArray jsonConstraints) throws ParseException {
+        if(jsonConstraints != null && jsonConstraints.length() != 0) {
+            for (int constraintIndex = 0;
+                 constraintIndex < jsonConstraints.length();
+                 constraintIndex++) {
+                JSONObject jsonConstraint =
+                    jsonConstraints.getJSONObject(constraintIndex);
+                String type = jsonConstraint.getString("@type");
+                switch (type) {
+                    case "proposal:TimingWindow":
+                        TimingWindow window = new TimingWindow();
+                        window.setNote(jsonConstraint.getString("note"));
+                        window.setIsAvoidConstraint(
+                            jsonConstraint.getBoolean("isAvoidConstraint"));
 
+                        // sort out dates.
+                        window.setEndTime(new Date(
+                            jsonConstraint.getString("endTime")));
+                        window.setStartTime(new Date(
+                            jsonConstraint.getString("startTime")));
+
+                        // add to database.
+                        observationResource.addNewChildObject(
+                            observation, window, observation::addToConstraints);
+                        break;
+                    default:
+                        throw new WebApplicationException(
+                            "dont recognise this type of constraint. " +
+                                "Please contact the devs."
+                        );
+                }
+            }
+        }
+    }
+
+    /**
+     * creates a target observation.
+     * @param jsonObservation: the json object holding new data.
+     * @param targetIdMapToReal: map for the json and real ids to real.
+     * @param technicalMapToReal: map between ids for the technicals in json
+     *                            vs real.
+     */
+    private TargetObservation createTargetObservation(
+            JSONObject jsonObservation,
+            HashMap<Long, Target> targetIdMapToReal,
+            HashMap<Long, TechnicalGoal> technicalMapToReal) {
+        TargetObservation observation = new TargetObservation();
+
+        // field
+        TargetField field = new TargetField();
+        field.setName(jsonObservation.getJSONObject("field").getString("name"));
+        field.setXmlId("1");
+        observation.setField(field);
+
+        // target
+        observation.setTarget(
+            targetIdMapToReal.get(jsonObservation.getLong("target")));
+
+        // technical goal.
+        observation.setTechnicalGoal(
+            technicalMapToReal.get(jsonObservation.getLong("technicalGoal")));
+
+        return observation;
     }
 
     /**
