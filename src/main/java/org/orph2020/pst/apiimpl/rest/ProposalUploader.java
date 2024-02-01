@@ -970,7 +970,8 @@ public class ProposalUploader {
                     if (bytesRead != uncompressedSize && bytesRead != -1) {
                         throw new WebApplicationException(
                             "Failed to read the correct amount of data. read "
-                                + bytesRead + " instead", 400);
+                                + bytesRead + " instead of " +
+                                uncompressedSize + "bytes", 400);
                     }
 
                     // close the streams before handing back the results.
