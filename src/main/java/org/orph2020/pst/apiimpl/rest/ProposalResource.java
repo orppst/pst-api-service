@@ -19,6 +19,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.orph2020.pst.common.json.ProposalValidation;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -89,7 +91,6 @@ public class ProposalResource extends ObjectResourceBase {
         }
     }
 
-
     @GET
     @Operation(summary = "get the Proposal specified by the 'proposalCode'")
     @APIResponse(
@@ -136,6 +137,29 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal.getTitle(), 200);
     }
 
+    @GET
+    @Path(proposalRoot + "/validate")
+    @Operation(summary = "validate the proposal, get a summary string of it's state")
+    public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode) {
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        Boolean valid = true;
+        String info = "none";
+        String warn = "none";
+        String error = "none";
+        //Count the targets
+        List<ObjectIdentifier> targets = getTargets(proposalCode, null);
+        //List<ObjectIdentifier> targets = getObjectIdentifiers("SELECT t._id,t.sourceName FROM ObservingProposal o Inner Join o.targets t WHERE o._id = " + proposalCode);
+        if(targets.isEmpty()) {
+            valid = false;
+            error = "There are no targets defined";
+        }
+
+        //List<ObjectIdentifier> observations =
+
+
+        ProposalValidation validationSummary = new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn, error);
+        return (validationSummary);
+    }
 
     @PUT
     @Operation(summary = "change the title of an ObservingProposal")
