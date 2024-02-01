@@ -497,6 +497,14 @@ public class ProposalUploader {
                     // update target
                     cTarget.setSourceCoordinates(coords);
                     break;
+                case "coords:RealCartesianPoint":
+                case "coords:SphericalPoint":
+                case "coords:GenericPoint":
+                case "coords:LonLatPoint":
+                case "coords:CartesianPoint":
+                    throw new WebApplicationException(
+                        "Have not implemented this type of point. Please" +
+                            " contact the devs.");
                 default:
                     throw new WebApplicationException(
                         "Dont recognise this source coordinate type." +
@@ -862,6 +870,12 @@ public class ProposalUploader {
                         observationResource.addNewChildObject(
                             observation, window, observation::addToConstraints);
                         break;
+                    case "proposal:TimingConstraint":
+                    case "proposal:SimultaneityConstraint":
+                    case "proposal:PointingConstaint":
+                        throw new WebApplicationException(
+                            "have not done these other types of" +
+                                " constraint. Please contact devs.");
                     default:
                         throw new WebApplicationException(
                             "dont recognise this type of constraint. " +
