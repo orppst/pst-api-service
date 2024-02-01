@@ -22,11 +22,9 @@ import org.ivoa.dm.proposal.prop.TechnicalGoal;
 import org.ivoa.dm.proposal.prop.TextFormats;
 import org.ivoa.dm.proposal.prop.TimingWindow;
 import org.ivoa.dm.proposal.prop.WikiDataId;
-import org.ivoa.dm.stc.coords.Coordinate;
 import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
 import org.ivoa.dm.stc.coords.PolStateEnum;
-import org.ivoa.dm.stc.coords.TimeStamp;
 import org.ivoa.vodml.stdtypes.Unit;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -37,8 +35,7 @@ import org.orph2020.pst.common.json.ObjectIdentifier;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +51,12 @@ public class ProposalUploader {
 
     // hard coded filename for the proposal in json format.
     private static final String PROPOSAL_JSON_FILE_NAME = "proposal.json";
+
+    // string to replace in time stamps.
+    private static final String TIMESTAMP_CORRUPTION = "+0000";
+
+    // string replacement to match ISO-8601 standard.
+    private static final String TIMESTAMP_REPLACEMENT = "Z";
 
     // stored to help data movement. contains the different resources needed
     private PersonResource personResource;
@@ -136,18 +139,11 @@ public class ProposalUploader {
             newProposal, proposalJSON, targetIdMapToReal);
         this.saveProposalTechnicals(
             newProposal, proposalJSON, technicalMapToReal);
+        this.saveProposalObservations(
+            newProposal, proposalJSON, targetIdMapToReal, technicalMapToReal);
         this.saveJustifications(newProposal, proposalJSON);
         this.saveProposalDocuments(
             newProposal, proposalJSON, fileUpload, supportingDocumentResource);
-        try {
-            this.saveProposalObservations(
-                newProposal, proposalJSON, targetIdMapToReal,
-                technicalMapToReal);
-        } catch (ParseException e) {
-            throw new WebApplicationException(
-                "The constraints failed with date parsing errors." +
-                    " error was:" + e.getMessage());
-        }
     }
 
     /**
@@ -765,8 +761,7 @@ public class ProposalUploader {
     private void saveProposalObservations(
             ObservingProposal newProposal, JSONObject proposalJSON,
             HashMap<Long, Target> targetIdMapToReal,
-            HashMap<Long, TechnicalGoal> technicalMapToReal)
-                throws ParseException {
+            HashMap<Long, TechnicalGoal> technicalMapToReal) {
         JSONArray jsonObservations = proposalJSON.optJSONArray("observations");
         if(jsonObservations != null && jsonObservations.length() != 0) {
             for (int observationIndex = 0;
@@ -805,11 +800,18 @@ public class ProposalUploader {
     /**
      * saves constraints.
      *
+     * NOTE: Be aware that the JSOn seems to be a bit corrupted in that it does
+     * not follow the ISO instant formatter that formats or parses an
+     * instant in UTC, such as '2011-12-03T10:15:30Z' which is the ISO-8601
+     * instant format. The JSON on the other hand returns a "+0000" instead of
+     * a "Z" which causes issues for the parsers. SO ABS has had to add a
+     * replacement string to resolve this problem.
+     *
      * @param observation: the observation object.
      * @param jsonConstraints: json containing the constraints.
      */
     private void saveConstraints(
-            TargetObservation observation, JSONArray jsonConstraints) throws ParseException {
+            TargetObservation observation, JSONArray jsonConstraints) {
         if(jsonConstraints != null && jsonConstraints.length() != 0) {
             for (int constraintIndex = 0;
                  constraintIndex < jsonConstraints.length();
@@ -824,11 +826,19 @@ public class ProposalUploader {
                         window.setIsAvoidConstraint(
                             jsonConstraint.getBoolean("isAvoidConstraint"));
 
-                        // sort out dates.
-                        window.setEndTime(new Date(
-                            jsonConstraint.getString("endTime")));
-                        window.setStartTime(new Date(
-                            jsonConstraint.getString("startTime")));
+                        // sort out end time.
+                        Instant endInstant = Instant.parse(
+                            jsonConstraint.getString("endTime").replace(
+                                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
+                        Date end = Date.from(endInstant);
+                        window.setEndTime(end);
+
+                        // sort out start time.
+                        Instant startInstant = Instant.parse(
+                            jsonConstraint.getString("startTime").replace(
+                                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
+                        Date start = Date.from(startInstant);
+                        window.setStartTime(start);
 
                         // add to database.
                         observationResource.addNewChildObject(
