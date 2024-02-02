@@ -75,7 +75,8 @@ public class ProposalUploader {
      * @param technicalGoalResource: the technical resource.
      * @param supportingDocumentResource: the supporting document resource.
      * @throws WebApplicationException when:
-     * no file is found: 400
+     * no file is found: 400, or when some data appears that were not ready
+     * for, or when the zip fails to read the file, or when some parsers fail.
      */
     public void uploadProposal(
             FileUpload fileUpload, String updateSubmittedFlag,
@@ -458,8 +459,7 @@ public class ProposalUploader {
         if (json != null) {
             return new RealQuantity(
                 json.getDouble("value"),
-                new Unit(json.getJSONObject(
-                    "unit").getString("value"))
+                new Unit(json.getJSONObject("unit").getString("value"))
             );
         }
         return null;
@@ -481,38 +481,7 @@ public class ProposalUploader {
             logger.info("type is " + type);
             switch(type) {
                 case "coords:EquatorialPoint":
-                    EquatorialPoint coords = new EquatorialPoint();
-
-                    // coords sys
-                    String coordSystem =
-                        jsonSourceCoordinates.optString("coordSys");
-                    logger.info("coordSystem is " + coordSystem);
-                    if (coordSystem != null && !coordSystem.isEmpty()) {
-                        throw new WebApplicationException(
-                            "dont know how to handle coordsystems. " +
-                                "Please contact the devs");
-                    }
-
-                    // longitude
-                    JSONObject jsonLongitude =
-                        jsonSourceCoordinates.optJSONObject("lon");
-                    if (jsonLongitude != null) {
-                        RealQuantity lon =
-                            this.createRealQuantity(jsonLongitude);
-                        coords.setLon(lon);
-                    }
-
-                    // latitude
-                    JSONObject jsonLatitude =
-                        jsonSourceCoordinates.optJSONObject("lon");
-                    if (jsonLatitude != null) {
-                        RealQuantity lat =
-                            this.createRealQuantity(jsonLatitude);
-                        coords.setLat(lat);
-                    }
-
-                    // update target
-                    cTarget.setSourceCoordinates(coords);
+                    this.createEquatorialPoint(jsonSourceCoordinates, cTarget);
                     break;
                 case "coords:RealCartesianPoint":
                 case "coords:SphericalPoint":
@@ -528,6 +497,48 @@ public class ProposalUploader {
                             " Please contact the devs.");
             }
         }
+    }
+
+    /**
+     * creates a Equatorial Point.
+     *
+     * @param jsonSourceCoordinates: json data
+     * @param cTarget: the target to add the point to.
+     */
+    private void createEquatorialPoint(
+            JSONObject jsonSourceCoordinates, CelestialTarget cTarget) {
+        EquatorialPoint coords = new EquatorialPoint();
+
+        // coords sys
+        String coordSystem =
+            jsonSourceCoordinates.optString("coordSys");
+        logger.info("coordSystem is " + coordSystem);
+        if (coordSystem != null && !coordSystem.isEmpty()) {
+            throw new WebApplicationException(
+                "dont know how to handle coordsystems. " +
+                    "Please contact the devs");
+        }
+
+        // longitude
+        JSONObject jsonLongitude =
+            jsonSourceCoordinates.optJSONObject("lon");
+        if (jsonLongitude != null) {
+            RealQuantity lon =
+                this.createRealQuantity(jsonLongitude);
+            coords.setLon(lon);
+        }
+
+        // latitude
+        JSONObject jsonLatitude =
+            jsonSourceCoordinates.optJSONObject("lon");
+        if (jsonLatitude != null) {
+            RealQuantity lat =
+                this.createRealQuantity(jsonLatitude);
+            coords.setLat(lat);
+        }
+
+        // update target
+        cTarget.setSourceCoordinates(coords);
     }
 
     /**
@@ -812,18 +823,9 @@ public class ProposalUploader {
                 String type = jsonObservation.getString("@type");
                 switch (type) {
                     case "proposal:TargetObservation":
-                        TargetObservation observation =
-                            this.createTargetObservation(
-                                jsonObservation, targetIdMapToReal,
-                                technicalMapToReal);
-                        observationResource.addNewChildObject(
-                            newProposal, observation,
-                            newProposal::addToObservations);
-                        this.saveConstraints(
-                            observation,
-                            jsonObservation.getJSONArray("constraints"),
-                            observationResource
-                        );
+                        this.createTargetObservation(
+                            newProposal, jsonObservation, targetIdMapToReal,
+                            technicalMapToReal, observationResource);
                         break;
                     case "proposal:CalibrationObservation":
                         throw new WebApplicationException(
@@ -836,6 +838,37 @@ public class ProposalUploader {
                 }
             }
         }
+    }
+
+    /**
+     * builds a target observation.
+     *
+     * @param newProposal: the new proposal to persist state in.
+     * @param jsonObservation: contains the json observation data.
+     * @param targetIdMapToReal: map for the json and real ids to real targets.
+     * @param technicalMapToReal: map between ids for the technicals in json
+     *                            vs real technical goals.
+     * @param observationResource: the resource to save observations to the
+     *                          database.
+     */
+    private void createTargetObservation(
+        ObservingProposal newProposal, JSONObject jsonObservation,
+        HashMap<Long, Target> targetIdMapToReal,
+        HashMap<Long, TechnicalGoal> technicalMapToReal,
+        ObservationResource observationResource
+    ) {
+        TargetObservation observation =
+            this.createTargetObservation(
+                jsonObservation, targetIdMapToReal,
+                technicalMapToReal);
+        observationResource.addNewChildObject(
+            newProposal, observation,
+            newProposal::addToObservations);
+        this.saveConstraints(
+            observation,
+            jsonObservation.getJSONArray("constraints"),
+            observationResource
+        );
     }
 
     /**
@@ -864,28 +897,8 @@ public class ProposalUploader {
                 String type = jsonConstraint.getString("@type");
                 switch (type) {
                     case "proposal:TimingWindow":
-                        TimingWindow window = new TimingWindow();
-                        window.setNote(jsonConstraint.getString("note"));
-                        window.setIsAvoidConstraint(
-                            jsonConstraint.getBoolean("isAvoidConstraint"));
-
-                        // sort out end time.
-                        Instant endInstant = Instant.parse(
-                            jsonConstraint.getString("endTime").replace(
-                                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
-                        Date end = Date.from(endInstant);
-                        window.setEndTime(end);
-
-                        // sort out start time.
-                        Instant startInstant = Instant.parse(
-                            jsonConstraint.getString("startTime").replace(
-                                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
-                        Date start = Date.from(startInstant);
-                        window.setStartTime(start);
-
-                        // add to database.
-                        observationResource.addNewChildObject(
-                            observation, window, observation::addToConstraints);
+                        this.createTimingWindow(
+                            observation, jsonConstraint, observationResource);
                         break;
                     case "proposal:TimingConstraint":
                     case "proposal:SimultaneityConstraint":
@@ -901,6 +914,41 @@ public class ProposalUploader {
                 }
             }
         }
+    }
+
+    /**
+     * builds a timing window.
+     *
+     * @param observation: the observation object.
+     * @param jsonConstraint: json containing the constraint.
+     * @param observationResource: the resource to save observations to the
+     *                          database.
+     */
+    private void createTimingWindow(
+            TargetObservation observation, JSONObject jsonConstraint,
+            ObservationResource observationResource) {
+        TimingWindow window = new TimingWindow();
+        window.setNote(jsonConstraint.getString("note"));
+        window.setIsAvoidConstraint(
+            jsonConstraint.getBoolean("isAvoidConstraint"));
+
+        // sort out end time.
+        Instant endInstant = Instant.parse(
+            jsonConstraint.getString("endTime").replace(
+                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
+        Date end = Date.from(endInstant);
+        window.setEndTime(end);
+
+        // sort out start time.
+        Instant startInstant = Instant.parse(
+            jsonConstraint.getString("startTime").replace(
+                TIMESTAMP_CORRUPTION, TIMESTAMP_REPLACEMENT));
+        Date start = Date.from(startInstant);
+        window.setStartTime(start);
+
+        // add to database.
+        observationResource.addNewChildObject(
+            observation, window, observation::addToConstraints);
     }
 
     /**
