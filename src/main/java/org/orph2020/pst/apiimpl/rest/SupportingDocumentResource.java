@@ -42,6 +42,32 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     //FIXME: need to confirm a path location on our server for this
     private static final String documentStoreRoot = "/tmp/documentStore/";
 
+    /**
+     * default constructor which will wipe the supporting doc folder on startup
+     */
+    public SupportingDocumentResource() {
+        File destinationPath = new File(documentStoreRoot);
+        if (destinationPath.listFiles().length != 0) {
+            this.deleteDirectory(destinationPath);
+        }
+    }
+
+    /**
+     * recursive algorithm which should delete all the files within the
+     * document store when booted up.
+     *
+     * @param directory: the directory to try to delete.
+     */
+    private void deleteDirectory(File directory) {
+        for (File file: directory.listFiles()) {
+            if (file.listFiles().length == 0) {
+                file.delete();
+            } else {
+                deleteDirectory(file);
+            }
+        }
+    }
+
     private
     String sanitiseTitle(String input, ObservingProposal proposal)
     {
