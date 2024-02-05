@@ -47,9 +47,14 @@ public class SupportingDocumentResource extends ObjectResourceBase {
      */
     public SupportingDocumentResource() {
         File destinationPath = new File(documentStoreRoot);
-        if (destinationPath.listFiles().length != 0) {
+        if (destinationPath.listFiles() != null &&
+                destinationPath.listFiles().length != 0) {
             this.deleteDirectory(destinationPath);
+
+            // rebuild doc store top level.
+            destinationPath.mkdirs();
         }
+
     }
 
     /**
@@ -60,12 +65,14 @@ public class SupportingDocumentResource extends ObjectResourceBase {
      */
     private void deleteDirectory(File directory) {
         for (File file: directory.listFiles()) {
-            if (file.listFiles().length == 0) {
+            if (!file.isDirectory()) {
                 file.delete();
             } else {
                 deleteDirectory(file);
             }
         }
+        // delete empty directly.
+        directory.delete();
     }
 
     private
