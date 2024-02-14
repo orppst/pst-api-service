@@ -17,6 +17,7 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ProposalCycleDates;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -25,6 +26,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +50,12 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
+    @Inject
+    private ObservationResource observationResource;
+    @Inject
+    private TechnicalGoalResource technicalGoalResource;
+    @Inject
+    private ProposalCyclesResource proposalCyclesResource;
 
     private static final String proposalRoot = "{proposalCode}";
 
@@ -60,12 +69,6 @@ public class ProposalResource extends ObjectResourceBase {
     //needed for import.
     @Inject
     InvestigatorResource investigatorResource;
-
-    @Inject
-    TechnicalGoalResource technicalGoalResource;
-
-    @Inject
-    ObservationResource observationResource;
 
     @Inject
     SupportingDocumentResource supportingDocumentResource;
@@ -113,7 +116,6 @@ public class ProposalResource extends ObjectResourceBase {
             return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
         }
     }
-
 
     @GET
     @Operation(summary = "get the Proposal specified by the 'proposalCode'")
@@ -196,6 +198,63 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal.getTitle(), 200);
     }
 
+    //TODO - add more checks, consider where to put observatory / instrument specific validation.
+    @GET
+    @Path(proposalRoot + "/validate")
+    @Operation(summary = "validate the proposal, get summary strings of it's state.  Optionally pass a cycle to compare dates with.")
+    public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        boolean valid = true;
+        String info = "Your proposal is ready for submission";
+        StringBuilder warn = new StringBuilder();
+        StringBuilder error = new StringBuilder();
+        //Count the targets
+        List<ObjectIdentifier> targets = getTargets(proposalCode, null);
+        if(targets.isEmpty()) {
+            valid = false;
+            error.append("No targets defined.  ");
+        }
+
+        List<ObjectIdentifier> technicalGoals = technicalGoalResource.getTechnicalGoals(proposalCode);
+        if(technicalGoals.isEmpty()) {
+            valid = false;
+            error.append("No technical goals defined.  ");
+        }
+
+        List<ObjectIdentifier> observations = observationResource.getObservations(proposalCode, null, null);
+        if(observations.isEmpty()) {
+            valid = false;
+            error.append("No observations defined.  ");
+        } else if(cycleId != 0) {
+            //Compare timing windows with cycle dates and times.
+            ProposalCycleDates theCycleDates = proposalCyclesResource.getProposalCycleDates(cycleId);
+
+            for (ObjectIdentifier observation : observations) {
+                List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
+                for (ObservingConstraint timingWindow : timingWindows) {
+                    TimingWindow theWindow = (TimingWindow) timingWindow;
+                    if (theWindow.getIsAvoidConstraint()) {
+                        if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
+                                && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
+                            warn.append("A timing window excludes this entire observation session.  ");
+                        }
+                    } else {
+                        if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
+                            warn.append("A timing window ends before this observation session begins.  ");
+                        }
+                        if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
+                            warn.append("A timing window begins after this observation session has ended. ");
+                        }
+                    }
+                }
+            }
+        }
+
+        if(!valid) {
+            info = "Your proposal is not ready for submission";
+        }
+        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn.toString(), error.toString()));
+    }
 
     @PUT
     @Operation(summary = "change the title of an ObservingProposal")
