@@ -150,8 +150,12 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         //tried using addNewChildObject() here but persistence layer throws an error
 
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
+
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
+
+        new ProposalManagementModel().createContext(); // TODO API subject to change
         ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
+        pclone.updateClonedReferences();// TODO API subject to change
         pclone.setSubmitted(true);
         em.persist(pclone);
         SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
