@@ -359,10 +359,10 @@ public class UseCasePiTest {
                         .body("$.size()", greaterThan(0))
                         .extract().jsonPath().getLong("[0].dbid");
 
-        //create a TimingWindow constraint
+        //create a TimingWindow constraint - notice we do not allow 'null' Dates
         TimingWindow timingWindow = TimingWindow.createTimingWindow((tw) -> {
-            tw.startTime = null;
-            tw.endTime = null;
+            tw.startTime = new Date(0); // posix epoch
+            tw.endTime = new Date(1000); // 1 second after posix epoch
             tw.isAvoidConstraint = false;
             tw.note = "number 1";
         });
@@ -390,8 +390,8 @@ public class UseCasePiTest {
 
         //create a new timing window to update the one just posted
         TimingWindow timingWindowUpdate = TimingWindow.createTimingWindow((tw) -> {
-            tw.startTime = new Date(0); // posix epoch
-            tw.endTime = new Date(1000); // 1 second after posix epoch
+            tw.startTime = new Date(1000);
+            tw.endTime = new Date(5000);
             tw.note = "number 1 update";
             tw.isAvoidConstraint = true;
         });
