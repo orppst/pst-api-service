@@ -27,6 +27,8 @@ dependencies {
     testImplementation("io.quarkus:quarkus-test-security")
 
     implementation("uk.ac.starlink:stil:4.1.4")
+
+    implementation("commons-io:commons-io:2.15.1")
 }
 
 

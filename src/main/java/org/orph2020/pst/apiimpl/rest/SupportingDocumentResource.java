@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -33,8 +34,9 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
 
-    //FIXME: need to confirm a path location on our server for this
-    private static final String documentStoreRoot = "/tmp/documentStore/";
+
+    @ConfigProperty(name= "supporting-documents.store-root")
+    String documentStoreRoot;
 
     private
     String sanitiseTitle(String input, ObservingProposal proposal)
@@ -257,7 +259,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throw new WebApplicationException("Cannot find " + fileDownload.getName(), 400);
         }
 
-        Response.ResponseBuilder response = Response.ok((Object) fileDownload);
+        Response.ResponseBuilder response = Response.ok(fileDownload);
         response.header("Content-Disposition", "attachment;filename=" + fileDownload.getName());
 
         return response.build();
