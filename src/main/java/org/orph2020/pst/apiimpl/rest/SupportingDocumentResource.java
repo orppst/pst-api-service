@@ -147,7 +147,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         if (destinationPath.exists())
         {
             logger.info("destination str = " + destinationStr);
-            throw new WebApplicationException(destinationStr + " exists - how'd that happen?!", 400);
+            throw new WebApplicationException(destinationStr + " already exists", 400);
         }
 
         if (!destinationPath.mkdirs())

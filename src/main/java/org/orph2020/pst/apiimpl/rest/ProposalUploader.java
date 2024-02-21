@@ -214,6 +214,8 @@ public class ProposalUploader {
                         " Please contact the devs.");
             }
 
+            HashMap<Long, Organization> organizationMapToReal = new HashMap<>();
+
             // array of investigators.
             JSONArray investigators =
                 proposalJSON.optJSONArray("investigators");
@@ -225,7 +227,7 @@ public class ProposalUploader {
                         investigators.getJSONObject(investigatorIndex);
                     newProposal.addToInvestigators(createNewInvestigator(
                         investigator, newProposal.getId(),
-                        personResource, investigatorResource));
+                        personResource, investigatorResource, organizationMapToReal));
                 }
             }
         } catch (Exception e) {
@@ -237,17 +239,19 @@ public class ProposalUploader {
 
     /**
      * creates a new investigator from a json investigator.
-     * @param investigator json investigator.
-     * @param proposalCode: the associated proposal code.
-     * @param personResource: the person resource to save to database.
-     * @param investigatorResource: the investigator resource to save
-     *                           to database.
+     *
+     * @param investigator          json investigator.
+     * @param proposalCode          : the associated proposal code.
+     * @param personResource        : the person resource to save to database.
+     * @param investigatorResource  : the investigator resource to save
+     *                              to database.
+     * @param organizationMapToReal : hashMap of organizations by id, used for references
      * @return new investigator object.
      */
     private Investigator createNewInvestigator(
             JSONObject investigator, Long proposalCode,
             PersonResource personResource,
-            InvestigatorResource investigatorResource) {
+            InvestigatorResource investigatorResource, HashMap<Long, Organization> organizationMapToReal) {
         // create new investigator.
         Investigator newInvestigator = new Investigator();
 
@@ -271,7 +275,15 @@ public class ProposalUploader {
 
         //TODO: Ensure this org is in the database and correctly referenced
         if(orgJSON == null) {
-            logger.info("Home institute is a reference, do nothing");
+            long _id = jsonPerson.getLong("homeInstitute");
+            if(_id > 0) {
+                // update person
+                newPerson.setHomeInstitute(organizationMapToReal.get(_id));
+            } else {
+                logger.error("Unable to decipher homeInstitute for "
+                        + jsonPerson.getString("fullName"));
+            }
+
         } else {
             Organization org = new Organization();
             org.setAddress(orgJSON.getString("address"));
@@ -284,9 +296,13 @@ public class ProposalUploader {
                 org.setWikiId(new WikiDataId(orgJSON.optString("wikiId")));
             }
 
-            // update investigator and person
+            // populate hash map
+            organizationMapToReal.put(orgJSON.getLong("_id"), org);
+
+            // update person
             newPerson.setHomeInstitute(org);
         }
+        // update investigator
         newInvestigator.setPerson(newPerson);
 
         // update database positions if required
@@ -972,7 +988,12 @@ public class ProposalUploader {
 
         // field
         TargetField field = new TargetField();
-        field.setName(jsonObservation.getJSONObject("field").getString("name"));
+        if(jsonObservation.getJSONObject("field") != null) {
+            field.setName(jsonObservation.getJSONObject("field").getString("name"));
+        } else {
+            //TODO: Field is a reference, populate correctly
+            field.setName("None");
+        }
         field.setXmlId("1");
         observation.setField(field);
 
