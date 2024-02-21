@@ -267,20 +267,26 @@ public class ProposalUploader {
         newPerson.setXmlId(String.valueOf(jsonPerson.getInt("_id")));
 
         // create new institute
-        JSONObject orgJSON = jsonPerson.getJSONObject("homeInstitute");
-        Organization org = new Organization();
-        org.setAddress(orgJSON.getString("address"));
-        org.setIvoid(new Ivorn(
-            orgJSON.getJSONObject("ivoid").getString("value")));
-        org.setName(orgJSON.getString("name"));
-        org.setXmlId(String.valueOf(orgJSON.getInt("_id")));
+        JSONObject orgJSON = jsonPerson.optJSONObject("homeInstitute");
 
-        if (orgJSON.optString("wikiId") != null) {
-            org.setWikiId(new WikiDataId(orgJSON.optString("wikiId")));
+        //TODO: Ensure this org is in the database and correctly referenced
+        if(orgJSON == null) {
+            logger.info("Home institute is a reference, do nothing");
+        } else {
+            Organization org = new Organization();
+            org.setAddress(orgJSON.getString("address"));
+            org.setIvoid(new Ivorn(
+                    orgJSON.getJSONObject("ivoid").getString("value")));
+            org.setName(orgJSON.getString("name"));
+            org.setXmlId(String.valueOf(orgJSON.getInt("_id")));
+
+            if (orgJSON.optString("wikiId") != null) {
+                org.setWikiId(new WikiDataId(orgJSON.optString("wikiId")));
+            }
+
+            // update investigator and person
+            newPerson.setHomeInstitute(org);
         }
-
-        // update investigator and person
-        newPerson.setHomeInstitute(org);
         newInvestigator.setPerson(newPerson);
 
         // update database positions if required
