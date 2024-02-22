@@ -306,11 +306,14 @@ public class ProposalUploader {
         newInvestigator.setPerson(newPerson);
 
         // update database positions if required
-        if (foundPerson(
+        if (!foundPerson(
                 newPerson.getFullName(), newPerson.getOrcidId().value(),
                 personResource)) {
+            // did not find existing record, create new person
+            logger.info("Add new record for " + newPerson.getFullName());
             personResource.createPerson(newPerson);
         }
+
         investigatorResource.addPersonAsInvestigator(
             proposalCode, newInvestigator);
 
@@ -327,13 +330,15 @@ public class ProposalUploader {
      */
     private boolean foundPerson(
             String fullName, String orcid, PersonResource personResource) {
-        logger.info("full name = " + fullName);
         List<ObjectIdentifier> possiblePeeps =
             personResource.getPeople(fullName);
         for (ObjectIdentifier possiblePeep: possiblePeeps) {
-            // TODO not sure about this check.
-            if (possiblePeep.code != null && possiblePeep.code.equals(orcid)) {
-                return true;
+            Person checkMe = personResource.getPerson(Long.valueOf(possiblePeep.dbid));
+            if(checkMe != null) {
+                String myOID = checkMe.getOrcidId().toString();
+                if (myOID != null && myOID.equals(orcid)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -895,7 +900,7 @@ public class ProposalUploader {
 
     /**
      * saves constraints.
-     * NOTE: Be aware that the JSOn seems to be a bit corrupted in that it does
+     * NOTE: Be aware that the JSON seems to be a bit corrupted in that it does
      * not follow the ISO instant formatter that formats or parses an
      * instant in UTC, such as '2011-12-03T10:15:30Z' which is the ISO-8601
      * instant format. The JSON on the other hand returns a "+0000" instead of
