@@ -81,6 +81,7 @@ public class ProposalUploader {
     public void uploadProposal(
             FileUpload fileUpload, String updateSubmittedFlag,
             ProposalResource proposalResource, PersonResource personResource,
+            OrganizationResource organizationResource,
             InvestigatorResource investigatorResource,
             TechnicalGoalResource technicalGoalResource,
             ObservationResource observationResource,
@@ -122,7 +123,7 @@ public class ProposalUploader {
         this.saveProposalSpecific(
             newProposal, proposalJSON,
             Boolean.parseBoolean(updateSubmittedFlag), proposalResource,
-            personResource, investigatorResource);
+            personResource, organizationResource, investigatorResource);
         this.saveProposalTargets(
             newProposal, proposalJSON, targetIdMapToReal, proposalResource);
         this.saveProposalTechnicals(
@@ -183,7 +184,7 @@ public class ProposalUploader {
     private void saveProposalSpecific(
             ObservingProposal newProposal, JSONObject proposalJSON,
             boolean modifySubmitted, ProposalResource proposalResource,
-            PersonResource personResource,
+            PersonResource personResource, OrganizationResource organizationResource,
             InvestigatorResource investigatorResource) {
         /////////////////// simple strings.
         newProposal.setSummary(proposalJSON.getString("summary"));
@@ -214,12 +215,18 @@ public class ProposalUploader {
                         " Please contact the devs.");
             }
 
-            HashMap<Long, Organization> organizationMapToReal = new HashMap<>();
+            HashMap<Long, Organization> organizationMapToNew = new HashMap<>();
+            HashMap<String, Long> organizationMapToOld = new HashMap<>();
 
             // array of investigators.
             JSONArray investigators =
                 proposalJSON.optJSONArray("investigators");
             if(investigators != null && investigators.length() != 0) {
+                List <ObjectIdentifier> existingOrgs = organizationResource.getOrganizations();
+                for(int orgIndex = 0; orgIndex < existingOrgs.size() ; orgIndex++){
+                    organizationMapToOld.put(existingOrgs.get(orgIndex).name,
+                            existingOrgs.get(orgIndex).dbid);
+                }
                 for (int investigatorIndex = 0;
                         investigatorIndex < investigators.length();
                         investigatorIndex++) {
@@ -227,7 +234,8 @@ public class ProposalUploader {
                         investigators.getJSONObject(investigatorIndex);
                     newProposal.addToInvestigators(createNewInvestigator(
                         investigator, newProposal.getId(),
-                        personResource, investigatorResource, organizationMapToReal));
+                        personResource, organizationResource, investigatorResource,
+                        organizationMapToNew, organizationMapToOld));
                 }
             }
         } catch (Exception e) {
@@ -245,13 +253,14 @@ public class ProposalUploader {
      * @param personResource        : the person resource to save to database.
      * @param investigatorResource  : the investigator resource to save
      *                              to database.
-     * @param organizationMapToReal : hashMap of organizations by id, used for references
+     * @param organizationMapToNew : hashMap of organizations by id, used for references
      * @return new investigator object.
      */
     private Investigator createNewInvestigator(
             JSONObject investigator, Long proposalCode,
-            PersonResource personResource,
-            InvestigatorResource investigatorResource, HashMap<Long, Organization> organizationMapToReal) {
+            PersonResource personResource, OrganizationResource organizationResource,
+            InvestigatorResource investigatorResource, HashMap<Long, Organization> organizationMapToNew,
+            HashMap<String, Long> organizationMapToOld) {
         // create new investigator.
         Investigator newInvestigator = new Investigator();
 
@@ -268,17 +277,19 @@ public class ProposalUploader {
         newPerson.setFullName(jsonPerson.getString("fullName"));
         newPerson.setOrcidId(new StringIdentifier(
             jsonPerson.getJSONObject("orcidId").getString("value")));
-        newPerson.setXmlId(String.valueOf(jsonPerson.getInt("_id")));
+        //newPerson.setXmlId(String.valueOf(jsonPerson.getInt("_id")));
 
         // create new institute
         JSONObject orgJSON = jsonPerson.optJSONObject("homeInstitute");
 
         //TODO: Ensure this org is in the database and correctly referenced
+
+        //If orgJSON is null then this is a reference to a previously used org in this document
         if(orgJSON == null) {
             long _id = jsonPerson.getLong("homeInstitute");
             if(_id > 0) {
                 // update person
-                newPerson.setHomeInstitute(organizationMapToReal.get(_id));
+                newPerson.setHomeInstitute(organizationMapToNew.get(_id));
             } else {
                 logger.error("Unable to decipher homeInstitute for "
                         + jsonPerson.getString("fullName"));
@@ -290,30 +301,49 @@ public class ProposalUploader {
             org.setIvoid(new Ivorn(
                     orgJSON.getJSONObject("ivoid").getString("value")));
             org.setName(orgJSON.getString("name"));
-            org.setXmlId(String.valueOf(orgJSON.getInt("_id")));
 
             if (orgJSON.optString("wikiId") != null) {
                 org.setWikiId(new WikiDataId(orgJSON.optString("wikiId")));
             }
 
-            // populate hash map
-            organizationMapToReal.put(orgJSON.getLong("_id"), org);
-
-            // update person
-            newPerson.setHomeInstitute(org);
+            //Does this already exist in the database?
+            long existingOrgId = organizationMapToOld.get(org.getName());
+            if(existingOrgId > 0) {
+                // existing org by that name in the database, use it
+                Organization existingOrg = organizationResource.getOrganization(existingOrgId);
+                // update person
+                logger.info("Update newPerson with existingOrg " + existingOrg.getId());
+                newPerson.setHomeInstitute(existingOrg);
+                // store existing org in HashMap to lookup if it occurs again in json
+                organizationMapToNew.put(existingOrgId, existingOrg);
+            } else {
+                //Create a completely new org and add it to the HashMap
+                Organization newOrg = organizationResource.createOrganization(org);
+                // populate hash map with new Organization, referenced by id from json
+                organizationMapToNew.put(orgJSON.getLong("_id"), newOrg);
+                // update person
+                logger.info("Update newPerson with newOrg "+ newOrg.getId() + " but key it with "+ orgJSON.getLong("_id"));
+                newPerson.setHomeInstitute(newOrg);
+            }
         }
-        // update investigator
-        newInvestigator.setPerson(newPerson);
 
         // update database positions if required
-        if (!foundPerson(
+        long existingDbId = findPerson(
                 newPerson.getFullName(), newPerson.getOrcidId().value(),
-                personResource)) {
+                personResource);
+        if (existingDbId == -1) {
             // did not find existing record, create new person
             logger.info("Add new record for " + newPerson.getFullName());
-            personResource.createPerson(newPerson);
+            newPerson = personResource.createPerson(newPerson);
+            logger.info("New record has id " + newPerson.getId());
+        } else {
+            logger.info("Update Id to: " + existingDbId);
+            newPerson.setXmlId(String.valueOf(existingDbId));
         }
-
+logger.info("About to set the person in newInvestigator object");
+        // update investigator
+        newInvestigator.setPerson(newPerson);
+logger.info("About to add the person as an investigator");
         investigatorResource.addPersonAsInvestigator(
             proposalCode, newInvestigator);
 
@@ -326,9 +356,9 @@ public class ProposalUploader {
      * @param fullName: person full name to find.
      * @param orcid: the orcid of said person.
      * @param personResource: the person resource to save to the database.
-     * @return boolean, true if found, false otherwise.
+     * @return long: dbid of record if found, else -1.
      */
-    private boolean foundPerson(
+    private long findPerson(
             String fullName, String orcid, PersonResource personResource) {
         List<ObjectIdentifier> possiblePeeps =
             personResource.getPeople(fullName);
@@ -337,11 +367,11 @@ public class ProposalUploader {
             if(checkMe != null) {
                 String myOID = checkMe.getOrcidId().toString();
                 if (myOID != null && myOID.equals(orcid)) {
-                    return true;
+                    return possiblePeep.dbid;
                 }
             }
         }
-        return false;
+        return -1;
     }
 
     /**

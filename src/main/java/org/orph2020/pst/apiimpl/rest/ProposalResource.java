@@ -66,6 +66,9 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     PersonResource personResource;
 
+    @Inject
+    OrganizationResource organizationResource;
+
     //needed for import.
     @Inject
     InvestigatorResource investigatorResource;
@@ -173,8 +176,8 @@ public class ProposalResource extends ObjectResourceBase {
         ProposalUploader uploader = new ProposalUploader();
         uploader.uploadProposal(
             fileUpload, updateSubmittedFlag, this, personResource,
-            investigatorResource, technicalGoalResource, observationResource,
-            supportingDocumentResource);
+            organizationResource, investigatorResource, technicalGoalResource,
+            observationResource, supportingDocumentResource);
     }
 
     @DELETE
