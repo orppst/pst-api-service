@@ -13,6 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
+import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -77,35 +78,19 @@ public class SubjectMapResource extends ObjectResourceBase {
             q.setParameter("uid", uid);
         }
 
-        List<SubjectMap> usersInDB = q.getResultList();
 
-        //list all users in the keycloak realm
-        List<UserRepresentation> usersInRealm = realm.users().list();
-
-        //deal with superuser
-        usersInRealm.removeIf(ur->ur.getUsername().equals("superuser"));
-
-        if (usersInDB.size() > usersInRealm.size())
-        {
-            int diff = usersInDB.size() - usersInRealm.size();
-            int count = 0;
-
-            // we have people in DB that are not in the keycloak realm,
-            // find which ones and take appropriate action
-            for(SubjectMap sm : usersInDB)
-            {
-                if (usersInRealm.stream().noneMatch(ur -> sm.uid.equals(ur.getId())))
-                {
-                    sm.setInKeycloakRealm(false);
-                    count++;
-                }
-                if (count == diff) break;
-            }
-        }
-
-        return usersInDB;
+       return q.getResultList();
     }
 
+   @POST
+   @Operation(summary = "create new subjectMap")
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   @Consumes(MediaType.APPLICATION_JSON)
+   @ResponseStatus(value = 201)
+    public SubjectMap createFromUser(@QueryParam("uuid") String uuid, Person user){
+      SubjectMap ob = new SubjectMap( user, uuid);
+      return persistObject(ob);
+    }
     @GET
     @Path("{id}")
     @Operation(summary = "get the SubjectMap specified by the 'id'")
@@ -115,12 +100,14 @@ public class SubjectMapResource extends ObjectResourceBase {
         q.setParameter("uid", id);
         List<SubjectMap> res = q.getResultList();
         if (res.isEmpty()){
-            return new SubjectMap(null, id );
+            return new SubjectMap( id );
         }
         else {
             return res.get(0);
         }
     }
+
+
 
     @GET
     @Path("keycloakUserUIDs")
@@ -134,6 +121,8 @@ public class SubjectMapResource extends ObjectResourceBase {
                 .map(UserRepresentation::getId)
                 .collect(Collectors.toList());
     }
+
+
 
 
     @GET
@@ -177,31 +166,6 @@ public class SubjectMapResource extends ObjectResourceBase {
         });
 
         return result.get();
-    }
-
-    @DELETE
-    @Path("cleanUsers")
-    @Operation(summary = "admin only: cleans up users that have been removed from the keycloak realm")
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response cleanUsers()
-            throws WebApplicationException
-    {
-        //query to get all SubjectMap objects in DB
-        TypedQuery<SubjectMap> q = em.createQuery(
-                "select o from SubjectMap o", SubjectMap.class
-        );
-        List<SubjectMap> usersInDB = q.getResultList();
-
-        for (SubjectMap subjectMap : usersInDB) {
-            if (!subjectMap.inKeycloak()) {
-                //remove the current SubjectMap AND related Person
-                Person person = findObject(Person.class, subjectMap.getPerson().getId());
-                em.remove(person);
-                em.remove(subjectMap);
-            }
-        }
-
-        return emptyResponse204();
     }
 
 
