@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.PartType;
@@ -29,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -526,7 +528,40 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(observingProposal, 201);
     }
 
+    //********************** EXPORT ***************************
+    @GET
+    @Operation(summary="export a proposal")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path(proposalRoot+"/export")
+    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
+            throws WebApplicationException, IOException {
+        ObservingProposal proposalForExport=getObservingProposal(proposalCode);
 
+        return Response
+                .status(Response.Status.OK)
+                .header("Content-Disposition", "attachment;filename=" + proposalForExport.getTitle())
+                .entity(writeAsJsonString(proposalForExport))
+                .build();
+    }
+
+    //********************** IMPORT ***************************
+    @POST
+    @Operation(summary="import a proposal")
+    @Path(proposalRoot+"/import")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ObservingProposal importProposal(ObservingProposal importProposal) throws IOException {
+        if(importProposal==null){
+            throw new WebApplicationException("No file uploaded",400);
+        }
+
+        new ProposalManagementModel().createContext();
+        ObservingProposal newProposal = new ObservingProposal(importProposal);
+        newProposal.updateClonedReferences();
+        em.persist(newProposal);
+
+        return newProposal;
+    }
 
 
     //Other fields of an ObservingProposal have been split out into their own source file
