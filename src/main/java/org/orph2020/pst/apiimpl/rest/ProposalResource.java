@@ -528,26 +528,10 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(observingProposal, 201);
     }
 
-    //********************** EXPORT ***************************
-    @GET
-    @Operation(summary="export a proposal")
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @Path(proposalRoot+"/export")
-    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
-            throws WebApplicationException, IOException {
-        ObservingProposal proposalForExport=getObservingProposal(proposalCode);
-
-        return Response
-                .status(Response.Status.OK)
-                .header("Content-Disposition", "attachment;filename=" + proposalForExport.getTitle())
-                .entity(writeAsJsonString(proposalForExport))
-                .build();
-    }
-
     //********************** IMPORT ***************************
     @POST
     @Operation(summary="import a proposal")
-    @Path(proposalRoot+"/import")
+    @Path("/import")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ObservingProposal importProposal(ObservingProposal importProposal) throws IOException {
@@ -555,14 +539,17 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException("No file uploaded",400);
         }
 
+        //Remove people & supporting documents
         new ProposalManagementModel().createContext();
         ObservingProposal newProposal = new ObservingProposal(importProposal);
         newProposal.updateClonedReferences();
         em.persist(newProposal);
 
+        //Put people back as appropriate, creating new records if required.
+        //Import supporting documents
+
         return newProposal;
     }
-
 
     //Other fields of an ObservingProposal have been split out into their own source file
 }
