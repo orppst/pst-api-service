@@ -5,10 +5,13 @@ package org.orph2020.pst;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import org.apache.commons.io.FileUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.prop.EmerlinExample;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Person;
+import org.ivoa.dm.proposal.prop.SupportingDocument;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -19,12 +22,17 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 
+import java.io.File;
+import java.io.IOException;
+
 @ApplicationScoped
 public class AppLifecycleBean {
 
     @PersistenceContext
     protected EntityManager em;  // exists for the application lifetime no need to close
 
+    @ConfigProperty(name = "supporting-documents.store-root")
+    String documentStoreRoot;
 
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
@@ -67,7 +75,31 @@ public class AppLifecycleBean {
 
         }
 
+        TypedQuery<SupportingDocument> supp_doc =  em.createQuery("select s from SupportingDocument s",
+                SupportingDocument.class);
+        if (supp_doc.getResultList().isEmpty()) {
+            //assume anything in the document store is now stale
+            File documentStorePath = new File(documentStoreRoot);
 
+            try {
+                FileUtils.deleteDirectory(documentStorePath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            //restore the document store root
+            if(!documentStorePath.mkdirs()) {
+                throw new RuntimeException("Unable to create " + documentStoreRoot);
+            }
+
+        }
+        //else assume we shouldn't touch the document store
+        /*
+            We may need to add more logic here to check that each entry in 'supportingDocuments' actually
+            has a matching file in the document store, and remove any extraneous files. Though if there
+            are fewer files in the store than 'SupportingDocuments' in the database that's a problem we
+            can't solve here!!
+         */
     }
 
     void onStop(@Observes ShutdownEvent ev) {

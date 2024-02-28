@@ -122,10 +122,11 @@ abstract public class ObjectResourceBase {
     {
         try {
             em.persist(object);
-        } catch (EntityExistsException e) {
+        } catch (PersistenceException e) {
             throw new WebApplicationException(e.getMessage(), 400);
         }
-
+        //FIXME general SQL errors are not being fed back to the client
+        //perhaps this is an insight https://stackoverflow.com/questions/77116340/catching-database-errors-exceptions-in-quarkus-orm-with-panache
         return object; //responseWrapper(object, 201);
     }
 

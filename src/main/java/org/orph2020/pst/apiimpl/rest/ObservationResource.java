@@ -11,6 +11,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.Date;
 import java.util.List;
 
 @Path("proposals/{proposalCode}/observations")
@@ -234,6 +236,19 @@ public class ObservationResource extends ObjectResourceBase {
 
         TimingWindow window = findChildByQuery(Observation.class, TimingWindow.class,
                 "constraints", observationId, timingWindowId);
+
+        //WORK-AROUND: changes to 'isAvoidConstraint' and/or 'note' fields only won't update the window,
+        //so we nudge the 'endTime' (or could use startTime) by a millisecond to get the window to update
+        if (window.getStartTime().getTime() == replacementWindow.getStartTime().getTime() &&
+                window.getEndTime().getTime() == replacementWindow.getEndTime().getTime())
+        {
+            Date d = new Date();
+
+            //randomise the sign of the nudge such that the long term mean is zero
+            long nudge = d.getTime() % 2 == 0 ? 1L : -1L;
+
+            replacementWindow.setEndTime(new Date(replacementWindow.getEndTime().getTime() + nudge));
+        }
 
         window.updateUsing(replacementWindow);
 

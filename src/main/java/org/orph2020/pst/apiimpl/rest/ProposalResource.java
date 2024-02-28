@@ -539,13 +539,14 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException("No file uploaded",400);
         }
 
-        //Remove people & supporting documents
+        //Remove investigators & supporting documents
         new ProposalManagementModel().createContext();
         ObservingProposal newProposal = new ObservingProposal(importProposal);
         newProposal.updateClonedReferences();
         em.persist(newProposal);
 
-        //Put people back as appropriate, creating new records if required.
+        //Create people and organisations if required.
+        //Put back investigators, referencing correct people records.
         //Import supporting documents
 
         return newProposal;
