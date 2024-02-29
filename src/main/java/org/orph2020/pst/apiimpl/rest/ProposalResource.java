@@ -129,7 +129,7 @@ public class ProposalResource extends ObjectResourceBase {
             description = "get a single Proposal specified by the code"
     )
     @Path(proposalRoot)
-    @RolesAllowed("default-roles-orppst")
+ //   @RolesAllowed("default-roles-orppst")
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
@@ -527,6 +527,23 @@ public class ProposalResource extends ObjectResourceBase {
         observingProposal.removeFromFields(field);
         return responseWrapper(observingProposal, 201);
     }
+
+    //********************** EXPORT ***************************
+    @GET
+    @Operation(summary="export a proposal as a file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path(proposalRoot+"/export")
+    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
+            throws WebApplicationException, IOException {
+        ObservingProposal proposalForExport=getObservingProposal(proposalCode);
+
+        return Response
+                .status(Response.Status.OK)
+                .header("Content-Disposition", "attachment;filename=" + "proposal.json")
+                .entity(writeAsJsonString(proposalForExport))
+                .build();
+    }
+
 
     //********************** IMPORT ***************************
     @POST

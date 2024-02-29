@@ -144,7 +144,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         if (destinationPath.exists())
         {
-            logger.info("destination str = " + destinationStr);
+            //logger.info("destination str = " + destinationStr);
             throw new WebApplicationException(destinationStr + " already exists", 400);
         }
 
