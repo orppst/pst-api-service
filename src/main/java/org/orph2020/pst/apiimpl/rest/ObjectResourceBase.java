@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.quarkus.arc.ArcUndeclaredThrowableException;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -168,27 +169,38 @@ abstract public class ObjectResourceBase {
     // Error Mapper
     //--------------------------------------------------------------------------------
     @Provider
-    public static class ErrorMapper implements ExceptionMapper<Exception> {
+    public static class ErrorMapper implements ExceptionMapper<RuntimeException> {
 
-        private static final Logger LOGGER = Logger.getLogger("ListenerBean");
+        private static final Logger LOGGER = Logger.getLogger("ObjectResource");
         @Inject
         ObjectMapper objectMapper;
 
         @Override
-        public Response toResponse(Exception e) {
+        public Response toResponse(RuntimeException e) {
             LOGGER.error(e.getMessage(), e);
 
             int code = 500;
+            String message = e.getMessage();
+            String type = e.getClass().getName();
             if (e instanceof WebApplicationException) {
                 code = ((WebApplicationException) e).getResponse().getStatus();
             }
+            //IMPL this is a bit of a hack looking at the observed behaviour otherwise
+            else if (e instanceof ArcUndeclaredThrowableException ){
+                if (e.getCause() instanceof jakarta.transaction.RollbackException)
+                {
+                    Throwable cause = e.getCause().getCause();
+                    type = cause.getClass().getName();
+                    message = cause.getMessage();
+                }
+            }
 
             ObjectNode exceptionJson = objectMapper.createObjectNode();
-            exceptionJson.put("exceptionType", e.getClass().getName());
+            exceptionJson.put("exceptionType", type);
             exceptionJson.put("statusCode", code);
 
             if (e.getMessage() != null) {
-                exceptionJson.put("message", e.getMessage());
+                exceptionJson.put("message",message);
             }
 
             return Response.status(code).entity(exceptionJson).build();
