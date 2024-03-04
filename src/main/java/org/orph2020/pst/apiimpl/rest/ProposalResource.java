@@ -32,6 +32,7 @@ import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -556,16 +557,64 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException("No file uploaded",400);
         }
 
-        //Remove investigators & supporting documents
         new ProposalManagementModel().createContext();
         ObservingProposal newProposal = new ObservingProposal(importProposal);
+
+        //List of existing organisations
+        List<ObjectIdentifier> orgIds = organizationResource.getOrganizations();
+        HashMap<String, Organization> existingOrganizationsMap = new HashMap<>();
+        for (ObjectIdentifier oi: orgIds) {
+            Organization organizationToAdd = organizationResource.getOrganization(oi.dbid);
+            existingOrganizationsMap.put(organizationToAdd.getName(), organizationToAdd);
+        }
+
+        //List of existing people
+        List<ObjectIdentifier> peopleIds = personResource.getPeople(null);
+        HashMap<String, Person> existingPeopleMap = new HashMap<>();
+        for (ObjectIdentifier pid: peopleIds) {
+            Person personToAdd = personResource.getPerson(pid.dbid);
+            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+        }
+
+        //Compare people and organisations to what's in the database
+        List<Investigator> investigators = newProposal.getInvestigators();
+        for (Investigator i : investigators) {
+            Person person = i.getPerson();
+            Organization organization = person.getHomeInstitute();
+
+            //If organisation doesn't exist, add it
+            if(!existingOrganizationsMap.containsKey(organization.getName())) {
+                logger.info("Adding organisation " + organization.getName());
+                organization.setXmlId("0");
+                Organization newOrganization = organizationResource.createOrganization(organization);
+                person.setHomeInstitute(newOrganization);
+                existingOrganizationsMap.put(organization.getName(), person.getHomeInstitute());
+            }
+
+            //If person does not exist, add them
+            if(!existingPeopleMap.containsKey(person.getOrcidId().toString())) {
+                logger.info("Adding person " + person.getFullName());
+                person.setXmlId("0");
+                i.setPerson(personResource.createPerson(person));
+                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+            }
+        }
+
+        //update references
         newProposal.updateClonedReferences();
+
+        //Persist the proposal
         em.persist(newProposal);
 
-        //Create people and organisations if required.
-        //Put back investigators, referencing correct people records.
-        //Import supporting documents
+        //Remove supporting document entries without deleting any files.
+        List<ObjectIdentifier> oldDocuments = supportingDocumentResource.getSupportingDocuments(newProposal.getId(), null);
+        for(ObjectIdentifier oldDocumentIdentifier : oldDocuments) {
+            SupportingDocument supportingDocument = supportingDocumentResource.getSupportingDocument(newProposal.getId(), oldDocumentIdentifier.dbid);
+            deleteChildObject(newProposal, supportingDocument,
+                newProposal::removeFromSupportingDocuments);
+        }
 
+        //Import supporting documents here or another function?
         return newProposal;
     }
 
