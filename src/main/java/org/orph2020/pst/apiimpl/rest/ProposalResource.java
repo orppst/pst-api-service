@@ -6,17 +6,13 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
-import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.ResponseStatus;
-import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
-import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalCycleDates;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -146,41 +142,6 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         return persistObject(op);
-    }
-
-    @POST
-    @Operation(summary = "uploads an proposal")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    @Path("/uploadProposal")
-    @ResponseStatus(value = 201)
-    public void uploadProposal(
-            @RestForm("document")
-            @Schema(implementation =
-                SupportingDocumentResource.UploadItemSchema.class)
-            FileUpload fileUpload,
-            @RestForm @PartType(MediaType.APPLICATION_JSON)
-            String updateSubmittedFlag)
-                throws WebApplicationException {
-        logger.debug("entered submit proposal state");
-
-        // verify there's a file to read.
-        if(fileUpload == null) {
-            throw new WebApplicationException("No file uploaded", 400);
-        }
-
-        // debug statements to verify data.
-        logger.debug("submit proposal state");
-        logger.debug(fileUpload);
-        logger.debug(fileUpload.uploadedFile().toFile());
-        logger.debug(updateSubmittedFlag);
-
-        // kick off the uploader process.
-        ProposalUploader uploader = new ProposalUploader();
-        uploader.uploadProposal(
-            fileUpload, updateSubmittedFlag, this, personResource,
-            organizationResource, investigatorResource, technicalGoalResource,
-            observationResource, supportingDocumentResource);
     }
 
     @DELETE
