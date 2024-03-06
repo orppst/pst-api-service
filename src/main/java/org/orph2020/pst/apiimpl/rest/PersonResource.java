@@ -46,7 +46,6 @@ public class PersonResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Person createPerson(Person person)
-         throws WebApplicationException
    {
       return persistObject(person);
    }
@@ -57,7 +56,6 @@ public class PersonResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Person createPersonFromKeycloak(@PathParam("keycloakUid") String kcUid, Person person)
-           throws WebApplicationException
    {
       Person result = persistObject(person);
 
