@@ -50,11 +50,11 @@ public class ProposalResource extends ObjectResourceBase {
         this.logger = logger;
     }
     @Inject
-    private ObservationResource observationResource;
+    ObservationResource observationResource;
     @Inject
-    private TechnicalGoalResource technicalGoalResource;
+    TechnicalGoalResource technicalGoalResource;
     @Inject
-    private ProposalCyclesResource proposalCyclesResource;
+    ProposalCyclesResource proposalCyclesResource;
 
     private static final String proposalRoot = "{proposalCode}";
 

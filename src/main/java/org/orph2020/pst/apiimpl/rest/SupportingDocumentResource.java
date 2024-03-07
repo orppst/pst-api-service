@@ -105,14 +105,14 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 proposal::addToSupportingDocuments);
 
         File destination = createDestination(
-            proposalCode, fileUpload.fileName(),
+            proposalCode, title,
             result.getId());
 
         //move the uploaded file to the new destination
         if(!fileUpload.uploadedFile().toFile().renameTo(destination))
         {
             throw new WebApplicationException(
-                "Unable to save file " + fileUpload.fileName(), 400);
+                "Unable to save file " + title, 400);
         }
         //else all good, set the location for the result
         result.setLocation(destination.toString());
