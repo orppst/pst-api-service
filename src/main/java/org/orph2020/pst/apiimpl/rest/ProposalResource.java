@@ -126,7 +126,7 @@ public class ProposalResource extends ObjectResourceBase {
             description = "get a single Proposal specified by the code"
     )
     @Path(proposalRoot)
- //   @RolesAllowed("default-roles-orppst")
+    @RolesAllowed("default-roles-orppst")
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
@@ -575,7 +575,7 @@ public class ProposalResource extends ObjectResourceBase {
                 newProposal::removeFromSupportingDocuments);
         }
 
-        //Import supporting documents here or another function?
+        //Import supporting documents separately.
         return newProposal;
     }
 
