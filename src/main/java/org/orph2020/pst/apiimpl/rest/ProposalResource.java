@@ -6,7 +6,6 @@ package org.orph2020.pst.apiimpl.rest;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.ResponseStatus;
@@ -277,25 +276,14 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
-        switch (which) {
-            case "technical":
-            {
-                return observingProposal.getTechnicalJustification();
-            }
-
-            case "scientific":
-            {
-                return observingProposal.getScientificJustification();
-            }
-
-            default:
-            {
-                throw new WebApplicationException(
-                        String.format("Justifications are either 'technical' or 'scientific', I got %s", which),
-                        400
-                );
-            }
-        }
+        return switch (which) {
+            case "technical" -> observingProposal.getTechnicalJustification();
+            case "scientific" -> observingProposal.getScientificJustification();
+            default -> throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
+                    400
+            );
+        };
     }
 
 
@@ -316,22 +304,99 @@ public class ProposalResource extends ObjectResourceBase {
         {
             case "technical":
             {
-                return addNewChildObject(proposal, incoming, proposal::setTechnicalJustification);
+                Justification justification = proposal.getTechnicalJustification();
+
+                if (justification == null)
+                    throw new WebApplicationException(
+                        "The Proposal has no existing Technical Justification, please use the 'add' method"
+                    );
+
+                justification.updateUsing(incoming);
+
+                em.merge(justification);
+
+                return justification;
             }
 
             case "scientific":
             {
-                return addNewChildObject(proposal, incoming, proposal::setScientificJustification);
+                Justification justification = proposal.getScientificJustification();
+
+                if (justification == null)
+                    throw new WebApplicationException(
+                        "The Proposal has no existing Scientific Justification, please use the 'add' method"
+                    );
+
+                justification.updateUsing(incoming);
+
+                em.merge(justification);
+
+                return justification;
             }
 
             default:
             {
                 throw new WebApplicationException(
-                        String.format("Justifications are either 'technical' or 'scientific', I got %s", which),
+                        String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
                         418);
             }
         }
     }
+
+
+    @POST
+    @Operation( summary = "add a technical or scientific Justification to the ObservingProposal specified by the 'proposalCode'")
+    @Path(proposalRoot +"/justifications/{which}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn={WebApplicationException.class})
+    public Justification addJustification(
+            @PathParam("proposalCode") long proposalCode,
+            @PathParam("which") String which,
+            Justification incoming )
+            throws WebApplicationException
+    {
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+
+        switch (which)
+        {
+            case "technical":
+            {
+                if (proposal.getTechnicalJustification() == null)
+                {
+                    return addNewChildObject(proposal, incoming, proposal::setTechnicalJustification);
+                }
+                else
+                {
+                    throw new WebApplicationException(
+                            "Proposal has an existing Technical Justification, please use the 'update' method instead"
+                    );
+                }
+            }
+
+            case "scientific":
+            {
+                if (proposal.getScientificJustification() == null)
+                {
+                    return addNewChildObject(proposal, incoming, proposal::setScientificJustification);
+                }
+                else
+                {
+                    throw new WebApplicationException(
+                            "Proposal has an existing Scientific Justification, please use the 'update' method instead"
+                    );
+                }
+
+            }
+
+            default:
+            {
+                throw new WebApplicationException(
+                        String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
+                        418);
+            }
+        }
+    }
+
 
     //********************** RELATED PROPOSALS ***************************
     @PUT
