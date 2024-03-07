@@ -7,7 +7,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
-import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -20,8 +19,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 
 /*
@@ -108,7 +105,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 proposal::addToSupportingDocuments);
 
         File destination = createDestination(
-            title, proposal, proposalCode, fileUpload.fileName(),
+            proposalCode, fileUpload.fileName(),
             result.getId());
 
         //move the uploaded file to the new destination
@@ -126,14 +123,12 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     /**
      * creates the destination location file as needed.
      *
-     * @param title: the title of the document.
-     * @param proposal: the proposal object.
      * @param proposalCode: the proposal code.
      * @param fileName: the filename for the destination.
      * @return The destination file.
      */
     private File createDestination(
-            String title, ObservingProposal proposal, Long proposalCode,
+            Long proposalCode,
             String fileName, long resultId) {
         //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
         // is deleted on return from this request (quarkus configuration)
@@ -144,7 +139,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         if (destinationPath.exists())
         {
-            //logger.info("destination str = " + destinationStr);
             throw new WebApplicationException(destinationStr + " already exists", 400);
         }
 
@@ -155,36 +149,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         //create the file-location
         return new File(destinationStr, fileName);
-    }
-
-    /**
-     * provides a supporting method to upload a supporting document from a zip
-     * file.
-     *
-     * @param proposal: the proposal object.
-     * @param docData: the raw byte[] data.
-     * @param docTitle: the doc title.
-     * @return the supporting document object.
-     * @throws IOException when the writing fails.
-     */
-    public SupportingDocument uploadSupportingDocumentFromZip(
-        ObservingProposal proposal, byte[] docData, String docTitle
-    ) throws IOException {
-        String _title = sanitiseTitle(docTitle, proposal);
-
-        //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
-        SupportingDocument result =
-            addNewChildObject(proposal, new SupportingDocument(_title, ""),
-                proposal::addToSupportingDocuments);
-
-        File destinationFile = this.createDestination(
-            docTitle, proposal, proposal.getId(), docTitle, result.getId());
-
-        Files.write(destinationFile.toPath(), docData);
-
-        //else all good, set the location for the result
-        result.setLocation(destinationFile.toString());
-        return result;
     }
 
     @PUT

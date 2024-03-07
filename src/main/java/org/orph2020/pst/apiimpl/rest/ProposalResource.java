@@ -70,9 +70,6 @@ public class ProposalResource extends ObjectResourceBase {
 
     //needed for import.
     @Inject
-    InvestigatorResource investigatorResource;
-
-    @Inject
     SupportingDocumentResource supportingDocumentResource;
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
@@ -496,7 +493,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Path(proposalRoot+"/export")
     public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
-            throws WebApplicationException, IOException {
+            throws WebApplicationException {
         ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
 
         return Response
@@ -513,7 +510,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path("/import")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ObservingProposal importProposal(ObservingProposal importProposal) throws IOException {
+    public ObservingProposal importProposal(ObservingProposal importProposal) {
         if(importProposal==null){
             throw new WebApplicationException("No file uploaded",400);
         }

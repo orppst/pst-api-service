@@ -2,7 +2,6 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.internal.mapping.Jackson2Mapper;
@@ -14,8 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
-
-import java.util.Arrays;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
@@ -195,7 +192,6 @@ public class ProposalResourceTest {
                   "$.size()", greaterThan(0)
             )
             .extract().jsonPath().getLong("[0].dbid");
-      ;
 
    }
    @Test
@@ -211,7 +207,6 @@ public class ProposalResourceTest {
                   "$.size()", greaterThan(0)
             )
             .extract().jsonPath().getLong("[0].dbid");
-      ;
 
    }
    @Test
@@ -244,7 +239,6 @@ public class ProposalResourceTest {
                   "$.size()", greaterThan(0)
             );
 
-      ;
 
    }
    @Test
