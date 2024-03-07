@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -39,10 +40,10 @@ public class ProposalExportImportTest {
     }
 
     @Test
-    void testExportThenImportProposal() {
+    void testExportThenImportProposal() throws JsonProcessingException {
         //export example proposal them import and check it's there
-        String importedProposalName = "the proposal title";
-/*
+        String importExportProposalName = "Import of exported proposal";
+
         ObservingProposal exportedProposal =
                  given()
                         .when()
@@ -51,25 +52,17 @@ public class ProposalExportImportTest {
                         .statusCode(200)
                         .extract().as(ObservingProposal.class, raObjectMapper);
 
-        exportedProposal.setTitle(importedProposalName);
-*/
-
-        String exportedProposal = given()
-                .when()
-                .get("proposals/" + proposalId)
-                .then()
-                .statusCode(200)
-                .extract().asString();
+        exportedProposal.setTitle(importExportProposalName);
 
         given()
-                .body(exportedProposal)
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportedProposal))
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .post("proposals/import")
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString(importedProposalName)
+                        containsString(importExportProposalName)
                 );
 
     }

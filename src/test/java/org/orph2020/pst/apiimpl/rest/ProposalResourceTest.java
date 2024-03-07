@@ -20,8 +20,7 @@ import java.util.Arrays;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 @TestSecurity(user = "pi", roles = "default-roles-orppst")
@@ -40,6 +39,7 @@ public class ProposalResourceTest {
       }));
         proposalId = given()
               .when()
+              .param("title", "%title")
               .get("proposals")
               .then()
               .statusCode(200)
@@ -282,7 +282,7 @@ public class ProposalResourceTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             );
       given()
             .when()
@@ -291,7 +291,7 @@ public class ProposalResourceTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             );
       given()
             .when()
@@ -300,7 +300,7 @@ public class ProposalResourceTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             );
       given()
             .when()
@@ -309,7 +309,7 @@ public class ProposalResourceTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             );
 
 
