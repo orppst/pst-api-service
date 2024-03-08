@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Person;
@@ -21,6 +22,7 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Path("people")
 @Tag(name = "people")
+@ApplicationScoped
 public class PersonResource extends ObjectResourceBase {
 
    @GET

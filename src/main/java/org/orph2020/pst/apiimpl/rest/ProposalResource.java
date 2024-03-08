@@ -3,9 +3,12 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.ResponseStatus;
@@ -20,10 +23,11 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.inject.Inject;
+
 import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,6 +41,7 @@ import java.util.Objects;
 @Path("proposals")
 @Tag(name = "proposals")
 @Produces(MediaType.APPLICATION_JSON)
+@ApplicationScoped
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -44,16 +49,27 @@ public class ProposalResource extends ObjectResourceBase {
         this.logger = logger;
     }
     @Inject
-    private ObservationResource observationResource;
+    ObservationResource observationResource;
     @Inject
-    private TechnicalGoalResource technicalGoalResource;
+    TechnicalGoalResource technicalGoalResource;
     @Inject
-    private ProposalCyclesResource proposalCyclesResource;
+    ProposalCyclesResource proposalCyclesResource;
 
     private static final String proposalRoot = "{proposalCode}";
 
     private static final String targetsRoot = proposalRoot + "/targets";
     private static final String fieldsRoot = proposalRoot + "/fields";
+
+    // needed for import
+    @Inject
+    PersonResource personResource;
+
+    @Inject
+    OrganizationResource organizationResource;
+
+    //needed for import.
+    @Inject
+    SupportingDocumentResource supportingDocumentResource;
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -536,8 +552,94 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(observingProposal, 201);
     }
 
+    //********************** EXPORT ***************************
+    @GET
+    @Operation(summary="export a proposal as a file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path(proposalRoot+"/export")
+    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
+            throws WebApplicationException {
+        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+
+        return Response
+                .status(Response.Status.OK)
+                .header("Content-Disposition", "attachment;filename=" + "proposal.json")
+                .entity(writeAsJsonString(proposalForExport))
+                .build();
+    }
 
 
+    //********************** IMPORT ***************************
+    @POST
+    @Operation(summary="import a proposal")
+    @Path("/import")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ObservingProposal importProposal(ObservingProposal importProposal) {
+        if(importProposal==null){
+            throw new WebApplicationException("No file uploaded",400);
+        }
+
+        new ProposalManagementModel().createContext();
+        ObservingProposal newProposal = new ObservingProposal(importProposal);
+
+        //List of existing organisations
+        List<ObjectIdentifier> orgIds = organizationResource.getOrganizations();
+        HashMap<String, Organization> existingOrganizationsMap = new HashMap<>();
+        for (ObjectIdentifier oi: orgIds) {
+            Organization organizationToAdd = organizationResource.getOrganization(oi.dbid);
+            existingOrganizationsMap.put(organizationToAdd.getName(), organizationToAdd);
+        }
+
+        //List of existing people
+        List<ObjectIdentifier> peopleIds = personResource.getPeople(null);
+        HashMap<String, Person> existingPeopleMap = new HashMap<>();
+        for (ObjectIdentifier pid: peopleIds) {
+            Person personToAdd = personResource.getPerson(pid.dbid);
+            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+        }
+
+        //Compare people and organisations to what's in the database
+        List<Investigator> investigators = newProposal.getInvestigators();
+        for (Investigator i : investigators) {
+            Person person = i.getPerson();
+            Organization organization = person.getHomeInstitute();
+
+            //If organisation doesn't exist, add it
+            if(!existingOrganizationsMap.containsKey(organization.getName())) {
+                logger.info("Adding organisation " + organization.getName());
+                organization.setXmlId("0");
+                Organization newOrganization = organizationResource.createOrganization(organization);
+                person.setHomeInstitute(newOrganization);
+                existingOrganizationsMap.put(organization.getName(), person.getHomeInstitute());
+            }
+
+            //If person does not exist, add them
+            if(!existingPeopleMap.containsKey(person.getOrcidId().toString())) {
+                logger.info("Adding person " + person.getFullName());
+                person.setXmlId("0");
+                i.setPerson(personResource.createPerson(person));
+                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+            }
+        }
+
+        //update references
+        newProposal.updateClonedReferences();
+
+        //Persist the proposal
+        em.persist(newProposal);
+
+        //Remove supporting document entries without deleting any files.
+        List<ObjectIdentifier> oldDocuments = supportingDocumentResource.getSupportingDocuments(newProposal.getId(), null);
+        for(ObjectIdentifier oldDocumentIdentifier : oldDocuments) {
+            SupportingDocument supportingDocument = supportingDocumentResource.getSupportingDocument(newProposal.getId(), oldDocumentIdentifier.dbid);
+            deleteChildObject(newProposal, supportingDocument,
+                newProposal::removeFromSupportingDocuments);
+        }
+
+        //Import supporting documents separately.
+        return newProposal;
+    }
 
     //Other fields of an ObservingProposal have been split out into their own source file
 }

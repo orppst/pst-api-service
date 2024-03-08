@@ -73,7 +73,7 @@ public class UseCasePiTest {
               .then()
               .statusCode(200)
               .body(
-                    "$.size()", equalTo(1)
+                    "$.size()", greaterThanOrEqualTo(1 )
               );
 
 

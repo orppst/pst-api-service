@@ -34,7 +34,6 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
 
-
     @ConfigProperty(name= "supporting-documents.store-root")
     String documentStoreRoot;
 
@@ -86,10 +85,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     @Operation(summary = "upload a new SupportingDocument to the ObservingProposal specified")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public SupportingDocument uploadSupportingDocument(@PathParam("proposalCode") Long proposalCode,
-                                             @RestForm("document") @Schema(implementation = UploadItemSchema.class)
-                                             FileUpload fileUpload,
-                                             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
+    public SupportingDocument uploadSupportingDocument(
+            @PathParam("proposalCode") Long proposalCode,
+            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            FileUpload fileUpload,
+            @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
         if(fileUpload == null) {
@@ -97,24 +97,49 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
         String _title = sanitiseTitle(title, proposal);
 
         //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
         SupportingDocument result =
-                addNewChildObject(proposal, new SupportingDocument(_title, ""),
-                        proposal::addToSupportingDocuments);
+            addNewChildObject(proposal, new SupportingDocument(_title, ""),
+                proposal::addToSupportingDocuments);
 
+        File destination = createDestination(
+            proposalCode, title,
+            result.getId());
+
+        //move the uploaded file to the new destination
+        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        {
+            throw new WebApplicationException(
+                "Unable to save file " + title, 400);
+        }
+        //else all good, set the location for the result
+        result.setLocation(destination.toString());
+
+        return result;
+    }
+
+    /**
+     * creates the destination location file as needed.
+     *
+     * @param proposalCode: the proposal code.
+     * @param fileName: the filename for the destination.
+     * @return The destination file.
+     */
+    private File createDestination(
+            Long proposalCode,
+            String fileName, long resultId) {
         //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
         // is deleted on return from this request (quarkus configuration)
 
-        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + result.getId();
+        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + resultId;
 
         File destinationPath = new File(destinationStr);
 
         if (destinationPath.exists())
         {
-            throw new WebApplicationException(destinationStr + " exists - how'd that happen?!", 400);
+            throw new WebApplicationException(destinationStr + " already exists", 400);
         }
 
         if (!destinationPath.mkdirs())
@@ -123,18 +148,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
 
         //create the file-location
-        File destination = new File(destinationStr, fileUpload.fileName());
-
-        //move the uploaded file to the new destination
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
-        {
-            throw new
-                    WebApplicationException("Unable to save file " + fileUpload.fileName(), 400);
-        }
-        //else all good, set the location for the result
-        result.setLocation(destination.toString());
-
-        return result;
+        return new File(destinationStr, fileName);
     }
 
     @PUT
