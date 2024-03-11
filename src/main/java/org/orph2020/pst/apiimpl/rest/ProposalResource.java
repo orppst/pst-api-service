@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /*
    For use cases see:
@@ -292,15 +293,17 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
-        //avoid returning null to front end clients
+        //avoid returning nulls to frontend clients
         return switch (which) {
             case "technical" -> {
                 Justification technical = observingProposal.getTechnicalJustification();
-                yield Objects.requireNonNullElseGet(technical, Justification::new);
+                yield Objects.requireNonNullElseGet(technical,
+                        () -> new Justification("", TextFormats.ASCIIDOC));
             }
             case "scientific" -> {
                 Justification scientific = observingProposal.getScientificJustification();
-                yield Objects.requireNonNullElseGet(scientific, Justification::new);
+                yield Objects.requireNonNullElseGet(scientific,
+                        () -> new Justification("", TextFormats.ASCIIDOC));
             }
             default -> throw new WebApplicationException(
                     String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
