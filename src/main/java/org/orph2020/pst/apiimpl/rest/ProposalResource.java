@@ -292,9 +292,16 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
 
+        //avoid returning null to front end clients
         return switch (which) {
-            case "technical" -> observingProposal.getTechnicalJustification();
-            case "scientific" -> observingProposal.getScientificJustification();
+            case "technical" -> {
+                Justification technical = observingProposal.getTechnicalJustification();
+                yield Objects.requireNonNullElseGet(technical, Justification::new);
+            }
+            case "scientific" -> {
+                Justification scientific = observingProposal.getScientificJustification();
+                yield Objects.requireNonNullElseGet(scientific, Justification::new);
+            }
             default -> throw new WebApplicationException(
                     String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
                     400
