@@ -195,19 +195,24 @@ public class ProposalResource extends ObjectResourceBase {
 
             for (ObjectIdentifier observation : observations) {
                 List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
-                for (ObservingConstraint timingWindow : timingWindows) {
-                    TimingWindow theWindow = (TimingWindow) timingWindow;
-                    if (theWindow.getIsAvoidConstraint()) {
-                        if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                                && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                            warn.append("A timing window excludes this entire observation session.  ");
-                        }
-                    } else {
-                        if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                            warn.append("A timing window ends before this observation session begins.  ");
-                        }
-                        if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                            warn.append("A timing window begins after this observation session has ended. ");
+                if(timingWindows.isEmpty()) {
+                    valid = false;
+                    error.append("No timing windows defined.  ");
+                } else {
+                    for (ObservingConstraint timingWindow : timingWindows) {
+                        TimingWindow theWindow = (TimingWindow) timingWindow;
+                        if (theWindow.getIsAvoidConstraint()) {
+                            if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
+                                    && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
+                                warn.append("A timing window excludes this entire observation session.  ");
+                            }
+                        } else {
+                            if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
+                                warn.append("A timing window ends before this observation session begins.  ");
+                            }
+                            if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
+                                warn.append("A timing window begins after this observation session has ended. ");
+                            }
                         }
                     }
                 }
