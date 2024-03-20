@@ -3,8 +3,10 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import io.quarkus.oidc.IdToken;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -26,11 +28,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.*;
 
 /*
    For use cases see:
@@ -55,6 +53,10 @@ public class ProposalResource extends ObjectResourceBase {
     TechnicalGoalResource technicalGoalResource;
     @Inject
     ProposalCyclesResource proposalCyclesResource;
+    @Inject
+    SubjectMapResource subjectMapResource;
+    @Inject
+    JsonWebToken accessToken;
 
     private static final String proposalRoot = "{proposalCode}";
 
@@ -92,25 +94,29 @@ public class ProposalResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Filters out submitted copies.")
+    @RolesAllowed("default-roles-orppst")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
 
         boolean noQuery = investigatorName == null && title == null;
         boolean investigatorOnly = investigatorName != null && title == null;
         boolean titleOnly = investigatorName == null && title != null;
+        Long personId = subjectMapResource.subjectMap(accessToken.getSubject()).getPerson().getId();
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
-        String baseStr = "select distinct o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o ";
+        //Investigator table is joined twice, once for user view scope and again for searching other investigators.
+        String baseStr = "select distinct o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o, Investigator inv, Investigator i "
+                        + "where inv member of o.investigators and inv.person._id = " + personId + " and i member of o.investigators ";
         String submittedStr = "(o.submitted is null OR not o.submitted) ";
         String orderByStr = "order by o.title";
-        String investigatorLikeStr = ", Investigator i where i member of o.investigators and i.person.fullName like '" +investigatorName+ "' ";
+        String investigatorLikeStr = "and i.person.fullName like '" +investigatorName+ "' ";
         String titleLikeStr = "o.title like '" +title+ "' ";
 
         if (noQuery) {
-            return getSynopses(baseStr + "where " + submittedStr + orderByStr);
+            return getSynopses(baseStr + "and " + submittedStr + orderByStr);
         } else if (investigatorOnly) {
             return getSynopses(baseStr + investigatorLikeStr + "and " + submittedStr + orderByStr);
         } else if (titleOnly) {
-            return getSynopses(baseStr + "where " + titleLikeStr + "and " + submittedStr + orderByStr);
+            return getSynopses(baseStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
         } else { //name and title given as queries
             return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
         }
