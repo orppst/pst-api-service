@@ -3,9 +3,9 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
-import io.quarkus.oidc.IdToken;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.TypedQuery;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -122,6 +122,18 @@ public class ProposalResource extends ObjectResourceBase {
         }
     }
 
+    private ObservingProposal singleObservingProposal(Long proposalCode)
+    {
+        TypedQuery<ObservingProposal> q = em.createQuery(
+                "Select o From ObservingProposal o, Investigator i where i member of o.investigators "
+                        + "and o._id = :pid and i.person._id = :uid",
+                ObservingProposal.class
+        );
+        q.setParameter("pid", proposalCode);
+        q.setParameter("uid", subjectMapResource.subjectMap(accessToken.getSubject()).getPerson().getId());
+        return q.getSingleResult();
+    }
+
     @GET
     @Operation(summary = "get the Proposal specified by the 'proposalCode'")
     @APIResponse(
@@ -133,7 +145,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
-        return findObject(ObservingProposal.class, proposalCode);
+        return singleObservingProposal(proposalCode);
     }
 
     @POST
@@ -164,7 +176,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot + "/title")
     @Operation(summary = "get the title of the ObservingProposal specified by 'proposalCode'")
     public Response getObservingProposalTitle(@PathParam("proposalCode") Long proposalCode) {
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposal = singleObservingProposal(proposalCode);
         return responseWrapper(proposal.getTitle(), 200);
     }
 
@@ -173,7 +185,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot + "/validate")
     @Operation(summary = "validate the proposal, get summary strings of it's state.  Optionally pass a cycle to compare dates with.")
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
         String info = "Your proposal is ready for submission";
         StringBuilder warn = new StringBuilder();
@@ -234,6 +246,7 @@ public class ProposalResource extends ObjectResourceBase {
     @PUT
     @Operation(summary = "change the title of an ObservingProposal")
     @Consumes(MediaType.TEXT_PLAIN)
+    //@RolesAllowed("default-roles-orppst")
     @Transactional(rollbackOn = {WebApplicationException.class})
     @Path(proposalRoot +"/title")
     public Response replaceTitle(
@@ -242,9 +255,7 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
         proposal.setTitle(replacementTitle);
-
         return responseWrapper(proposal.getTitle(), 201);
     }
 
@@ -270,7 +281,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot + "/kind")
     @Operation(summary = "get the 'kind' of ObservingProposal specified by the 'proposalCode")
     public ProposalKind getObservingProposalKind(@PathParam("proposalCode") Long proposalCode) {
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposal = getObservingProposal(proposalCode);
         return proposal.getKind();
     }
 
@@ -302,7 +313,7 @@ public class ProposalResource extends ObjectResourceBase {
                                           @PathParam("which") String which)
         throws WebApplicationException
     {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal observingProposal = getObservingProposal(proposalCode);
 
         //avoid returning nulls to frontend clients
         return switch (which) {
@@ -580,7 +591,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot+"/export")
     public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException {
-        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposalForExport = getObservingProposal(proposalCode);
 
         return Response
                 .status(Response.Status.OK)
