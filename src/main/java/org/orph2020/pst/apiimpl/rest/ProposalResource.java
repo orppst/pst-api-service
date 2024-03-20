@@ -591,7 +591,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot+"/export")
     public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException {
-        ObservingProposal proposalForExport = getObservingProposal(proposalCode);
+        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
 
         return Response
                 .status(Response.Status.OK)
