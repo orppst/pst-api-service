@@ -64,7 +64,8 @@ abstract public class ObjectResourceBase {
                 + " parent join parent." + childParameter + " child "
                 + " where parent._id = :pid and child._id = :cid";
 
-
+        //notice that the parameter 'childParameter' is NOT created from user input i.e., can't
+        //be used for QL injection.
         TypedQuery<T> q = em.createQuery(
                 qlString,
                 childType

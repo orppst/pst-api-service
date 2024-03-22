@@ -106,12 +106,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                 fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd());
     }
 
-    @GET
-    @Path("{cycleCode}/TAC")
-    @Operation(summary = "Get the time allocation committee")
-    public TAC getTAC(@PathParam("cycleCode") long cycleId) {
-        return findObject(ProposalCycle.class,cycleId).getTac();
-    }
 
     @GET
     @Path("{cycleCode}/grades")
@@ -129,16 +123,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
 
-    @GET
-    @Path("{cycleCode}/submittedProposals")
-    @Operation(summary = "list the SubmittedProposals")
-    public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") long cycleId,
-                                                        @RestQuery String title) {
-        if(title == null)
-            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = "+cycleId+" ORDER BY o.proposal.title");
-        else
-            return getObjectIdentifiers("SELECT o._id,o.proposal.title FROM ProposalCycle p inner join p.submittedProposals o where p._id = "+cycleId+" and o.proposal.title like '"+title+"' ORDER BY o.proposal.title");
-    }
+
 
     @PUT
     @Operation(summary = "submit a proposal")
