@@ -82,7 +82,7 @@ public class UseCasePiTest {
         //find the PI
         int personid = given()
                 .when()
-                .param("name","PI")
+                .param("name","John Flamsteed")
                 .get("people")
                 .then()
                 .statusCode(200)
@@ -99,7 +99,7 @@ public class UseCasePiTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        "fullName", equalTo("PI")
+                        "fullName", equalTo("John Flamsteed")
                 ).extract().as(Person.class, raObjectMapper);
 
 
@@ -138,7 +138,7 @@ public class UseCasePiTest {
         int coiPersonId =
                 given()
                     .when()
-                    .param("name","CO-I")
+                    .param("name","George Airy")
                     .get("people")
                     .then()
                     .statusCode(200)
@@ -155,7 +155,7 @@ public class UseCasePiTest {
                     .then()
                     .statusCode(200)
                     .body(
-                            "fullName", equalTo("CO-I")
+                            "fullName", equalTo("George Airy")
                     ).extract().as(Person.class, raObjectMapper);
 
         //create a new Investigator
@@ -231,7 +231,7 @@ public class UseCasePiTest {
         Integer relatedProposalId =
               given()
                     .when()
-                    .param("title","%title%") // note only searching for title in part as other tests change this
+                    .param("title","%Observing%") // note only searching for title in part as other tests change this
                     .get("proposals")
                     .then()
                     .statusCode(200)

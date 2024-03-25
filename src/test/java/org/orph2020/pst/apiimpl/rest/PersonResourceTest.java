@@ -24,7 +24,7 @@ public class PersonResourceTest {
    void testFilterPeople() {
       given()
             .when()
-            .param("name","PI")
+            .param("name","John Flamsteed")
             .get("people")
             .then()
             .statusCode(200)
@@ -39,7 +39,7 @@ public class PersonResourceTest {
         Integer personId =
             given()
                     .when()
-                    .param("name","PI")
+                    .param("name","John Flamsteed")
                     .get("people")
                     .then()
                     .statusCode(200)
@@ -54,7 +54,7 @@ public class PersonResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("\"fullName\":\"PI\"")
+                        containsString("\"fullName\":\"John Flamsteed\"")
                 );
     }
 }

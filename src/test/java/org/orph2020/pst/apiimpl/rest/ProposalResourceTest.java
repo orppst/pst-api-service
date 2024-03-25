@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
-@TestSecurity(user = "pi", roles = "default-roles-orppst")
+@TestSecurity(user="John Flamsteed", roles = "default-roles-orppst")
 public class ProposalResourceTest {
     String JSON_UTF16 = "application/json; charset=UTF-16";
     @Inject
@@ -36,7 +36,7 @@ public class ProposalResourceTest {
       }));
         proposalId = given()
               .when()
-              .param("title", "%title")
+              .param("title", "Observing the stars")
               .get("proposals")
               .then()
               .statusCode(200)
@@ -48,7 +48,7 @@ public class ProposalResourceTest {
         Integer coiInvestigatorId =
               given()
                     .when()
-                    .param("fullName", "CO-I")
+                    .param("fullName", "George Airy")
                     .get("people")
                     .then()
                     .body(
@@ -75,7 +75,7 @@ public class ProposalResourceTest {
                 .then()
                 .statusCode(200)
                 .body(
-                        containsString("\"title\":\"the proposal title\",")
+                        containsString("\"title\":\"Observing the stars\",")
                 )
         ;
 
@@ -97,7 +97,7 @@ public class ProposalResourceTest {
        Integer relatedProposalId =
              given()
                    .when()
-                   .param("title","the proposal title")
+                   .param("title","Observing the stars")
                    .get("proposals")
                    .then()
                    .statusCode(200)
@@ -132,14 +132,14 @@ public class ProposalResourceTest {
     void testReplaceTitle() {
         //replace title with another
         given()
-                .body("replacement title")
+                .body("Observing something else")
                 .header("Content-Type", MediaType.TEXT_PLAIN)
                 .when()
                 .put("proposals/"+proposalId+"/title")
                 .then()
                 .statusCode(201)
                 .body(
-                        containsString("replacement title")
+                        containsString("Observing something else")
                 )
         ;
 
@@ -147,13 +147,13 @@ public class ProposalResourceTest {
 
 
     @Test
-    void testAddPersonAsInvestigator() {
+    void testUpdateCoInvestigator() {
         Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, person);
         //first get the DB id of the newly added COI Investigator
         Integer coiInvestigatorId =
               given()
                     .when()
-                    .param("fullName", "CO-I")
+                    .param("fullName", "George Airy")
                     .get("proposals/"+proposalId+"/investigators")
                     .then()
                     .body(
