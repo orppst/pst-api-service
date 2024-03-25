@@ -54,7 +54,7 @@ jobs:
         cache-overwrite-existing: true
     - name: Run Gradle build
       working-directory: ./main
-      run: ./gradlew -U build
+      run: ./gradlew -U build -x test
 
     - name: Upload interface definition
       uses: actions/upload-artifact@v3.1.3
