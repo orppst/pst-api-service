@@ -67,4 +67,10 @@ jobs:
       working-directory: ./main
       run: ./gradlew  --info test
 
-    
+    - name: Publish Test Results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: |
+          main/build/test-results/**/*.xml
+          
