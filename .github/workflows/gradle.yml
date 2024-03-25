@@ -15,12 +15,13 @@ on:
 
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout this  repo
       uses: actions/checkout@v4
