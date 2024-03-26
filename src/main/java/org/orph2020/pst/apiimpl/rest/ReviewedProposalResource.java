@@ -23,11 +23,11 @@ public class ReviewedProposalResource extends ObjectResourceBase{
     @Operation(summary = "get the ObjectIdentifiers for the reveiwed proposals")
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") Long cycleCode)
     {
-        String select = "select r._id,r.proposal.title ";
+        String select = "select r._id,r.submitted.proposal.title ";
         String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.reviewedProposals r";
+        String innerJoins = "inner join c.reviewedProposals r ";
         String where = "where c._id=" + cycleCode + " ";
-        String orderBy = "order by r.proposal.title";
+        String orderBy = "order by r.submitted.proposal.title";
 
         return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
     }
