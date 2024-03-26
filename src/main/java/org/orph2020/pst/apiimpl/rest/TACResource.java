@@ -31,19 +31,20 @@ public class TACResource extends ObjectResourceBase {
     {
 
         String nameLike = (personName == null) ? "" :
-                "and m.member.person.name = :pName ";
+                "and m.member.person.fullName = :pName ";
 
         String roleLike = (memberRole == null) ? "" :
-                "and m.role like '" + memberRole + "' ";
+                "and m.role = :mRole ";
 
-        String qlString = "select m._id,m.role,m.member.person.name from ProposalCycle p "
+        String qlString = "select m._id,cast(m.role as string),m.member.person.fullName from ProposalCycle p "
                 + "inner join p.tac t inner join t.members m "
                 + "where p._id=" + cycleCode + " "
                 + nameLike + roleLike + "order by m.role";
 
         Query query = em.createQuery(qlString);
 
-        if (personName != null)  query.setParameter("pName", personName);
+        if (personName != null) query.setParameter("pName", personName);
+        if (memberRole != null) query.setParameter("mRole", memberRole);
 
         //using the 3 argument ObjectIdentifier constructor
 

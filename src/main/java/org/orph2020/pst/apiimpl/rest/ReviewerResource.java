@@ -21,7 +21,7 @@ public class ReviewerResource extends ObjectResourceBase{
     public List<ObjectIdentifier> getReviewers()
         throws WebApplicationException
     {
-        return getObjectIdentifiers("select r._id,p.name from Reviewer r inner join r.person p");
+        return getObjectIdentifiers("select r._id,r.person.fullName from Reviewer r");
     }
 
     @GET
