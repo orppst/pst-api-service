@@ -20,7 +20,7 @@ import java.util.List;
 public class ReviewedProposalResource extends ObjectResourceBase{
 
     @GET
-    @Operation(summary = "get the ObjectIdentifiers for the reveiwed proposals")
+    @Operation(summary = "get the ObjectIdentifiers for the reviewed proposals")
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") Long cycleCode)
     {
         String select = "select r._id,r.submitted.proposal.title ";

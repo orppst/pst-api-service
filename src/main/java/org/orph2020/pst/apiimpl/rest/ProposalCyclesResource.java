@@ -123,38 +123,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
 
-
-
-    @PUT
-    @Operation(summary = "submit a proposal")
-    @Path("{cycleCode}/submittedProposals")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response submitProposal(@PathParam("cycleCode") long cycleId, long proposalId)
-    {
-        //tried using addNewChildObject() here but persistence layer throws an error
-
-        ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
-
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
-
-        new ProposalManagementModel().createContext(); // TODO API subject to change
-        ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
-        pclone.updateClonedReferences();// TODO API subject to change
-        pclone.setSubmitted(true);
-        em.persist(pclone);
-        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
-        cycle.addToSubmittedProposals(submittedProposal);
-        em.merge(cycle);
-
-        //get the proposal we have just submitted
-        List<SubmittedProposal> submittedProposals = cycle.getSubmittedProposals();
-        ObservingProposal responseProposal =
-                submittedProposals.get(submittedProposals.size() - 1).getProposal();
-
-        return responseWrapper(createSynopsisFromProposal(responseProposal), 201);
-    }
-
     @GET
     @Path("{cycleCode}/proposalsInReview")
     @Operation(summary = "List the identifiers for the Proposals under review")
