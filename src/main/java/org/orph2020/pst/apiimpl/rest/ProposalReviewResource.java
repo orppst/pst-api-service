@@ -19,6 +19,9 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalReviewResource extends ObjectResourceBase{
 
+    private static final String confirmed =
+            "Unable to edit as this Review has been confirmed as completed on %s";
+
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given ReviewedProposal")
     public List<ObjectIdentifier> getReviews(@PathParam("cycleCode") Long cycleCode,
@@ -110,7 +113,8 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
             throw new WebApplicationException(
-                    "Unable to edit as this Review has been confirmed completed", 400
+                    String.format(confirmed, proposalReview.getReviewDate().toString()),
+                    400
             );
         }
 
@@ -138,7 +142,8 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
             throw new WebApplicationException(
-                    "Unable to edit as this Review has been confirmed completed", 400
+                    String.format(confirmed, proposalReview.getReviewDate().toString()),
+                    400
             );
         }
 
@@ -167,7 +172,8 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
             throw new WebApplicationException(
-                    "Unable to edit as this Review has been confirmed completed", 400
+                    String.format(confirmed, proposalReview.getReviewDate().toString()),
+                    400
             );
         }
 
