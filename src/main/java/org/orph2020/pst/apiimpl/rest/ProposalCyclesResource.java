@@ -26,46 +26,6 @@ import java.util.*;
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
-
-    private SubmittedProposal findSubmittedProposal(long cycleId, long submittedId) {
-        TypedQuery<SubmittedProposal> q = em.createQuery(
-                "Select o From ProposalCycle c join c.submittedProposals o where c._id = :cid and o._id = :sid",
-                SubmittedProposal.class
-        );
-        q.setParameter("cid", cycleId);
-        q.setParameter("sid", submittedId);
-        return q.getSingleResult();
-    }
-
-    private AllocatedProposal findAllocatedProposal(long cycleId, long allocatedId) {
-        TypedQuery<AllocatedProposal> q = em.createQuery(
-                "Select o From ProposalCycle c join c.allocatedProposals o where c._id = :cid and o._id = :aid",
-                AllocatedProposal.class
-        );
-        q.setParameter("cid", cycleId);
-        q.setParameter("aid", allocatedId);
-        return q.getSingleResult();
-    }
-
-    private AllocationGrade findAllocatedGrade(long cycleId, long gradeId) {
-        TypedQuery<AllocationGrade> q = em.createQuery(
-                "Select o From ProposalCycle c join c.possibleGrades o where c._id = :cid and o._id = :gid",
-                AllocationGrade.class
-        );
-        q.setParameter("cid", cycleId);
-        q.setParameter("gid", gradeId);
-        return q.getSingleResult();
-    }
-
-
-    private ProposalSynopsis createSynopsisFromProposal(ObservingProposal proposal) {
-        return new ProposalSynopsis(
-                proposal.getId(), proposal.getTitle(), proposal.getSummary(), proposal.getKind(),
-                proposal.getSubmitted()
-        );
-    }
-
-
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
     }
@@ -91,8 +51,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/dates")
     @Operation(summary = "Get the dates associated with a given ProposalCycle")
-    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") long cycleId) {
+    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") long cycleId)
+    {
         ProposalCycle fullCycle =  findObject(ProposalCycle.class,cycleId);
+
         return new ProposalCycleDates(fullCycle.getTitle(), fullCycle.getSubmissionDeadline(),
                 fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd());
     }
@@ -101,7 +63,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/grades")
     @Operation(summary = "List the possible grades of the given ProposalCycle")
-    public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") long cycleCode) {
+    public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") long cycleCode)
+    {
         return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name");
     }
 
@@ -109,62 +72,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "get the specific grade associated with the given ProposalCycle")
     public AllocationGrade getCycleAllocatedGrade(@PathParam("cycleCode") long cycleCode,
-                                                  @PathParam("gradeId") long gradeId) {
-        return findAllocatedGrade(cycleCode, gradeId);
-    }
-
-
-    @GET
-    @Path("{cycleCode}/allocatedProposals")
-    @Operation(summary = "get identifiers for all the AllocatedProposals in the given ProposalCycle, optionally provide a proposal title to get a specific identifier ")
-    public List<ObjectIdentifier> getAllocatedProposalsFromCycle(@PathParam("cycleCode") long cycleId,
-                                                                 @RestQuery String title) {
-        if (title == null) {
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = "+cycleId+" ORDER BY o.submitted.proposal.title");
-        } else {
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.allocatedProposals o where p._id = "+cycleId+" and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
-        }
-    }
-
-
-    @PUT
-    @Path("{cycleCode}/allocatedProposals")
-    @Operation(summary = "upgrade a proposal under review to an allocated proposal")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response allocateProposalToCycle(@PathParam("cycleCode") long cycleCode,
-                                                      long submittedId)
-            throws WebApplicationException
+                                                  @PathParam("gradeId") long gradeId)
     {
-        AllocatedProposal allocatedProposal = new AllocatedProposal(new ArrayList<>(),
-                findSubmittedProposal(cycleCode, submittedId));
-
-        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
-
-        cycle.addToAllocatedProposals(allocatedProposal);
-
-        em.merge(cycle);
-
-        //get the allocated proposal just added to the 'allocated' list
-        List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
-        ObservingProposal responseValue = allocatedProposals.get(allocatedProposals.size() - 1)
-                .getSubmitted().getProposal();
-
-        return responseWrapper(createSynopsisFromProposal(responseValue), 201);
+        return findChildByQuery(ProposalCycle.class, AllocationGrade.class,
+                "possibleGrades", cycleCode, gradeId);
     }
 
-    @POST
-    @Path("{cycleCode}/allocatedProposals/{allocatedId}")
-    @Operation(summary = "add an AllocationBlock to the specific AllocatedProposal")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public AllocatedBlock addAllocatedBlockToAllocatedProposal(@PathParam("cycleCode") long cycleCode,
-                                                               @PathParam("allocatedId") long allocatedId,
-                                                               AllocatedBlock allocatedBlock)
-        throws WebApplicationException
-    {
-        AllocatedProposal allocatedProposal = findAllocatedProposal(cycleCode, allocatedId);
-
-        return addNewChildObject(allocatedProposal, allocatedBlock, allocatedProposal::addToAllocation);
-    }
 }
