@@ -56,8 +56,10 @@ public class ProposalReviewResource extends ObjectResourceBase{
         ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, ReviewedProposal.class,
                 "reviewedProposals", cycleCode, reviewedProposalId);
 
-        //ensure the date is set to 'now'
-        proposalReview.setReviewDate(new Date());
+        //set the date to the posix epoch, user must confirm that the review is complete at which
+        //point this date is updated to that at the point of confirmation, and the review becomes
+        //un-editable
+        proposalReview.setReviewDate(new Date(0L));
 
         return addNewChildObject(reviewedProposal, proposalReview, reviewedProposal::addToReviews);
     }
@@ -71,34 +73,125 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                  @PathParam("reviewId") Long reviewId)
         throws WebApplicationException
     {
-        ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, ReviewedProposal.class,
-                "reviewedProposals", cycleCode, reviewedProposalId);
+        ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class,
+                ReviewedProposal.class, "reviewedProposals", cycleCode, reviewedProposalId);
 
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class, ProposalReview.class,
-            "reviews", reviewedProposalId, reviewId);
+        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
-        return deleteChildObject(reviewedProposal,proposalReview, reviewedProposal::removeFromReviews);
+        return deleteChildObject(reviewedProposal,proposalReview,
+                reviewedProposal::removeFromReviews);
     }
 
     /*
-        Whenever we update a field in a review we update the reviewDate with the current date
+        Here we provide an API to edit certain individual fields of the ProposalReview class rather
+        that updating via an object in its entirety to avoid users setting whatever completion
+        date they like. The completion date can only be updated by the user confirming that the
+        review is completed. Additionally, this avoids users changing the "reviewer" at will; to
+        change a "reviewer" one must delete "this" review and add an entirely new one with the
+        "reviewer" of choice.
      */
 
     @PUT
-    @Path("/{reviewId}")
-    @Operation(summary = "update the review with new data")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/{reviewId}/comment")
+    @Operation(summary = "update the review with a new comment")
+    @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalReview updateReviewComment(@PathParam("cycleCode") Long cycleCode,
-                                              @PathParam("reviewedProposalId") Long reviewedProposalId,
-                                              @PathParam("reviewId") Long reviewId,
-                                              ProposalReview replacementReview)
+    public ProposalReview updateReviewComment(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("reviewedProposalId") Long reviewedProposalId,
+            @PathParam("reviewId") Long reviewId,
+            String replacementComment
+    )
         throws WebApplicationException
     {
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class, ProposalReview.class,
-                "reviews", reviewedProposalId, reviewId);
+        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
-        proposalReview.updateUsing(replacementReview);
+        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
+            throw new WebApplicationException(
+                    "Unable to edit as this Review has been confirmed completed", 400
+            );
+        }
+
+        proposalReview.setComment(replacementComment);
+
+        em.merge(proposalReview);
+
+        return proposalReview;
+    }
+
+    @PUT
+    @Path("/{reviewId}/score")
+    @Operation(summary = "update the review with a new score")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalReview updateReviewScore(@PathParam("cycleCode") Long cycleCode,
+                                            @PathParam("reviewedProposalId") Long reviewedProposalId,
+                                            @PathParam("reviewId") Long reviewId,
+                                            Double replacementScore
+    )
+            throws WebApplicationException
+    {
+        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+
+        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
+            throw new WebApplicationException(
+                    "Unable to edit as this Review has been confirmed completed", 400
+            );
+        }
+
+        proposalReview.setScore(replacementScore);
+
+        em.merge(proposalReview);
+
+        return proposalReview;
+    }
+
+    @PUT
+    @Path("/{reviewId}/technicalFeasibility")
+    @Operation(summary = "update the review with a new score")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalReview updateReviewFeasibility(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("reviewedProposalId") Long reviewedProposalId,
+            @PathParam("reviewId") Long reviewId,
+            Boolean replacementFeasibility
+    )
+            throws WebApplicationException
+    {
+        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+
+        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
+            throw new WebApplicationException(
+                    "Unable to edit as this Review has been confirmed completed", 400
+            );
+        }
+
+        proposalReview.setTechnicalFeasibility(replacementFeasibility);
+
+        em.merge(proposalReview);
+
+        return proposalReview;
+    }
+
+    //confirmation that the review is complete
+    @PUT
+    @Path("/{reviewId}/confirmReview")
+    @Operation(summary = "confirm the review is complete; sets the review's completeDate to now and makes the review un-editable")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalReview confirmReviewComplete(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("reviewedProposalId") Long reviewedProposalId,
+            @PathParam("reviewId") Long reviewId
+    )
+        throws WebApplicationException
+    {
+        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         proposalReview.setReviewDate(new Date());
 
