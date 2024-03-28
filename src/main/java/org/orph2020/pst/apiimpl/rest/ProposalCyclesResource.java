@@ -26,15 +26,6 @@ import java.util.*;
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
-    private ReviewedProposal findReviewedProposal(long cycleId, long revId) {
-        TypedQuery<ReviewedProposal> q = em.createQuery(
-                "Select o From ProposalCycle c join c.reviewedProposals o where c._id = :cid and  o._id = :rid",
-                ReviewedProposal.class
-        );
-        q.setParameter("cid", cycleId);
-        q.setParameter("rid", revId);
-        return q.getSingleResult();
-    }
 
     private SubmittedProposal findSubmittedProposal(long cycleId, long submittedId) {
         TypedQuery<SubmittedProposal> q = em.createQuery(
@@ -122,62 +113,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return findAllocatedGrade(cycleCode, gradeId);
     }
 
-
-    @GET
-    @Path("{cycleCode}/proposalsInReview")
-    @Operation(summary = "List the identifiers for the Proposals under review")
-    public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") long cycleId,
-                                                       @RestQuery String title) {
-        if(title == null)
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o WHERE p._id = "+cycleId+" ORDER BY o.submitted.proposal.title");
-        else
-            return getObjectIdentifiers("SELECT o._id,o.submitted.proposal.title FROM ProposalCycle p inner join p.reviewedProposals o Where p._id = "+cycleId+" and o.submitted.proposal.title like '"+title+"' ORDER BY o.submitted.proposal.title");
-    }
-
-
-    @POST
-    @Operation(summary = "upgrade a submitted proposal to a proposal under review")
-    @Path("{cycleCode}/proposalsInReview")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response submitProposalForReview(@PathParam("cycleCode") long cycleId, ReviewedProposal revIn)
-    {
-        ProposalCycle cycle =  findObject(ProposalCycle.class, cycleId);
-        revIn.setSuccessful(false); // newly added so cannot be successful yet.
-        cycle.addToReviewedProposals(revIn);
-        em.merge(cycle);
-
-        //get the proposal we have just added to the 'reviewed' list
-        List<ReviewedProposal> reviewedProposals = cycle.getReviewedProposals();
-        ObservingProposal responseProposal = reviewedProposals.get(reviewedProposals.size() - 1)
-                .getSubmitted().getProposal();
-
-        return responseWrapper(createSynopsisFromProposal(responseProposal), 201);
-    }
-
-    @GET
-    @Operation(summary = "get a specific proposal under review")
-    @Path("{cycleCode}/proposalsInReview/{reviewCode}")
-    public ReviewedProposal getReviewedProposal(@PathParam("cycleCode") long cycleId,
-                                                @PathParam("reviewCode") long revId)
-    {
-        return findReviewedProposal(cycleId, revId);
-    }
-
-    @POST
-    @Operation(summary = "add new review of proposal")
-    @Path("{cycleCode}/proposalsInReview/{reviewCode}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalReview submitReviewOfProposal(@PathParam("cycleCode") long cycleId,
-                                                 @PathParam("reviewCode") long revId,
-                                                 ProposalReview revIn)
-    {
-        ReviewedProposal reviewedProposal = findReviewedProposal(cycleId,revId);
-        revIn.setReviewDate(new Date());
-
-        return addNewChildObject(reviewedProposal, revIn, reviewedProposal::addToReviews);
-    }
 
     @GET
     @Path("{cycleCode}/allocatedProposals")

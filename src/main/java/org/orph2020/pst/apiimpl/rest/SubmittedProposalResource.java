@@ -4,14 +4,12 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
-import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
@@ -19,7 +17,7 @@ import java.util.Date;
 import java.util.List;
 
 @Path("proposalCycles/{cycleCode}/submittedProposals")
-@Tag(name="submitted-proposals")
+@Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
 public class SubmittedProposalResource extends ObjectResourceBase{
 
@@ -46,10 +44,11 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         /*
             SubmittedProposals need to remember the original proposalId from which they create
             a clone; it is the clone to which the SubmittedProposal refers, NOT the original
-            proposal.
+            proposal. SubmittedProposals currently do not have a means to do this.
+
             In this way, we can check for proposals that have been re-submitted i.e., compare the
-            'proposalId' input to the list of SubmittedProposals, and remove any now stale
-            SubmittedProposals and their clones, before adding a new SubmittedProposal with the
+            'proposalId' input to the same in the list of SubmittedProposals, and remove any now stale
+            SubmittedProposals and their clones, before adding a new SubmittedProposal with a new,
             updated clone.
          */
 

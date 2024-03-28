@@ -19,11 +19,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Path("proposalCycles/{cycleCode}/TAC")
-@Tag(name="time-allocation-committee")
+@Tag(name="proposalCycles-time-allocation-committee")
 @Produces(MediaType.APPLICATION_JSON)
 public class TACResource extends ObjectResourceBase {
 
     @GET
+    @Operation(summary = "get the TAC object for the given proposal cycle")
+    public TAC getTAC(@PathParam("cycleCode") Long cycleCode)
+    {
+        return findObject(ProposalCycle.class, cycleCode).getTac();
+    }
+
+
+    @GET
+    @Path("/members")
     @Operation(summary = "Get the CommitteeMembers (of the TAC) identifiers")
     public List<ObjectIdentifier> getCommitteeMembers(@PathParam("cycleCode") Long cycleCode,
                                                       @RestQuery String personName,
@@ -57,7 +66,7 @@ public class TACResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path("/{memberId}")
+    @Path("/members/{memberId}")
     public CommitteeMember getCommitteeMember(@PathParam("cycleCode") Long cycleCode,
                                               @PathParam("memberId") Long memberId)
             throws WebApplicationException
@@ -72,6 +81,7 @@ public class TACResource extends ObjectResourceBase {
     }
 
     @POST
+    @Path("/members")
     @Operation(summary = "Add a new CommitteeMember to the TAC")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -87,7 +97,7 @@ public class TACResource extends ObjectResourceBase {
     }
 
     @DELETE
-    @Path("/{memberId}")
+    @Path("/members/{memberId}")
     @Operation(summary = "Remove the CommitteeMember specified by 'memberId' from the TAC")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeCommitteeMember(@PathParam("cycleCode") Long cycleCode,
@@ -110,7 +120,7 @@ public class TACResource extends ObjectResourceBase {
 
 
     @PUT
-    @Path("/{memberId}/role")
+    @Path("members/{memberId}/role")
     @Operation(summary = "Edit the role of the CommitteeMember specified by 'memberId'")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})

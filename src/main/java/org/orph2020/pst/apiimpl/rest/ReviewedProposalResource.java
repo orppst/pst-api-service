@@ -9,27 +9,34 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.ReviewedProposal;
+import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ReviewedProposalSynopsis;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-@Path("proposalCycles/{cycleCode}/reviewedProposals")
-@Tag(name="reviewed-proposals")
+@Path("proposalCycles/{cycleCode}/proposalsInReview")
+@Tag(name="proposalCycles-proposals-in-review")
 @Produces(MediaType.APPLICATION_JSON)
 public class ReviewedProposalResource extends ObjectResourceBase{
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers for the reviewed proposals")
-    public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") Long cycleCode)
+    public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") Long cycleCode,
+                                                       @RestQuery String title)
     {
         String select = "select r._id,r.submitted.proposal.title ";
         String from = "from ProposalCycle c ";
         String innerJoins = "inner join c.reviewedProposals r ";
         String where = "where c._id=" + cycleCode + " ";
+        String titleLike = title == null ? "" : "and r.submitted.proposal.title like '"+title+"' ";
         String orderBy = "order by r.submitted.proposal.title";
 
-        return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
+
+        return getObjectIdentifiers(select + from + innerJoins + where + titleLike + orderBy);
     }
 
     @GET
@@ -42,19 +49,31 @@ public class ReviewedProposalResource extends ObjectResourceBase{
                 "reviewedProposals", cycleCode, reviewedProposalId);
     }
 
-    @POST
-    @Operation(summary = "add a new ReviewedProposal")
+    @PUT
+    @Operation(summary = "upgrade a submitted proposal to a proposal under review")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ReviewedProposal addReviewedProposal(@PathParam("cycleCode") Long cycleCode,
-                                                ReviewedProposal reviewedProposal)
+    public ReviewedProposalSynopsis upgradeSubmittedProposalToReview(
+            @PathParam("cycleCode") Long cycleCode,
+            Long submittedProposalId)
         throws WebApplicationException
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
-        return addNewChildObject(proposalCycle, reviewedProposal,
-                proposalCycle::addToReviewedProposals);
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, submittedProposalId);
+
+        //Date cannot be null (non-null constraint in DB) so we use the posix epoch for a "fresh" date
+        ReviewedProposal reviewedProposal =
+                new ReviewedProposal(false, new Date(0L), new ArrayList<>(), submittedProposal);
+
+        proposalCycle.addToReviewedProposals(reviewedProposal);
+
+        em.merge(proposalCycle);
+
+        return new ReviewedProposalSynopsis(reviewedProposal);
     }
+
 
     @DELETE
     @Path("/{reviewedProposalId}")
@@ -77,7 +96,7 @@ public class ReviewedProposalResource extends ObjectResourceBase{
     @Operation(summary = "update the 'successful' status of the given ReviewedProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ReviewedProposal updateReviewedProposalSuccess(@PathParam("cycleCode") Long cycleCode,
+    public ReviewedProposalSynopsis updateReviewedProposalSuccess(@PathParam("cycleCode") Long cycleCode,
                                                           @PathParam("reviewedProposalId") Long reviewedProposalId,
                                                           Boolean successStatus)
         throws WebApplicationException
@@ -87,26 +106,27 @@ public class ReviewedProposalResource extends ObjectResourceBase{
 
         reviewedProposal.setSuccessful(successStatus);
 
-        return reviewedProposal;
+        //update complete data to "now"
+        reviewedProposal.setReviewsCompleteDate(new Date());
+
+        return new ReviewedProposalSynopsis(reviewedProposal);
     }
 
     @PUT
     @Path("/{reviewedProposalId}/completeDate")
-    @Operation(summary = "update the 'reviewsCompleteDate' of the given ReviewedProposal")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "update the 'reviewsCompleteDate' of the given ReviewedProposal to today's date")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ReviewedProposal updateReviewedProposalCompleteDate(
+    public ReviewedProposalSynopsis updateReviewedProposalCompleteDate(
             @PathParam("cycleCode") Long cycleCode,
-            @PathParam("reviewedProposalId") Long reviewedProposalId,
-            Date completeDate)
+            @PathParam("reviewedProposalId") Long reviewedProposalId)
         throws WebApplicationException
     {
         ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, ReviewedProposal.class,
                 "reviewedProposals", cycleCode, reviewedProposalId);
 
-        reviewedProposal.setReviewsCompleteDate(completeDate);
+        reviewedProposal.setReviewsCompleteDate(new Date());
 
-        return reviewedProposal;
+        return new ReviewedProposalSynopsis(reviewedProposal);
     }
 
 }

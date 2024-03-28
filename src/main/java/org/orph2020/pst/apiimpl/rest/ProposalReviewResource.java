@@ -14,8 +14,8 @@ import org.orph2020.pst.common.json.ObjectIdentifier;
 import java.util.Date;
 import java.util.List;
 
-@Path("proposalCycles/{cycleCode}/reviewedProposals/{reviewedProposalId}/reviews")
-@Tag(name = "reviewed-proposals-reviews")
+@Path("proposalCycles/{cycleCode}/proposalsInReview/{reviewedProposalId}/reviews")
+@Tag(name = "proposalCycles-proposals-in-review-the-reviews")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalReviewResource extends ObjectResourceBase{
 
@@ -55,6 +55,9 @@ public class ProposalReviewResource extends ObjectResourceBase{
     {
         ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, ReviewedProposal.class,
                 "reviewedProposals", cycleCode, reviewedProposalId);
+
+        //ensure the date is set to 'now'
+        proposalReview.setReviewDate(new Date());
 
         return addNewChildObject(reviewedProposal, proposalReview, reviewedProposal::addToReviews);
     }
