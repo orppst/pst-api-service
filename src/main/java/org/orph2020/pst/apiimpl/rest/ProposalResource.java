@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import io.quarkus.oidc.UserInfo;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
@@ -56,7 +57,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     SubjectMapResource subjectMapResource;
     @Inject
-    JsonWebToken accessToken;
+    UserInfo userInfo;
 
     private static final String proposalRoot = "{proposalCode}";
 
@@ -100,7 +101,7 @@ public class ProposalResource extends ObjectResourceBase {
         boolean noQuery = investigatorName == null && title == null;
         boolean investigatorOnly = investigatorName != null && title == null;
         boolean titleOnly = investigatorName == null && title != null;
-        Long personId = subjectMapResource.subjectMap(accessToken.getSubject()).getPerson().getId();
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
         //Investigator table is joined twice, once for user view scope and again for searching other investigators.
@@ -130,7 +131,7 @@ public class ProposalResource extends ObjectResourceBase {
                 ObservingProposal.class
         );
         q.setParameter("pid", proposalCode);
-        q.setParameter("uid", subjectMapResource.subjectMap(accessToken.getSubject()).getPerson().getId());
+        q.setParameter("uid", subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId());
         return q.getSingleResult();
     }
 

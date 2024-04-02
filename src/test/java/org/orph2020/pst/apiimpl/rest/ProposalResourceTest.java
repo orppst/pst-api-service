@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
+import io.quarkus.test.security.oidc.Claim;
+import io.quarkus.test.security.oidc.OidcSecurity;
+import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
 import org.hamcrest.Matchers;
@@ -21,6 +24,11 @@ import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 @TestSecurity(user="John Flamsteed", roles = "default-roles-orppst")
+@OidcSecurity(claims = {
+      @Claim(key = "email", value = "pi@unreal.not.email")
+}, userinfo = {
+      @UserInfo(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
+})
 public class ProposalResourceTest {
     String JSON_UTF16 = "application/json; charset=UTF-16";
     @Inject
