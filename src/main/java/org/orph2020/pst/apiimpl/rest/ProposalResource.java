@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import io.quarkus.oidc.IdToken;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
@@ -95,12 +96,29 @@ public class ProposalResource extends ObjectResourceBase {
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Filters out submitted copies.")
     @RolesAllowed("default-roles-orppst")
-    public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
-
+    public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title)
+            throws WebApplicationException
+    {
         boolean noQuery = investigatorName == null && title == null;
         boolean investigatorOnly = investigatorName != null && title == null;
         boolean titleOnly = investigatorName == null && title != null;
-        Long personId = subjectMapResource.subjectMap(accessToken.getSubject()).getPerson().getId();
+        String subject = accessToken.getSubject();
+
+        if(subject == null)
+            throw new WebApplicationException(
+                    "Empty user, name: " + accessToken.getName() + " raw token: " + accessToken.getRawToken(),
+                    403
+            );
+
+        Person authenticatedUser = subjectMapResource.subjectMap(subject).getPerson();
+
+        if(authenticatedUser == null)
+            throw new WebApplicationException(
+                    "Unknown user " + subject,
+                    403
+            );
+
+        Long personId = authenticatedUser.getId();
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
         //Investigator table is joined twice, once for user view scope and again for searching other investigators.

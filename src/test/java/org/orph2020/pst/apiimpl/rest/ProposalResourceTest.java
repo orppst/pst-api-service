@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
+import io.quarkus.test.security.oidc.OidcSecurity;
+import io.quarkus.test.security.oidc.TokenIntrospection;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import io.restassured.response.Response;
 import org.hamcrest.Matchers;
@@ -14,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 
+import javax.security.auth.Subject;
+
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -21,6 +25,12 @@ import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
 @TestSecurity(user="John Flamsteed", roles = "default-roles-orppst")
+@OidcSecurity(introspectionRequired = true,
+        introspection = {
+                @TokenIntrospection(key = "subject", value = "SubjectUUID")
+        }
+)
+
 public class ProposalResourceTest {
     String JSON_UTF16 = "application/json; charset=UTF-16";
     @Inject
