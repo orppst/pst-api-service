@@ -40,17 +40,26 @@ public class AvailableResourcesResource extends ObjectResourceBase {
     @GET
     @Path("types")
     @Operation(summary = "get all the ResourceTypes associated with the given ProposalCycle")
-    public List<ResourceType> getCycleResourceTypes(@PathParam("cycleCode") long cycleCode)
+    public List<ObjectIdentifier> getCycleResourceTypes(@PathParam("cycleCode") Long cycleCode)
     {
         List<Resource> resources = findObject(ProposalCycle.class, cycleCode)
                 .getAvailableResources().getResources();
 
-        List<ResourceType> result = new ArrayList<>();
+        List<ObjectIdentifier> result = new ArrayList<>();
         for (Resource r : resources) {
-            result.add(new ResourceType(r.getType()));
+            result.add(new ObjectIdentifier(r.getType().getId(), r.getType().getName()));
         }
 
         return result;
+    }
+
+    @GET
+    @Path("types/{typeId}")
+    @Operation(summary = "get the ResourceType specified by 'typeId'")
+    public ResourceType getCycleResourceType(@PathParam("cycleCode") long cycleId,
+                                             @PathParam("typeId") long typeId)
+    {
+        return findObject(ResourceType.class, typeId);
     }
 
     @POST

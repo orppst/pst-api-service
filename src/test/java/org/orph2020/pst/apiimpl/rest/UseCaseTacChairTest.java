@@ -163,7 +163,7 @@ public class UseCaseTacChairTest {
               .body(subId)
               .put("proposalCycles/" + cycleId + "/allocatedProposals")
               .then()
-              .statusCode(201);
+              .statusCode(200);
 
       //Create a new AllocatedBlock
       //IMPL have chosen the first of everything here - in GUI each will be a list.
@@ -214,7 +214,7 @@ public class UseCaseTacChairTest {
               .statusCode(200)
               .extract().as(ResourceType.class, raObjectMapper);
 
-      AllocatedBlock allocation = AllocatedBlock.createAllocatedBlock(
+      AllocatedBlock allocatedBlock = AllocatedBlock.createAllocatedBlock(
             a -> {
                a.grade = grade;
                a.mode = mode;
@@ -231,9 +231,9 @@ public class UseCaseTacChairTest {
 
       given()
               .when()
-              .body(mapper.writeValueAsString(allocation))
+              .body(mapper.writeValueAsString(allocatedBlock))
               .contentType(JSON)
-              .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId)
+              .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId + "/allocatedBlock")
               .then()
               .statusCode(200);
 
