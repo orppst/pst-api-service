@@ -57,7 +57,8 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     SubjectMapResource subjectMapResource;
     @Inject
-    UserInfo userInfo;
+    JsonWebToken userInfo;
+//    UserInfo userInfo; // IMPL it would be nice to use UserInfo
 
     private static final String proposalRoot = "{proposalCode}";
 
