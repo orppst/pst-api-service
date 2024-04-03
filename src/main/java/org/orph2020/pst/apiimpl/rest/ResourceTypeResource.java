@@ -1,6 +1,5 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -8,6 +7,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ResourceType;
+import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.List;
 
@@ -18,9 +18,16 @@ public class ResourceTypeResource extends ObjectResourceBase{
 
     @GET
     @Operation(summary = "get all the ResourceTypes that have been defined in the App")
-    public List<ResourceType> getAllResourceTypes() {
-        TypedQuery<ResourceType> query = em.createQuery("select r from ResourceType r", ResourceType.class);
-        return query.getResultList();
+    public List<ObjectIdentifier> getAllResourceTypes() {
+        return getObjectIdentifiers("select r._id,r.name from ResourceType r");
+    }
+
+    @GET
+    @Path("{resourceTypeId}")
+    @Operation(summary = "get the specified resource type")
+    public ResourceType getResourceType(@PathParam("resourceTypeId") Long resourceTypeId)
+    {
+        return findObject(ResourceType.class, resourceTypeId);
     }
 
     @POST
