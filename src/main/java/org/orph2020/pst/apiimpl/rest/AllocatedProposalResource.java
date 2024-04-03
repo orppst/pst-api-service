@@ -5,7 +5,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.AllocatedBlock;
 import org.ivoa.dm.proposal.management.AllocatedProposal;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
@@ -58,21 +57,7 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         return new ProposalSynopsis(allocatedProposal.getSubmitted().getProposal());
     }
 
-    @POST
-    @Path("/{allocatedId}")
-    @Operation(summary = "add an AllocationBlock to the specific AllocatedProposal")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public AllocatedBlock addAllocatedBlockToAllocatedProposal(@PathParam("cycleCode") long cycleCode,
-                                                               @PathParam("allocatedId") long allocatedId,
-                                                               AllocatedBlock allocatedBlock)
-            throws WebApplicationException
-    {
-        AllocatedProposal allocatedProposal = findChildByQuery(ProposalCycle.class, AllocatedProposal.class,
-                "allocatedProposals", cycleCode, allocatedId);
 
-        return addNewChildObject(allocatedProposal, allocatedBlock, allocatedProposal::addToAllocation);
-    }
 
 
 }
