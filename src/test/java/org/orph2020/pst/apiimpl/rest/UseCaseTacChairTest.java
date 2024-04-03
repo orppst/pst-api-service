@@ -86,29 +86,17 @@ public class UseCaseTacChairTest {
             )
             .extract().jsonPath().getLong("[0].dbid");
 
-
-      Calendar calendar = Calendar.getInstance();
-      calendar.add(Calendar.DAY_OF_YEAR, 1);
-      Date tomorrow = calendar.getTime();
-      ReviewedProposal revp = new ReviewedProposal().withReviewsCompleteDate(tomorrow).withSuccessful(false);
-      SubmittedProposal submitted = new SubmittedProposal();
-      submitted.setXmlId(String.valueOf(subId));
-      revp.setSubmitted(submitted);
-
       given()
             .contentType("application/json; charset=UTF-16")
-            .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(revp))
+            .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(subId))
             .when()
-            .post("proposalCycles/" + cycleId + "/proposalsInReview")
+            .put("proposalCycles/" + cycleId + "/proposalsInReview")
             .then()
             .contentType(JSON)
-            .statusCode(201)
+            .statusCode(200)
             .log().body(); // TODO not sure that we want to return this all...
 
-      // when all proposals set for revieww
-      //send emails to the tac members, telling them to review.
-
-
+      // when all proposals set for review send emails to the tac members, telling them to review.
 
    }
 
@@ -140,7 +128,7 @@ public class UseCaseTacChairTest {
             .contentType("application/json; charset=UTF-16")
             .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(rev))
             .when()
-            .post("proposalCycles/" + cycleId + "/proposalsInReview/"+revId)
+            .post("proposalCycles/" + cycleId + "/proposalsInReview/"+revId+"/reviews")
             .then()
             .contentType(JSON)
             .statusCode(200)
@@ -175,7 +163,7 @@ public class UseCaseTacChairTest {
               .body(subId)
               .put("proposalCycles/" + cycleId + "/allocatedProposals")
               .then()
-              .statusCode(201);
+              .statusCode(200);
 
       //Create a new AllocatedBlock
       //IMPL have chosen the first of everything here - in GUI each will be a list.
@@ -226,7 +214,7 @@ public class UseCaseTacChairTest {
               .statusCode(200)
               .extract().as(ResourceType.class, raObjectMapper);
 
-      AllocatedBlock allocation = AllocatedBlock.createAllocatedBlock(
+      AllocatedBlock allocatedBlock = AllocatedBlock.createAllocatedBlock(
             a -> {
                a.grade = grade;
                a.mode = mode;
@@ -243,9 +231,9 @@ public class UseCaseTacChairTest {
 
       given()
               .when()
-              .body(mapper.writeValueAsString(allocation))
+              .body(mapper.writeValueAsString(allocatedBlock))
               .contentType(JSON)
-              .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId)
+              .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId + "/allocatedBlock")
               .then()
               .statusCode(200);
 
