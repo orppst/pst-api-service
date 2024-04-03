@@ -3,6 +3,8 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 20/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
@@ -27,7 +29,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "List the ProposalCycles")
+    @Operation(summary = "list the proposal cycles")
     public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed) {
         if(includeClosed)
             return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
@@ -38,39 +40,181 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Path("{cycleCode}")
-    @Operation(summary = "Get proposal cycle")
+    @Operation(summary = "get the given proposal cycle")
     public ProposalCycle getProposalCycle(@PathParam("cycleCode") long cycleId) {
         return findObject(ProposalCycle.class,cycleId);
     }
 
+
+    @POST
+    @Operation(summary = "create a proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalCycle createProposalCycle(ProposalCycle cycle) {
+        return persistObject(cycle);
+    }
+
+
+    //********* DATES **********
+
     @GET
     @Path("{cycleCode}/dates")
-    @Operation(summary = "Get the dates associated with a given ProposalCycle")
-    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") long cycleId)
+    @Operation(summary = "Get the dates associated with a given proposal cycle")
+    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
     {
-        ProposalCycle fullCycle =  findObject(ProposalCycle.class,cycleId);
+        ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
 
         return new ProposalCycleDates(fullCycle.getTitle(), fullCycle.getSubmissionDeadline(),
                 fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd());
     }
 
+    @PUT
+    @Path("{cycleCode}/dates/deadline")
+    @Operation(summary = "change the submission deadline of the given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalCycleDates replaceCycleDeadline(
+            @PathParam("cycleCode") Long cycleCode,
+            Date replacementDeadline
+    )
+        throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        cycle.setSubmissionDeadline(replacementDeadline);
+
+        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+    }
+
+
+    @PUT
+    @Path("{cycleCode}/dates/sessionStart")
+    @Operation(summary = "change the observation session start of the given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalCycleDates replaceCycleSessionStart(
+            @PathParam("cycleCode") Long cycleCode,
+            Date replacementStart
+    )
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        cycle.setObservationSessionStart(replacementStart);
+
+        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+    }
+
+    @PUT
+    @Path("{cycleCode}/dates/sessionEnd")
+    @Operation(summary = "change the observation session end of the given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalCycleDates replaceCycleSessionEnd(
+            @PathParam("cycleCode") Long cycleCode,
+            Date replacementEnd
+    )
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        cycle.setObservationSessionEnd(replacementEnd);
+
+        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+    }
+
+
+    //********* GRADES **********
 
     @GET
     @Path("{cycleCode}/grades")
-    @Operation(summary = "List the possible grades of the given ProposalCycle")
-    public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") long cycleCode)
+    @Operation(summary = "List the possible grades of the given proposal cycle")
+    public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") Long cycleCode)
     {
         return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name");
     }
 
     @GET
     @Path("{cycleCode}/grades/{gradeId}")
-    @Operation(summary = "get the specific grade associated with the given ProposalCycle")
-    public AllocationGrade getCycleAllocatedGrade(@PathParam("cycleCode") long cycleCode,
-                                                  @PathParam("gradeId") long gradeId)
+    @Operation(summary = "get the specific grade associated with the given proposal cycle")
+    public AllocationGrade getCycleAllocatedGrade(@PathParam("cycleCode") Long cycleCode,
+                                                  @PathParam("gradeId") Long gradeId)
     {
         return findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
+    }
+
+    @POST
+    @Path("{cycleCode}/grades")
+    @Operation(summary = "add a new possible allocation grade to the given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public AllocationGrade addCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
+                                                   AllocationGrade grade)
+        throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        return addNewChildObject(cycle, grade, cycle::addToPossibleGrades);
+    }
+
+    @DELETE
+    @Path("{cycleCode}/grades/{gradeId}")
+    @Operation(summary = "remove the specified possible grade from the given proposal cycle")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response removeCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
+                                               @PathParam("gradeId") Long gradeId)
+        throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
+                "possibleGrades", cycleCode, gradeId);
+
+        return deleteChildObject(cycle, grade, cycle::removeFromPossibleGrades);
+    }
+
+    @PUT
+    @Path("{cycleCode}/grades/{gradeId}/name")
+    @Operation(summary = "change the name of the given allocation grade")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public AllocationGrade replaceCycleAllocationGradeName(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("gradeId") Long gradeId,
+            String replacementName
+    )
+        throws WebApplicationException
+    {
+        AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
+                "possibleGrades", cycleCode, gradeId);
+
+        grade.setName(replacementName);
+
+        return grade;
+    }
+
+    @PUT
+    @Path("{cycleCode}/grades/{gradeId}/description")
+    @Operation(summary = "change the description of the given allocation grade")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public AllocationGrade replaceCycleAllocationGradeDescription(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("gradeId") Long gradeId,
+            String replacementDescription
+    )
+            throws WebApplicationException
+    {
+        AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
+                "possibleGrades", cycleCode, gradeId);
+
+        grade.setDescription(replacementDescription);
+
+        return grade;
     }
 
 }
