@@ -468,7 +468,7 @@ public class UseCasePiTest {
                    "$.size()", equalTo(1)
              )
              .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
-
+        System.out.println("Submitting...");
        given()
              .contentType("text/plain")
              .body(proposalid)
@@ -477,7 +477,7 @@ public class UseCasePiTest {
              .then()
              .statusCode(201)
        ;
-
+        System.out.println("Submitted!");
        // take a look at what is there now
 
        given().when().get("proposals").then().log().body();

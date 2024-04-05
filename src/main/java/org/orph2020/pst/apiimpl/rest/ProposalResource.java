@@ -6,6 +6,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
+import net.bytebuddy.implementation.bytecode.Throw;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -102,7 +103,11 @@ public class ProposalResource extends ObjectResourceBase {
         boolean noQuery = investigatorName == null && title == null;
         boolean investigatorOnly = investigatorName != null && title == null;
         boolean titleOnly = investigatorName == null && title != null;
-        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        Person user = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson();
+        if(user == null)
+            throw new WebApplicationException("Unidentified user", 401);
+
+        Long personId = user.getId();
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
         //Investigator table is joined twice, once for user view scope and again for searching other investigators.
@@ -124,15 +129,19 @@ public class ProposalResource extends ObjectResourceBase {
         }
     }
 
-    private ObservingProposal singleObservingProposal(Long proposalCode)
+    private ObservingProposal singleObservingProposal(Long proposalCode, Person user)
+            throws WebApplicationException
     {
+        if(user == null)
+            throw new WebApplicationException("Unidentified user", 401);
+        
         TypedQuery<ObservingProposal> q = em.createQuery(
                 "Select o From ObservingProposal o, Investigator i where i member of o.investigators "
                         + "and o._id = :pid and i.person._id = :uid",
                 ObservingProposal.class
         );
         q.setParameter("pid", proposalCode);
-        q.setParameter("uid", subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId());
+        q.setParameter("uid", user.getId());
         return q.getSingleResult();
     }
 
@@ -147,7 +156,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException
     {
-        return singleObservingProposal(proposalCode);
+        return singleObservingProposal(proposalCode, subjectMapResource.subjectMap(userInfo.getSubject()).getPerson());
     }
 
     @POST
@@ -176,18 +185,20 @@ public class ProposalResource extends ObjectResourceBase {
 
     @GET
     @Path(proposalRoot + "/title")
+    @RolesAllowed("default-roles-orppst")
     @Operation(summary = "get the title of the ObservingProposal specified by 'proposalCode'")
     public Response getObservingProposalTitle(@PathParam("proposalCode") Long proposalCode) {
-        ObservingProposal proposal = singleObservingProposal(proposalCode);
+        ObservingProposal proposal = singleObservingProposal(proposalCode, subjectMapResource.subjectMap(userInfo.getSubject()).getPerson());
         return responseWrapper(proposal.getTitle(), 200);
     }
 
     //TODO - add more checks, consider where to put observatory / instrument specific validation.
     @GET
     @Path(proposalRoot + "/validate")
+    @RolesAllowed("default-roles-orppst")
     @Operation(summary = "validate the proposal, get summary strings of it's state.  Optionally pass a cycle to compare dates with.")
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
-        ObservingProposal proposal = singleObservingProposal(proposalCode);
+        ObservingProposal proposal = singleObservingProposal(proposalCode, subjectMapResource.subjectMap(userInfo.getSubject()).getPerson());
         boolean valid = true;
         String info = "Your proposal is ready for submission";
         StringBuilder warn = new StringBuilder();

@@ -49,6 +49,13 @@ public class ProposalExportImportTest {
     }
 
     @Test
+    @TestSecurity(user="John Flamsteed", roles = "default-roles-orppst")
+    @OidcSecurity(claims = {
+            @Claim(key = "email", value = "pi@unreal.not.email")
+            ,@Claim(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
+    }, userinfo = {
+            @UserInfo(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
+    })
     void testExportThenImportProposal() throws JsonProcessingException {
         //export example proposal them import and check it's there
         String importExportProposalName = "Import of exported proposal";
