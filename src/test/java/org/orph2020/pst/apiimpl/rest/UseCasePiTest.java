@@ -475,7 +475,7 @@ public class UseCasePiTest {
              .when()
              .put("/proposalCycles/"+cycleId+"/submittedProposals")
              .then()
-             .statusCode(201)
+             .statusCode(200)
        ;
 
        // take a look at what is there now
