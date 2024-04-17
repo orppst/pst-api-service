@@ -154,6 +154,32 @@ public class ObservationResource extends ObjectResourceBase {
         return responseWrapper(observation, 201);
     }
 
+    @PUT
+    @Path("{observationId}/calibrationIntendedUse")
+    @Operation(summary = "replace the IntendedUse of the given CalibrationObservation")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceIntendedUse(@PathParam("proposalCode") Long proposalCode,
+                                       @PathParam("observationId") Long observationId,
+                                       CalibrationTarget_intendedUse replacementUse)
+        throws WebApplicationException
+    {
+        Observation observingProposal = findChildByQuery(ObservingProposal.class, Observation.class,
+                "observations", proposalCode, observationId);
+
+        if (observingProposal instanceof CalibrationObservation) {
+            ((CalibrationObservation) observingProposal).setIntent(replacementUse);
+        } else {
+            throw new WebApplicationException(
+                    String.format("Observation with id %d is NOT a CalibrationObservation", observationId)
+            );
+        }
+
+        return responseWrapper(observingProposal, 201);
+    }
+
+
+
     @GET
     @Path("/{observationId}/constraints")
     @Operation(summary = "get the list of Constraints for the given Observation in the given ObservingProposal")

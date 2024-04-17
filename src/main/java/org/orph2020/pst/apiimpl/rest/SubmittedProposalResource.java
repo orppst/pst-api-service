@@ -36,7 +36,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @PUT
     @Operation(summary = "submit a proposal")
-    @Path("{cycleCode}/submittedProposals")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, long proposalId)

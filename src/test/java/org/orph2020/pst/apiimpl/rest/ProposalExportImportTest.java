@@ -19,12 +19,12 @@ import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.equalTo;
 
 @QuarkusTest
-@TestSecurity(user="John Flamsteed", roles = "default-roles-orppst")
+@TestSecurity(user = "pi", roles = "default-roles-orppst")
 @OidcSecurity(claims = {
-        @Claim(key = "email", value = "pi@unreal.not.email")
-        ,@Claim(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
+      @Claim(key = "email", value = "pi@unreal.not.email")
+      ,@Claim(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
 }, userinfo = {
-        @UserInfo(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
+      @UserInfo(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
 })
 public class ProposalExportImportTest {
     @Inject
