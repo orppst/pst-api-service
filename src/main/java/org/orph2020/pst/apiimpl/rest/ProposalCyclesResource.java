@@ -54,6 +54,36 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return persistObject(cycle);
     }
 
+    ///********* TITLE **********
+
+    @GET
+    @Path("{cycleCode}/title")
+    @Operation(summary = "Get the title for a given proposal cycle")
+    public Response getProposalCycleTitle(@PathParam("cycleCode") Long cycleCode)
+    {
+        ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
+
+        return responseWrapper(fullCycle.getTitle(), 200);
+    }
+
+    @PUT
+    @Path("{cycleCode}/title")
+    @Operation(summary = "change the title of the given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceCycleTitle(
+            @PathParam("cycleCode") Long cycleCode,
+            String replacementTitle
+    )
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        cycle.setTitle(replacementTitle);
+
+        return responseWrapper(cycle.getTitle(), 200);
+    }
+
 
     //********* DATES **********
 
