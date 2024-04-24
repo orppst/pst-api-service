@@ -69,7 +69,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @PUT
     @Path("{cycleCode}/title")
     @Operation(summary = "change the title of the given proposal cycle")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleTitle(
             @PathParam("cycleCode") Long cycleCode,
