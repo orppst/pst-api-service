@@ -1,7 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,7 +14,6 @@ import org.ivoa.dm.proposal.management.TacRole;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Path("proposalCycles/{cycleCode}/TAC")
@@ -57,12 +55,7 @@ public class TACResource extends ObjectResourceBase {
 
         //using the 3 argument ObjectIdentifier constructor
 
-        List<ObjectIdentifier> result = new ArrayList<>();
-        List<Object[]> results = query.getResultList();
-        for (Object[] r : results) {
-            result.add(new ObjectIdentifier((Long)r[0], (String)r[1], (String)r[2]));
-        }
-        return result;
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET

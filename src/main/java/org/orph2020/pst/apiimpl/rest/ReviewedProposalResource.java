@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -28,15 +29,22 @@ public class ReviewedProposalResource extends ObjectResourceBase{
     public List<ObjectIdentifier> getReviewedProposals(@PathParam("cycleCode") Long cycleCode,
                                                        @RestQuery String title)
     {
-        String select = "select r._id,r.submitted.proposal.title ";
-        String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.reviewedProposals r ";
-        String where = "where c._id=" + cycleCode + " ";
-        String titleLike = title == null ? "" : "and r.submitted.proposal.title like '"+title+"' ";
-        String orderBy = "order by r.submitted.proposal.title";
 
+        String titleLike = title == null ? "" :
+                "and r.submitted.proposal.title = :pTitle ";
 
-        return getObjectIdentifiers(select + from + innerJoins + where + titleLike + orderBy);
+        String qlString = "select r._id,cast(r.submitted.proposal._id as string),r.submitted.proposal.title "
+                + "from ProposalCycle c "
+                + "inner join c.reviewedProposals r "
+                + "where c._id=" + cycleCode + " "
+                + titleLike
+                + " order by r.submitted.proposal.id desc";
+
+        Query query = em.createQuery(qlString);
+
+        if (title != null) query.setParameter("pTitle", title);
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET

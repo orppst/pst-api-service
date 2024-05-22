@@ -44,6 +44,16 @@ abstract public class ObjectResourceBase {
         return result;
     }
 
+    // Uses the three parameter ObjectIdentifier constructor
+    protected List<ObjectIdentifier> getObjectIdentifiersAlt(Query query){
+        List<ObjectIdentifier> result = new ArrayList<>();
+        List<Object[]> results = query.getResultList();
+        for (Object[] r : results) {
+            result.add(new ObjectIdentifier((Long)r[0], (String)r[1], (String)r[2]));
+        }
+        return result;
+    }
+
     protected <T> T findObject(Class<T> type, Long id)
         throws WebApplicationException
     {
