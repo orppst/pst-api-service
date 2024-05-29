@@ -3,7 +3,6 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2022 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
-import io.quarkus.oidc.UserInfo;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
@@ -554,6 +553,17 @@ public class ProposalResource extends ObjectResourceBase {
             return getObjectIdentifiers("SELECT t._id,t.name FROM ObservingProposal o Inner Join o.fields t WHERE o._id = "+proposalCode+" and t.name like '"+fieldName+"' ORDER BY t.name");
         }
 
+    }
+
+    @GET
+    @Path(fieldsRoot+"/{fieldId}")
+    @Operation(summary = "get the Field specified by the 'fieldId' in the given proposal")
+    public Field getField(@PathParam("proposalCode") Long proposalCode,
+                          @PathParam("fieldId") Long fieldId)
+        throws WebApplicationException
+    {
+        return findChildByQuery(ObservingProposal.class, Field.class, "fields",
+                proposalCode, fieldId);
     }
 
     @POST
