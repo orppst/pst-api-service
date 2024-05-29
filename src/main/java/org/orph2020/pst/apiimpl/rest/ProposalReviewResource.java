@@ -8,13 +8,13 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.ProposalReview;
-import org.ivoa.dm.proposal.management.ReviewedProposal;
+import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.Date;
 import java.util.List;
 
-@Path("proposalCycles/{cycleCode}/proposalsInReview/{reviewedProposalId}/reviews")
+@Path("proposalCycles/{cycleCode}/submittedProposals/{reviewedProposalId}/reviews")
 @Tag(name = "proposalCycles-proposals-in-review-the-reviews")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProposalReviewResource extends ObjectResourceBase{
@@ -29,7 +29,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     {
         String select = "select r._id,r.reviewer.person.fullName ";
         String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.reviewedProposals p inner join p.reviews r ";
+        String innerJoins = "inner join c.submittedProposals p inner join p.reviews r ";
         String where = "where c._id=" + cycleCode + " and p._id=" + reviewedProposalId + " ";
         String orderBy = "order by r.reviewer.person.fullName";
 
@@ -43,7 +43,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                     @PathParam("reviewedProposalId") Long reviewedProposalId,
                                     @PathParam("reviewId") Long reviewId)
     {
-        return findChildByQuery(ReviewedProposal.class, ProposalReview.class,
+        return findChildByQuery(SubmittedProposal.class, ProposalReview.class,
                 "reviews", reviewedProposalId, reviewId);
     }
 
@@ -56,8 +56,9 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                     ProposalReview proposalReview)
         throws WebApplicationException
     {
-        ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, ReviewedProposal.class,
-                "reviewedProposals", cycleCode, reviewedProposalId);
+        //IMPL do not strictly need to do thi
+        SubmittedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, reviewedProposalId);
 
         //set the date to the posix epoch, user must confirm that the review is complete at which
         //point this date is updated to that at the point of confirmation, and the review becomes
@@ -76,10 +77,10 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                  @PathParam("reviewId") Long reviewId)
         throws WebApplicationException
     {
-        ReviewedProposal reviewedProposal = findChildByQuery(ProposalCycle.class,
-                ReviewedProposal.class, "reviewedProposals", cycleCode, reviewedProposalId);
+        SubmittedProposal reviewedProposal = findChildByQuery(ProposalCycle.class,
+              SubmittedProposal.class, "submittedProposals", cycleCode, reviewedProposalId);
 
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+        ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         return deleteChildObject(reviewedProposal,proposalReview,
@@ -108,7 +109,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
         throws WebApplicationException
     {
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+        ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
@@ -137,7 +138,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
             throws WebApplicationException
     {
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+        ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
@@ -167,7 +168,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
             throws WebApplicationException
     {
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+        ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
@@ -196,7 +197,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
         throws WebApplicationException
     {
-        ProposalReview proposalReview = findChildByQuery(ReviewedProposal.class,
+        ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
         proposalReview.setReviewDate(new Date());
