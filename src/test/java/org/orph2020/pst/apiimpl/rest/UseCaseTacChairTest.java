@@ -74,9 +74,10 @@ public class UseCaseTacChairTest {
             );
 
    }
+
    @Test
-   void setProposalForReview() throws JsonProcessingException {
-      long subId = given()
+   void reviewProposal() throws JsonProcessingException {
+      long revId = given()
             .when()
             .get("proposalCycles/" + cycleId + "/submittedProposals")
             .then()
@@ -86,39 +87,13 @@ public class UseCaseTacChairTest {
             )
             .extract().jsonPath().getLong("[0].dbid");
 
-      given()
-            .contentType("application/json; charset=UTF-16")
-            .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(subId))
-            .when()
-            .put("proposalCycles/" + cycleId + "/proposalsInReview")
-            .then()
-            .contentType(JSON)
-            .statusCode(200)
-            .log().body(); // TODO not sure that we want to return this all...
-
-      // when all proposals set for review send emails to the tac members, telling them to review.
-
-   }
-
-   @Test
-   void reviewProposal() throws JsonProcessingException {
-      long revId = given()
-            .when()
-            .get("proposalCycles/" + cycleId + "/proposalsInReview")
-            .then()
-            .statusCode(200)
-            .body(
-                  "$.size()", greaterThan(0)
-            )
-            .extract().jsonPath().getLong("[0].dbid");
-
       // the TAC member gets a proposal for review
-      ReviewedProposal revprop = given()
+      SubmittedProposal revprop = given()
             .when()
-            .get("proposalCycles/" + cycleId + "/proposalsInReview/" + revId)
+            .get("proposalCycles/" + cycleId + "/submittedProposals/" + revId)
             .then()
             .statusCode(200)
-            .extract().as(ReviewedProposal.class, raObjectMapper);
+            .extract().as(SubmittedProposal.class, raObjectMapper);
 
 
       // TAC member adds a review
@@ -128,7 +103,7 @@ public class UseCaseTacChairTest {
             .contentType("application/json; charset=UTF-16")
             .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(rev))
             .when()
-            .post("proposalCycles/" + cycleId + "/proposalsInReview/"+revId+"/reviews")
+            .post("proposalCycles/" + cycleId + "/submittedProposals/"+revId+"/reviews")
             .then()
             .contentType(JSON)
             .statusCode(200)
@@ -140,7 +115,7 @@ public class UseCaseTacChairTest {
    void allocateProposal() throws JsonProcessingException {
       long revId = given()
             .when()
-            .get("proposalCycles/" + cycleId + "/proposalsInReview")
+            .get("proposalCycles/" + cycleId + "/submittedProposals")
             .then()
             .statusCode(200)
             .body(
@@ -148,14 +123,14 @@ public class UseCaseTacChairTest {
             )
             .extract().jsonPath().getLong("[0].dbid");
 
-      ReviewedProposal revprop = given()
+      SubmittedProposal revprop = given()
             .when()
-            .get("proposalCycles/" + cycleId + "/proposalsInReview/" + revId)
+            .get("proposalCycles/" + cycleId + "/submittedProposals/" + revId)
             .then()
             .statusCode(200)
-            .extract().as(ReviewedProposal.class, raObjectMapper);
+            .extract().as(SubmittedProposal.class, raObjectMapper);
 
-      long subId = revprop.getSubmitted().getId();
+      long subId = revprop.getId();
 
       //push reviewed proposal to 'allocatedProposals' list
       given()
