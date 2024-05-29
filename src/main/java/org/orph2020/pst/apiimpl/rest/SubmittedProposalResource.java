@@ -60,7 +60,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         pclone.updateClonedReferences();// TODO API subject to change
         pclone.setSubmitted(true);
         em.persist(pclone);
-        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(),pclone);
+        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), false, new Date(), pclone);
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
