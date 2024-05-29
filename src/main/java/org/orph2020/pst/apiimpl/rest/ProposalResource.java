@@ -566,6 +566,25 @@ public class ProposalResource extends ObjectResourceBase {
                 proposalCode, fieldId);
     }
 
+    @PUT
+    @Path(fieldsRoot+"/{fieldId}/name")
+    @Operation(summary = "change the name of the specified field")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response changeFieldName(@PathParam("proposalCode") Long proposalCode,
+                                    @PathParam("fieldId") Long fieldId,
+                                    String replacementName)
+        throws WebApplicationException
+    {
+        Field field = findChildByQuery(ObservingProposal.class, Field.class, "fields",
+                proposalCode, fieldId);
+
+        field.setName(replacementName);
+
+        return responseWrapper(field, 200);
+    }
+
+
     @POST
     @Path(fieldsRoot)
     @Operation(summary = "add a new Field to the given ObservingProposal")
