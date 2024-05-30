@@ -57,11 +57,11 @@ public class ProposalResourceTest {
         Integer coiInvestigatorId =
               given()
                     .when()
-                    .param("fullName", "George Airy")
+                    .param("name", "George Airy")
                     .get("people")
                     .then()
                     .body(
-                          "$.size()", equalTo(5)
+                          "$.size()", equalTo(1)
                     )
                     .extract().jsonPath().getInt("[0].dbid");
 
