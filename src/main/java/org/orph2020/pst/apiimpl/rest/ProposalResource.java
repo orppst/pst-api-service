@@ -569,7 +569,7 @@ public class ProposalResource extends ObjectResourceBase {
     @PUT
     @Path(fieldsRoot+"/{fieldId}/name")
     @Operation(summary = "change the name of the specified field")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response changeFieldName(@PathParam("proposalCode") Long proposalCode,
                                     @PathParam("fieldId") Long fieldId,
