@@ -36,13 +36,13 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     @GET
-    @Path("/{reviewedProposalId}")
-    @Operation(summary = "get the ReviewedProposal specified by 'reviewedProposalId'")
-    public SubmittedProposal getReviewedProposal(@PathParam("cycleCode") Long cycleCode,
-                                                @PathParam("reviewedProposalId") Long reviewedProposalId)
+    @Path("/{submittedProposalId}")
+    @Operation(summary = "get the SubmittedProposal specified by 'submittedProposalId'")
+    public SubmittedProposal getSubmittedProposal(@PathParam("cycleCode") Long cycleCode,
+                                                @PathParam("submittedProposalId") Long submittedProposalId)
     {
         return findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
-              "submittedProposals", cycleCode, reviewedProposalId);
+              "submittedProposals", cycleCode, submittedProposalId);
     }
 
 
@@ -72,7 +72,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         pclone.updateClonedReferences();// TODO API subject to change
         pclone.setSubmitted(true);
         em.persist(pclone);
-        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), false, new Date(), null, pclone);
+        //constructor args.:(submission date, successful, reviews-complete-date, reviews, the-proposal)
+        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), false, new Date(0L), null, pclone);
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
@@ -85,40 +86,54 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     @PUT
-    @Path("/{reviewedProposalId}/success")
-    @Operation(summary = "update the 'successful' status of the given ReviewedProposal")
+    @Path("/{submittedProposalId}/success")
+    @Operation(summary = "update the 'successful' status of the given SubmittedProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateReviewedProposalSuccess(@PathParam("cycleCode") Long cycleCode,
-                                                  @PathParam("reviewedProposalId") Long reviewedProposalId,
+    public Response updateSubmittedProposalSuccess(@PathParam("cycleCode") Long cycleCode,
+                                                  @PathParam("submittedProposalId") Long submittedProposalId,
                                                   Boolean successStatus)
           throws WebApplicationException
     {
-        SubmittedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
-              "submittedProposals", cycleCode, reviewedProposalId);
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+              "submittedProposals", cycleCode, submittedProposalId);
 
-        reviewedProposal.setSuccessful(successStatus);
+        //the success state of a proposal may only be changed once ALL reviews are complete i.e., after
+        //the 'reviewsCompleteDate' has been updated successfully
+        if (submittedProposal.getReviewsCompleteDate().compareTo(new Date(0L)) == 0) {
+            throw new WebApplicationException(
+                    "All reviews must be complete before the 'successful' status can be updated", 400
+            );
+        }
 
+        submittedProposal.setSuccessful(successStatus);
 
-
-        return mergeObject(reviewedProposalId);
+        return mergeObject(submittedProposalId);
     }
 
     @PUT
-    @Path("/{reviewedProposalId}/completeDate")
-    @Operation(summary = "update the 'reviewsCompleteDate' of the given ReviewedProposal to today's date")
+    @Path("/{submittedProposalId}/completeDate")
+    @Operation(summary = "update the 'reviewsCompleteDate' of the given SubmittedProposal to today's date")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateReviewedProposalCompleteDate(
+    public Response updateReviewsCompleteDate(
           @PathParam("cycleCode") Long cycleCode,
-          @PathParam("reviewedProposalId") Long reviewedProposalId)
+          @PathParam("submittedProposalId") Long submittedProposalId)
           throws WebApplicationException
     {
-        SubmittedProposal reviewedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
-              "submittedProposals", cycleCode, reviewedProposalId);
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+              "submittedProposals", cycleCode, submittedProposalId);
 
-        reviewedProposal.setReviewsCompleteDate(new Date());
+        //check that the reviews have actually been submitted before setting the complete date
+        if (submittedProposal.getReviews().stream()
+                .anyMatch(review -> review.getReviewDate().compareTo(new Date(0L)) == 0)) {
+            throw new WebApplicationException(
+                    "Not all reviews have been submitted", 400
+            );
+        }
 
-        return mergeObject(reviewedProposalId);
+        submittedProposal.setReviewsCompleteDate(new Date());
+
+        return mergeObject(submittedProposalId);
     }
 
 }
