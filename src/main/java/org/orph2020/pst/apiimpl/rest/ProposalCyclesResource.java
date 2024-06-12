@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
+import org.ivoa.dm.proposal.prop.Observatory;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -245,6 +246,38 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         grade.setDescription(replacementDescription);
 
         return grade;
+    }
+
+    ///********* OBSERVATORY **********
+
+    @GET
+    @Path("{cycleCode}/observatory")
+    @Operation(summary = "Get the observatory object identifier for a given proposal cycle")
+    public Observatory getProposalCycleObservatory(@PathParam("cycleCode") Long cycleCode)
+    {
+        ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
+
+        return fullCycle.getObservatory();
+    }
+
+    @PUT
+    @Path("{cycleCode}/observatory")
+    @Operation(summary = "change the observatory for the given proposal cycle")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceCycleObservatory(
+            @PathParam("cycleCode") Long cycleCode,
+            Long replacementObservatoryCode
+    )
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        Observatory replacementObservatory = findObject(Observatory.class, replacementObservatoryCode);
+
+        cycle.setObservatory(replacementObservatory);
+
+        return responseWrapper(cycle.getObservatory(), 200);
     }
 
 }
