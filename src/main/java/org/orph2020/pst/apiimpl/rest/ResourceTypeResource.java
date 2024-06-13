@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -31,11 +32,19 @@ public class ResourceTypeResource extends ObjectResourceBase{
     }
 
     @POST
-    @Operation(summary = "add a new ResourceType to the App")
+    @Operation(summary = "add a new ResourceType to the App, the name of the type must be unique")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ResourceType addNewResourceType(ResourceType resourceType) {
-        return persistObject(resourceType);
+    public ResourceType addNewResourceType(ResourceType resourceType)
+            throws WebApplicationException {
+        //ensure ResourceType names are unique
+        Query query = em.createQuery("select r from ResourceType r where r.name = :name");
+        query.setParameter("name", resourceType.getName());
+        if (query.getResultList().isEmpty()) {
+            return persistObject(resourceType);
+        } else {
+            throw new WebApplicationException(Response.Status.CONFLICT);
+        }
     }
 
     @DELETE
