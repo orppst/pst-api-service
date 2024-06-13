@@ -6,9 +6,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.AllocatedBlock;
-import org.ivoa.dm.proposal.management.AllocatedProposal;
-import org.ivoa.dm.proposal.management.ProposalCycle;
+import org.ivoa.dm.proposal.management.*;
+import org.ivoa.dm.proposal.prop.ObservingMode;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.List;
@@ -31,6 +30,17 @@ public class AllocatedBlockResource extends ObjectResourceBase{
         String orderBy = "order by b.grade.name";
 
         return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
+    }
+
+    @GET
+    @Path("{blockId}")
+    @Operation(summary = "get the AllocatedBlock specified by the 'blockId'")
+    public AllocatedBlock getAllocatedBlock(@PathParam("cycleCode") Long cycleCode,
+                                            @PathParam("allocatedId") Long allocatedId,
+                                            @PathParam("blockId") Long blockId)
+    {
+        return findChildByQuery(AllocatedProposal.class, AllocatedBlock.class,
+                "allocation", allocatedId, blockId);
     }
 
     @POST
@@ -65,4 +75,69 @@ public class AllocatedBlockResource extends ObjectResourceBase{
 
         return deleteChildObject(allocatedProposal, allocatedBlock, allocatedProposal::removeFromAllocation);
     }
+
+    @PUT
+    @Path("{blockId}/grade")
+    @Operation(summary = "change the grade of the given AllocatedBlock")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateGrade(@PathParam("cycleCode") Long cycleCode,
+                                @PathParam("allocatedId") Long allocatedId,
+                                @PathParam("blockId") Long blockId,
+                                Long gradeId)
+        throws WebApplicationException
+    {
+        AllocatedBlock allocatedBlock = findChildByQuery(AllocatedProposal.class, AllocatedBlock.class,
+                "allocation", allocatedId, blockId);
+
+        AllocationGrade allocationGrade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
+                "possibleGrades", cycleCode, gradeId);
+
+        allocatedBlock.setGrade(allocationGrade);
+
+        return responseWrapper(allocatedBlock, 200);
+    }
+
+    @PUT
+    @Path("{blockId}/resourceAmount")
+    @Operation(summary = "change the amount of the resource of the given AllocatedBlock")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response updateResource(@PathParam("cycleCode") Long cycleCode,
+                                   @PathParam("allocatedId") Long allocatedId,
+                                   @PathParam("blockId") Long blockId,
+                                   Double amount)
+        throws WebApplicationException
+    {
+        AllocatedBlock allocatedBlock = findChildByQuery(AllocatedProposal.class, AllocatedBlock.class,
+                "allocation", allocatedId, blockId);
+
+        allocatedBlock.getResource().setAmount(amount);
+
+        return responseWrapper(allocatedBlock, 200);
+    }
+
+    @PUT
+    @Path("{blockId}/observingMode")
+    @Operation(summary = "change the ObservingMode of the given AllocationBlock")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response changeObservingMode(@PathParam("cycleCode") Long cycleCode,
+                                        @PathParam("allocatedId") Long allocatedId,
+                                        @PathParam("blockId") Long blockId,
+                                        Long observingModeId)
+        throws WebApplicationException
+    {
+        AllocatedBlock allocatedBlock = findChildByQuery(AllocatedProposal.class, AllocatedBlock.class,
+                "allocation", allocatedId, blockId);
+
+        ObservingMode observingMode = findChildByQuery(ProposalCycle.class, ObservingMode.class,
+                "observingModes", cycleCode, observingModeId);
+
+        allocatedBlock.setMode(observingMode);
+
+        return responseWrapper(allocatedBlock, 200);
+    }
+
+
 }
