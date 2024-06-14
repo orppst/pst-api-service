@@ -22,8 +22,8 @@ public class AllocatedProposalResource extends ObjectResourceBase{
 
     @GET
     @Operation(summary = "get identifiers for all the AllocatedProposals in the given ProposalCycle, optionally provide a proposal title to get a specific identifier ")
-    public List<ObjectIdentifier> getAllocatedProposalsFromCycle(@PathParam("cycleCode") Long cycleCode,
-                                                                 @RestQuery String title) {
+    public List<ObjectIdentifier> getAllocatedProposals(@PathParam("cycleCode") Long cycleCode,
+                                                        @RestQuery String title) {
 
         String select = "select o._id,o.submitted.proposal.title ";
         String from = "from ProposalCycle p ";
@@ -33,6 +33,15 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         String orderBy = "order by o.submitted.proposal.title";
 
         return getObjectIdentifiers(select + from + innerJoins + where + titleLike + orderBy);
+    }
+
+    @GET
+    @Path("{allocatedId}")
+    @Operation(summary = "get the Allocated Proposal specified by 'allocationId' in the given cycle")
+    public AllocatedProposal getAllocatedProposal(@PathParam("cycleCode") Long cycleCode,
+                                                  @PathParam("allocatedId") Long allocatedId) {
+        return findChildByQuery(ProposalCycle.class, AllocatedProposal.class,
+                "allocatedProposals", cycleCode, allocatedId);
     }
 
 

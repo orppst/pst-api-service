@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -23,13 +24,14 @@ public class AllocatedBlockResource extends ObjectResourceBase{
             @PathParam("cycleCode") Long cycleCode,
             @PathParam("allocatedId") Long allocatedId)
     {
-        String select = "select b._id,b.resource.type.name,b.grade.name ";
-        String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.allocatedProposals a inner join a.allocation b ";
-        String where = "where c._id=" + cycleCode + " and a._id=" + allocatedId + " ";
-        String orderBy = "order by b.grade.name";
+        String qlString = "select b._id,b.resource.type.name,b.grade.name from ProposalCycle c "
+                + "inner join c.allocatedProposals a inner join a.allocation b "
+                + "where c._id=" + cycleCode + " and a._id=" + allocatedId + " "
+                + "order by b.grade.name";
 
-        return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
+        Query query = em.createQuery(qlString);
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
