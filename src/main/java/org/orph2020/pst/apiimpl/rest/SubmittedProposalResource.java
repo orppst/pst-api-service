@@ -45,6 +45,20 @@ public class SubmittedProposalResource extends ObjectResourceBase{
               "submittedProposals", cycleCode, submittedProposalId);
     }
 
+    @GET
+    @Path("/notYetAllocated")
+    @Operation(summary = "get the Submitted Proposal Ids that have yet to be Allocated in the given cycle")
+    public List<ObjectIdentifier> getSubmittedNotYetAllocated(@PathParam("cycleCode") Long cycleCode)
+        throws WebApplicationException
+    {
+        String select = "select s._id,s.proposal.title ";
+        String from = "from ProposalCycle c ";
+        String innerJoins = "inner join c.submittedProposals s inner join c.allocatedProposals a ";
+        String where = "where c._id=" + cycleCode + " and s._id != a.submitted._id";
+
+        return getObjectIdentifiers(select + from + innerJoins + where);
+    }
+
 
     @PUT
     @Operation(summary = "submit a proposal")
