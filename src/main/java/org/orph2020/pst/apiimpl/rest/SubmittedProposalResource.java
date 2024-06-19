@@ -7,9 +7,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.management.ProposalManagementModel;
-import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -51,12 +49,17 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     public List<ObjectIdentifier> getSubmittedNotYetAllocated(@PathParam("cycleCode") Long cycleCode)
         throws WebApplicationException
     {
-        String select = "select s._id,s.proposal.title ";
-        String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.submittedProposals s inner join c.allocatedProposals a ";
-        String where = "where c._id=" + cycleCode + " and s._id != a.submitted._id";
+        ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
-        return getObjectIdentifiers(select + from + innerJoins + where);
+        List<SubmittedProposal> submittedProposals = proposalCycle.getSubmittedProposals();
+        List<AllocatedProposal> allocatedProposals = proposalCycle.getAllocatedProposals();
+
+        return submittedProposals
+                .stream()
+                .filter(sp -> allocatedProposals.stream().noneMatch(
+                        ap -> sp.getId().equals(ap.getSubmitted().getId())))
+                .map(sp -> new ObjectIdentifier(sp.getId(), sp.getProposal().getTitle()))
+                .toList();
     }
 
 
@@ -112,9 +115,16 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
               "submittedProposals", cycleCode, submittedProposalId);
 
-        //the success state of a proposal may only be changed once ALL reviews are complete i.e., after
-        //the 'reviewsCompleteDate' has been updated successfully
-        if (submittedProposal.getReviewsCompleteDate().compareTo(new Date(0L)) == 0) {
+        //the success state of a proposal may only be changed once ALL currently assigned reviews are complete
+        boolean allReviewsComplete = true;
+        for (ProposalReview review : submittedProposal.getReviews()) {
+            if (review.getReviewDate().compareTo(new Date(0L)) == 0) {
+                allReviewsComplete = false;
+                break;
+            }
+        }
+
+        if (!allReviewsComplete) {
             throw new WebApplicationException(
                     "All reviews must be complete before the 'successful' status can be updated", 400
             );
@@ -122,7 +132,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         submittedProposal.setSuccessful(successStatus);
 
-        return mergeObject(submittedProposalId);
+        return responseWrapper(submittedProposal, 200);
     }
 
     @PUT
@@ -147,7 +157,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         submittedProposal.setReviewsCompleteDate(new Date());
 
-        return mergeObject(submittedProposalId);
+        return responseWrapper(submittedProposal, 200);
     }
 
 }
