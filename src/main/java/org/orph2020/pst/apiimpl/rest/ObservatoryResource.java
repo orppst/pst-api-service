@@ -258,7 +258,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Path("{id}/array")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response createAndAddArray(@PathParam("id") Long observatoryId, TelescopeArray telescopeArray)
+    public TelescopeArray createAndAddArray(@PathParam("id") Long observatoryId, TelescopeArray telescopeArray)
             throws WebApplicationException
     {
         Observatory observatory = findObject(Observatory.class, observatoryId);
@@ -269,9 +269,7 @@ public class ObservatoryResource extends ObjectResourceBase {
             }
         }
 
-        observatory.addToArrays(telescopeArray);
-
-        return mergeObject(observatory);
+        return addNewChildObject(observatory, telescopeArray, observatory::addToArrays);
     }
 
 }
