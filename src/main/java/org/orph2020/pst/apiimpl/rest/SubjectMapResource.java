@@ -153,8 +153,9 @@ public class SubjectMapResource extends ObjectResourceBase {
                 Person newPerson = persistObject(
                         new Person( ur.getFirstName() + " " + ur.getLastName(),
                                     ur.getEmail(),
-                                    new StringIdentifier(""), //fixme: orchid id
-                                    organization
+                                     organization,
+                                    new StringIdentifier("") //fixme: orchid id
+                                   
                         )
                 );
 

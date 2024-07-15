@@ -90,7 +90,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         pclone.setSubmitted(true);
         em.persist(pclone);
         //constructor args.:(submission date, successful, reviews-complete-date, reviews, the-proposal)
-        SubmittedProposal submittedProposal = new SubmittedProposal(new Date(), false, new Date(0L), null, pclone);
+        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, new Date(), false, new Date(0L), null );
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 

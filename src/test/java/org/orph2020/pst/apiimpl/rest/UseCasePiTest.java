@@ -132,7 +132,7 @@ public class UseCasePiTest {
                 ;
 
         prop.setInvestigators(List.of(
-                new Investigator(InvestigatorKind.PI, false, principalInvestigator)));
+                new Investigator(principalInvestigator, InvestigatorKind.PI, false)));
 
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
 
@@ -176,7 +176,7 @@ public class UseCasePiTest {
 
         //create a new Investigator
         Investigator coiInvestigator =
-                new Investigator(InvestigatorKind.COI, true, coiPerson);
+                new Investigator(coiPerson, InvestigatorKind.COI, true);
 
         //convert to a JSON string
         String jsonCoiInvestigator =
@@ -351,7 +351,7 @@ public class UseCasePiTest {
         //create a target observation
         TargetObservation targetObservation =
         TargetObservation.createTargetObservation((t) -> {
-            t.target = createdTarget;
+            t.target = List.of(createdTarget);
             t.field = createdField;
             t.technicalGoal = createdTechGoal;
         });

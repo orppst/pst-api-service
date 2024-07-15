@@ -193,7 +193,7 @@ public class UseCaseTacChairTest {
             a -> {
                a.grade = grade;
                a.mode = mode;
-               a.resource = new Resource(48.0, resourceType);
+               a.resource = new Resource(resourceType, 48.0);
             }
       );
 
