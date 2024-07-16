@@ -524,10 +524,10 @@ public class ProposalResource extends ObjectResourceBase {
         List<Observation> observations = observingProposal.getObservations();
 
         for (Observation o : observations) {
-            if(Objects.equals(targetId, o.getTarget().getId())) {
+           if( o.getTarget().stream().anyMatch(t -> targetId.equals(t.getId())))
                 throw new BadRequestException(
                         "Target cannot be deleted as it is currently referred to by at least one Observation");
-            }
+            
         }
 
         Target target = observingProposal.getTargets().stream().filter(o -> targetId.equals(o.getId())).findAny()

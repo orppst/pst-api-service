@@ -113,7 +113,7 @@ public class ObservationResource extends ObjectResourceBase {
         Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
                 "observations", proposalCode, observationId);
 
-        observation.setTarget(target);
+        observation.getTarget().replaceAll(t -> {if(t.getId() == target.getId()) return target; else return t;});//IMPL it would be nice if generated code had replace in list.
 
         return responseWrapper(observation, 201);
     }
