@@ -12,6 +12,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -102,18 +104,22 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Path("/{observationId}/target")
-    @Operation(summary = "replace the Target of the Observation for the given ObservingProposal")
+    @Operation(summary = "replace the list of Target(s) of the Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceTarget(@PathParam("proposalCode") Long proposalCode,
                                   @PathParam("observationId") Long observationId,
-                                  Target target)
+                                  List<Target> targets)
             throws WebApplicationException
     {
         Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
                 "observations", proposalCode, observationId);
 
-        observation.getTarget().replaceAll(t -> {if(t.getId() == target.getId()) return target; else return t;});//IMPL it would be nice if generated code had replace in list.
+
+        //TODO: Check each target is real?
+        observation.setTarget(targets);
+
+        //observation.getTarget().replaceAll(t -> {if(t.getId() == target.getId()) return target; else return t;});//IMPL it would be nice if generated code had replace in list.
 
         return responseWrapper(observation, 201);
     }
