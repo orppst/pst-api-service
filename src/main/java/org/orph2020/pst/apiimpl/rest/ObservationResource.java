@@ -105,7 +105,7 @@ public class ObservationResource extends ObjectResourceBase {
     @Operation(summary = "replace the list of Target(s) of the Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceTarget(@PathParam("proposalCode") Long proposalCode,
+    public Response replaceTargets(@PathParam("proposalCode") Long proposalCode,
                                   @PathParam("observationId") Long observationId,
                                   List<Target> targets)
             throws WebApplicationException
@@ -114,7 +114,7 @@ public class ObservationResource extends ObjectResourceBase {
                 "observations", proposalCode, observationId);
 
 
-        //TODO: Check each target is real?
+        //TODO: Check each target is real and belongs to this proposal?
         observation.setTarget(targets);
 
         //observation.getTarget().replaceAll(t -> {if(t.getId() == target.getId()) return target; else return t;});//IMPL it would be nice if generated code had replace in list.
