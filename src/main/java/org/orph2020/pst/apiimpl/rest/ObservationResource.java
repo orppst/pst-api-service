@@ -80,8 +80,16 @@ public class ObservationResource extends ObjectResourceBase {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         //note the use of copyme to  clone any input observation in case it has been cloned in the GUI and has any database Ids in it.
         // also note that if Observation were not abstract then copy constructor would be the correct thing to do.
-        return addNewChildObject(observingProposal, observation.copyMe(),
-                observingProposal::addToObservations);
+        Observation ret = addNewChildObject(observingProposal, observation.copyMe(),
+              observingProposal::addToObservations);
+
+        //IMPL this should be done with top level forceload probably - or make COORS model generate code with eager loading
+        for(var t : ret.getTarget())
+        {
+            //FIXME this will break when things other than CelestialTarget
+            ((CelestialTarget)t).getSourceCoordinates().getCoordSys().forceLoad();
+        }
+        return ret;
     }
 
 
