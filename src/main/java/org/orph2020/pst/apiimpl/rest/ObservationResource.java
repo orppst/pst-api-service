@@ -83,12 +83,6 @@ public class ObservationResource extends ObjectResourceBase {
         Observation ret = addNewChildObject(observingProposal, observation.copyMe(),
               observingProposal::addToObservations);
 
-        //IMPL this should be done with top level forceload probably - or make COORS model generate code with eager loading
-        for(var t : ret.getTarget())
-        {
-            //FIXME this will break when things other than CelestialTarget
-            ((CelestialTarget)t).getSourceCoordinates().getCoordSys().forceLoad();
-        }
         return ret;
     }
 
