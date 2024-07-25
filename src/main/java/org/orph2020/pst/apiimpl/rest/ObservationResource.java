@@ -80,8 +80,10 @@ public class ObservationResource extends ObjectResourceBase {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         //note the use of copyme to  clone any input observation in case it has been cloned in the GUI and has any database Ids in it.
         // also note that if Observation were not abstract then copy constructor would be the correct thing to do.
-        return addNewChildObject(observingProposal, observation.copyMe(),
-                observingProposal::addToObservations);
+        Observation ret = addNewChildObject(observingProposal, observation.copyMe(),
+              observingProposal::addToObservations);
+
+        return ret;
     }
 
 
@@ -102,18 +104,22 @@ public class ObservationResource extends ObjectResourceBase {
 
     @PUT
     @Path("/{observationId}/target")
-    @Operation(summary = "replace the Target of the Observation for the given ObservingProposal")
+    @Operation(summary = "replace the list of Target(s) of the Observation for the given ObservingProposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceTarget(@PathParam("proposalCode") Long proposalCode,
+    public Response replaceTargets(@PathParam("proposalCode") Long proposalCode,
                                   @PathParam("observationId") Long observationId,
-                                  Target target)
+                                  List<Target> targets)
             throws WebApplicationException
     {
         Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
                 "observations", proposalCode, observationId);
 
-        observation.setTarget(target);
+
+        //TODO: Check each target is real and belongs to this proposal?
+        observation.setTarget(targets);
+
+        //observation.getTarget().replaceAll(t -> {if(t.getId() == target.getId()) return target; else return t;});//IMPL it would be nice if generated code had replace in list.
 
         return responseWrapper(observation, 201);
     }

@@ -53,9 +53,9 @@ public class AllocatedProposalResource extends ObjectResourceBase{
                                                     Long submittedId)
             throws WebApplicationException
     {
-        AllocatedProposal allocatedProposal = new AllocatedProposal(new ArrayList<>(),
+        AllocatedProposal allocatedProposal = new AllocatedProposal(
                 findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
-                        "submittedProposals", cycleCode, submittedId));
+                        "submittedProposals", cycleCode, submittedId),new ArrayList<>());
 
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 

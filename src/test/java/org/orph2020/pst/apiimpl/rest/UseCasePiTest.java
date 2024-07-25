@@ -11,6 +11,7 @@ import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
+import io.restassured.response.Response;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
@@ -132,7 +133,7 @@ public class UseCasePiTest {
                 ;
 
         prop.setInvestigators(List.of(
-                new Investigator(InvestigatorKind.PI, false, principalInvestigator)));
+                new Investigator(principalInvestigator, InvestigatorKind.PI, false)));
 
         String propjson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(prop);
 
@@ -176,7 +177,7 @@ public class UseCasePiTest {
 
         //create a new Investigator
         Investigator coiInvestigator =
-                new Investigator(InvestigatorKind.COI, true, coiPerson);
+                new Investigator(coiPerson, InvestigatorKind.COI, true);
 
         //convert to a JSON string
         String jsonCoiInvestigator =
@@ -351,20 +352,24 @@ public class UseCasePiTest {
         //create a target observation
         TargetObservation targetObservation =
         TargetObservation.createTargetObservation((t) -> {
-            t.target = createdTarget;
+            t.target = List.of(createdTarget);
             t.field = createdField;
             t.technicalGoal = createdTechGoal;
         });
 
         //post the target observation to the proposal
 
-        given()
-                .body(mapper.writeValueAsString(targetObservation))
-                .contentType(JSON)
-                .post("proposals/"+proposalid+"/observations")
-                .then()
-                .statusCode(201)
-                .extract().response();
+         given()
+              .body(mapper.writeValueAsString(targetObservation))
+              .contentType(JSON)
+              .log().body()
+              .post("proposals/" + proposalid + "/observations")
+              .then()
+              .log().body() //IMPL to print out the response
+              .statusCode(201)
+              .extract().response();
+
+
 
         long observationId =
                 given()

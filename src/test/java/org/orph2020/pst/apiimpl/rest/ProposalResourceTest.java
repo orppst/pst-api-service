@@ -157,7 +157,7 @@ public class ProposalResourceTest {
 
     @Test
     void testUpdateCoInvestigator() {
-        Investigator coiInvestigator = new Investigator(InvestigatorKind.COI, true, person);
+        Investigator coiInvestigator = new Investigator(person,InvestigatorKind.COI, true);
         //first get the DB id of the newly added COI Investigator
         Integer coiInvestigatorId =
               given()
