@@ -212,25 +212,32 @@ public class ProposalResource extends ObjectResourceBase {
             //Compare timing windows with cycle dates and times.
             ProposalCycleDates theCycleDates = proposalCyclesResource.getProposalCycleDates(cycleId);
 
-            for (ObjectIdentifier observation : observations) {
-                List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
-                if(timingWindows.isEmpty()) {
-                    valid = false;
-                    error.append("No timing windows defined.  ");
-                } else {
-                    for (ObservingConstraint timingWindow : timingWindows) {
-                        TimingWindow theWindow = (TimingWindow) timingWindow;
-                        if (theWindow.getIsAvoidConstraint()) {
-                            if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                                    && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                                warn.append("A timing window excludes this entire observation session.  ");
-                            }
-                        } else {
-                            if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                                warn.append("A timing window ends before this observation session begins.  ");
-                            }
-                            if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                                warn.append("A timing window begins after this observation session has ended. ");
+            //Has proposal cycle submission deadline passed?
+            Date now = new Date();
+            if(now.after(theCycleDates.submissionDeadline)) {
+                valid = false;
+                error.append("The submission deadline has passed.");
+            } else {
+                for (ObjectIdentifier observation : observations) {
+                    List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
+                    if (timingWindows.isEmpty()) {
+                        valid = false;
+                        error.append("No timing windows defined.  ");
+                    } else {
+                        for (ObservingConstraint timingWindow : timingWindows) {
+                            TimingWindow theWindow = (TimingWindow) timingWindow;
+                            if (theWindow.getIsAvoidConstraint()) {
+                                if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
+                                        && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
+                                    warn.append("A timing window excludes this entire observation session.  ");
+                                }
+                            } else {
+                                if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
+                                    warn.append("A timing window ends before this observation session begins.  ");
+                                }
+                                if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
+                                    warn.append("A timing window begins after this observation session has ended. ");
+                                }
                             }
                         }
                     }
