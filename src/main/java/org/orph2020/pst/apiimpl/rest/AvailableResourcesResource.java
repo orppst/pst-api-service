@@ -1,6 +1,5 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
@@ -18,33 +17,6 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class AvailableResourcesResource extends ObjectResourceBase {
 
-    private Resource findAvailableResource(Long cycleCode, String resourceName)
-            throws WebApplicationException
-    {
-        Query query = em.createQuery("select r from ProposalCycle c inner join c.availableResources.resources r where r.type.name = :resourceName and c.id = :cycleCode");
-        query.setParameter("cycleCode", cycleCode);
-        query.setParameter("resourceName", resourceName);
-        if (query.getResultList().isEmpty()) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
-        } else {
-            //we've ensured that resource type-names are unique i.e., only one element will exist
-            return (Resource) query.getResultList().get(0);
-        }
-    }
-
-    private Double GetAllocatedResourceAmount(Long cycleCode, String resourceName) {
-        Query responseQuery = em.createQuery("select r from ProposalCycle c inner join c.allocatedProposals p inner join p.allocation a inner join a.resource r where r.type.name = :resourceName and c.id = :cycleCode");
-        responseQuery.setParameter("cycleCode", cycleCode);
-        responseQuery.setParameter("resourceName", resourceName);
-
-        //sum the amounts
-        double result = 0.0;
-        for (Object o : responseQuery.getResultList()) {
-            result += ((Resource) o).getAmount();
-        }
-        return result;
-    }
-
     @GET
     @Operation(summary = "get all the AvailableResources associated with the given ProposalCycle")
     public AvailableResources getCycleAvailableResources(@PathParam("cycleCode") Long cycleCode)
@@ -60,7 +32,7 @@ public class AvailableResourcesResource extends ObjectResourceBase {
                                               @PathParam("resourceName") String resourceName)
         throws WebApplicationException
     {
-        return findAvailableResource(cycleCode, resourceName);
+        return AvailableResourceHelper.findAvailableResource(em, cycleCode, resourceName);
     }
 
     @GET
@@ -70,7 +42,7 @@ public class AvailableResourcesResource extends ObjectResourceBase {
                                         @PathParam("resourceName") String resourceName)
             throws WebApplicationException
     {
-        return findAvailableResource(cycleCode, resourceName).getAmount();
+        return  AvailableResourceHelper.findAvailableResource(em, cycleCode, resourceName).getAmount();
     }
 
     @GET
@@ -81,10 +53,10 @@ public class AvailableResourcesResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         //check that the resource name exists at as an "AvailableResource" in the given cycle
-        findAvailableResource(cycleCode,resourceName); //this is OK, we're not using the return value
+        AvailableResourceHelper.findAvailableResource(em, cycleCode, resourceName); //this is OK, we're not using the return value
 
         //sum of all resource amounts with 'resourceName' that have been allocated in the given cycle
-        return GetAllocatedResourceAmount(cycleCode,resourceName);
+        return AvailableResourceHelper.getAllocatedResourceAmount(em, cycleCode,resourceName);
     }
 
     @GET
@@ -95,8 +67,11 @@ public class AvailableResourcesResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         // findAvailableResource performs a check on the 'resourceName'
-        Double availableResourceAmount = findAvailableResource(cycleCode, resourceName).getAmount();
-        Double allocatedResourceAmount = GetAllocatedResourceAmount(cycleCode,resourceName);
+        Double availableResourceAmount = AvailableResourceHelper
+                .findAvailableResource(em, cycleCode, resourceName)
+                .getAmount();
+        Double allocatedResourceAmount = AvailableResourceHelper.
+                getAllocatedResourceAmount(em, cycleCode,resourceName);
         return availableResourceAmount - allocatedResourceAmount;
     }
 
