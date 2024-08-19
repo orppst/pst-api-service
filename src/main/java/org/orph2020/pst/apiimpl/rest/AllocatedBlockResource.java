@@ -57,6 +57,32 @@ public class AllocatedBlockResource extends ObjectResourceBase{
         AllocatedProposal allocatedProposal = findChildByQuery(ProposalCycle.class, AllocatedProposal.class,
                 "allocatedProposals", cycleCode, allocatedId);
 
+        // reminder that the incoming allocatedBlock has a resource.type.id only, NOT a
+        // ResourceType object, thus we have to find the ResourceType with the id.
+
+        ResourceType resourceType = findObject(ResourceType.class,
+                allocatedBlock.getResource().getType().getId());
+
+        String resourceName = resourceType.getName();
+
+        Double resourceAmount = allocatedBlock.getResource().getAmount();
+
+        Double available = AvailableResourceHelper
+                .findAvailableResource(em, cycleCode, resourceName)
+                .getAmount();
+        Double allocated = AvailableResourceHelper
+                .getAllocatedResourceAmount(em, cycleCode, resourceName);
+
+        Double remaining = available - allocated;
+
+        if (remaining < resourceAmount) {
+            String resourceUnit = resourceType.getUnit();
+            throw new WebApplicationException(
+                    String.format("cannot allocate %.2f %s as only %.2f %s remains of %s",
+                    resourceAmount, resourceUnit, remaining, resourceUnit, resourceName),
+                    Response.Status.BAD_REQUEST);
+        }
+
         return addNewChildObject(allocatedProposal, allocatedBlock, allocatedProposal::addToAllocation);
     }
 
@@ -108,13 +134,36 @@ public class AllocatedBlockResource extends ObjectResourceBase{
     public Response updateResource(@PathParam("cycleCode") Long cycleCode,
                                    @PathParam("allocatedId") Long allocatedId,
                                    @PathParam("blockId") Long blockId,
-                                   Double amount)
+                                   Double updateAmount)
         throws WebApplicationException
     {
         AllocatedBlock allocatedBlock = findChildByQuery(AllocatedProposal.class, AllocatedBlock.class,
                 "allocation", allocatedId, blockId);
 
-        allocatedBlock.getResource().setAmount(amount);
+        Double currentAmount = allocatedBlock.getResource().getAmount();
+
+        if (currentAmount < updateAmount) {
+            //check remaining
+            String resourceName = allocatedBlock.getResource().getType().getName();
+            Double available = AvailableResourceHelper
+                    .findAvailableResource(em, cycleCode, resourceName)
+                    .getAmount();
+            Double allocated = AvailableResourceHelper
+                    .getAllocatedResourceAmount(em, cycleCode, resourceName);
+
+            Double remaining = available - allocated;
+
+            if (updateAmount > remaining + currentAmount) {
+                String resourceUnit = allocatedBlock.getResource().getType().getUnit();
+
+                throw new WebApplicationException(
+                        String.format("cannot update %s from %.2f -> %.2f %s, exceeds total, currently remaining: %.2f %s",
+                                resourceName, currentAmount, updateAmount, resourceUnit, remaining, resourceUnit),
+                        Response.Status.BAD_REQUEST);
+            }
+        }
+
+        allocatedBlock.getResource().setAmount(updateAmount);
 
         return responseWrapper(allocatedBlock, 200);
     }
