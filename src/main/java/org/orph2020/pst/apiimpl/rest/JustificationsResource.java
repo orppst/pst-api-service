@@ -12,8 +12,6 @@ import org.ivoa.dm.proposal.prop.TextFormats;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Objects;
 
 /*
@@ -171,24 +169,16 @@ public class JustificationsResource extends ObjectResourceBase {
                                 proposal::setScientificJustification
         );
 
-        //create the directory for latex stuff even if the Justification is not latex format
-        try {
-            System.out.println(Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    Long.toString(proposalCode),
-                    "justifications",
-                    which)
-            ));
-            //create and write the string to file if it is latex format
-            if (persisted.getFormat() == TextFormats.LATEX) {
+        if (persisted.getFormat() == TextFormats.LATEX) {
+            try {
+                //create and write the string to file if it is latex format
                 writeLatexToFile(persisted.getText(), proposalCode, which);
+            } catch (IOException e) {
+                //if we can't write the justification text to the *.tex file then we should roll back
+                //the database transaction - otherwise may have mismatch between the database string
+                //and the *.tex file.
+                throw new WebApplicationException(e.getMessage());
             }
-        } catch (IOException e) {
-            //if we can't write the justification text to the *.tex file then we should roll back
-            //the database transaction - otherwise may have mismatch between the database string
-            //and the *.tex file.
-            throw new WebApplicationException(e.getMessage());
         }
 
 
