@@ -6,6 +6,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -29,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -201,6 +203,14 @@ public class ProposalResource extends ObjectResourceBase {
     public Response deleteObservingProposal(@PathParam("proposalCode") long code)
             throws WebApplicationException
     {
+        //clean up the document store for this proposal
+        File documentStorePath = new File(documentStoreRoot, "proposals/" + code);
+        try {
+            FileUtils.deleteDirectory(documentStorePath);
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
         return removeObject(ObservingProposal.class, code);
     }
 
