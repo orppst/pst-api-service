@@ -300,15 +300,16 @@ public class JustificationsResource extends ObjectResourceBase {
         }
 
         File toDelete = getFile(proposalCode, which, filename);
-        if (toDelete.exists()) {
-            if (toDelete.delete()) {
-                return Response.ok(String.format("File %s deleted", filename)).build();
-            } else {
-                throw new WebApplicationException(String.format("Unable to delete file: %s", filename));
-            }
-        } else {
+
+        if (!toDelete.exists()) {
             throw new WebApplicationException(String.format("Nonexistent file: %s", filename));
         }
+
+        if (!toDelete.delete()) {
+            throw new WebApplicationException(String.format("Unable to delete file: %s", filename));
+        }
+
+        return Response.ok(String.format("File %s deleted", filename)).build();
     }
 
 }
