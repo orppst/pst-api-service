@@ -15,11 +15,10 @@ import org.ivoa.dm.proposal.prop.Justification;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.TextFormats;
 import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.Objects;
 
 /*
@@ -196,7 +195,7 @@ public class JustificationsResource extends ObjectResourceBase {
      * Function to get the file identified by the parameters
      * @param proposalCode the proposal id (determined by rest end-point path)
      * @param which 'scientific' or 'technical' (determined by rest end-point path)
-     * @param filename the name of the file (file upload name or user supplied)
+     * @param filename the name of the file, could include part of the path
      * @return the File object given the parameters above
      */
     private File getFile(Long proposalCode, String which, String filename) {
@@ -312,4 +311,80 @@ public class JustificationsResource extends ObjectResourceBase {
         return Response.ok(String.format("File %s deleted", filename)).build();
     }
 
+    private ProcessBuilder getLatexmkProcessBuilder(String filePath, String which) {
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "latexmk",
+                "-cd", //change directory into source file
+                "-pdf", //we want PDF output
+                "-interaction=nonstopmode", //i.e. non-interactive
+                "-output-directory=out", //relative to source directory due to '-cd' option
+                "-jobname=" + which + "-justification", //output base name
+                filePath
+        );
+
+        //tie stderr to stdout for convenience extracting 'latexmk' errors
+        return processBuilder.redirectErrorStream(true);
+    }
+
+    @GET
+    @Path("{which}/pdf")
+    @Operation(summary = "create and return a PDF of the LaTex Justification from supplied files")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response createAndDownloadPDFLaTex(@PathParam("proposalCode") Long proposalCode,
+                                              @PathParam("which") String which,
+                                              @RestQuery Boolean warningsAsErrors
+    )
+        throws WebApplicationException
+    {
+        if (!which.equals("technical") && !which.equals("scientific")) {
+            throw new WebApplicationException(
+                    String.format("Justifications are either 'scientific' or 'technical'; I got %s",
+                            which)
+            );
+        }
+
+        File mainTex = getFile(proposalCode, which, texFileName);
+
+        if (!mainTex.exists()) {
+            throw new WebApplicationException(String.format("%s file not found", texFileName));
+        }
+
+        ProcessBuilder processBuilder = getLatexmkProcessBuilder(
+                mainTex.getAbsolutePath(), which);
+
+        try {
+            Process process = processBuilder.start();
+
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                //Todo: try to build list of errors from <output>.log to send back to client
+                throw new WebApplicationException("Latex error(s): blah");
+            }
+
+        } catch (IOException | InterruptedException e) {
+            throw new WebApplicationException(e.getMessage());
+        }
+
+        if (warningsAsErrors) {
+            //Todo: compile list of warnings, if there are any return back to client in the message of an exception
+            //if no warnings here continue
+            throw new WebApplicationException("Latex warnings treated as errors: blah");
+        }
+
+        //fetch the output PDF of the Justification
+        File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
+
+        //this shouldn't happen at this point but check anyway
+        if (!output.exists()) {
+            throw new WebApplicationException("output PDF not found");
+        }
+
+        //this makes the file downloadable
+        return Response.ok(output)
+                .header("Content-Disposition", "attachment;filename=" + output.getName())
+                .build();
+
+    }
 }
+
