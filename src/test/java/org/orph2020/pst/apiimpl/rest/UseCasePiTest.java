@@ -3,7 +3,6 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 13/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -11,7 +10,6 @@ import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
-import io.restassured.response.Response;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
@@ -23,6 +21,9 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -75,7 +76,7 @@ public class UseCasePiTest {
     }, userinfo = {
           @UserInfo(key = "sub", value = "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec")
     })
-    void testCreateProposal() throws JsonProcessingException {
+    void testCreateProposal() throws IOException {
 
         String JSON_UTF16 = "application/json; charset=UTF-16";
 
@@ -193,6 +194,53 @@ public class UseCasePiTest {
                 .contentType(JSON)
                 .body(containsString("\"type\":\"COI\",\"forPhD\":true"))
                 .extract().response();
+
+        //change the "scientific" Justification to LATEX format, and load text from data file 'test-with-figures.tex'
+        String latexString = Files.readString(Paths.get("src/test/data/test-with-figures.tex"));
+
+        Justification updateJustification = new Justification(
+                latexString, TextFormats.LATEX
+        );
+
+        given()
+                .body(updateJustification)
+                .contentType(JSON_UTF16)
+                .put("proposals/" + proposalid + "/justifications/scientific")
+                .then()
+                .body(containsString("\\begin{document}"));
+
+        final File earthImage = new File("src/test/data/earth_profile.jpg");
+        final File hhg2g_dp = new File("src/test/data/hhg2g_dp.jpg");
+        final File refs = new File("src/test/data/refs.bib");
+
+        given()
+                .multiPart("document", earthImage)
+                .when()
+                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .then()
+                .body(containsString("File earth_profile.jpg saved"));
+
+        given()
+                .multiPart("document", hhg2g_dp)
+                .when()
+                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .then()
+                .body(containsString("File hhg2g_dp.jpg saved"));
+
+        given()
+                .multiPart("document", refs)
+                .when()
+                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .then()
+                .body(containsString("File refs.bib saved"));
+
+        //call the api function that calls "latexmk"
+        given()
+                .param("warningsAsErrors", "true")
+                .when()
+                .get("/proposals/" + proposalid + "/justifications/scientific/latexPdf")
+                .then()
+                .body(containsString("file saved as: scientific-justification.pdf"));
 
 
         //add a new SupportingDocument to the proposal
