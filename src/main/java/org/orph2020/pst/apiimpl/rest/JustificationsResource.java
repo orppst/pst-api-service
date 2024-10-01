@@ -21,12 +21,12 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Scanner;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /*
     Dev note: there are two "types" of Justification: 'scientific' and 'technical', and these
@@ -47,47 +47,6 @@ public class JustificationsResource extends ObjectResourceBase {
     //common file name for the Tex file for Latex type Justifications
     String texFileName = "main.tex";
 
-    //
-    // - note that here the return value can be null
-
-    /**
-     * convenience function to get the specific Justification
-     * @param proposalCode Long id from rest endpoint path
-     * @param which String "type" of Justification from rest endpoint path
-     * @return the Justification given by the specified parameters, can be null
-     */
-    private Justification getWhichJustification(Long proposalCode, String which) {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        return switch (which) {
-            case "technical" -> observingProposal.getTechnicalJustification();
-            case "scientific" -> observingProposal.getScientificJustification();
-            default -> throw new WebApplicationException(
-                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                    400
-            );
-        };
-    }
-
-    //convenience function to write a latex string to file - assume calling function has checked
-    //that the format of the Justification is LATEX, thus is sending a "Latex" string
-    private void writeLatexToFile(String latexText, Long proposalCode, String which)
-    throws IOException {
-
-        //use rest end-point path for the storage location
-        String filePath = documentStoreRoot
-                + "/proposals/"
-                + proposalCode
-                + "/justifications/"
-                + which
-                + "/" + texFileName;
-
-        //To consider: BufferedWriter for performance?
-
-        //either create the file and write to it, or overwrite the existing file
-        try (FileWriter fw = new FileWriter(filePath)) {
-            fw.write(latexText);
-        }
-    }
 
     @GET
     @Path("{which}")
@@ -205,22 +164,29 @@ public class JustificationsResource extends ObjectResourceBase {
         return persisted;
     }
 
-    /**
-     * Function to get the file identified by the parameters
-     * @param proposalCode the proposal id (determined by rest end-point path)
-     * @param which 'scientific' or 'technical' (determined by rest end-point path)
-     * @param filename the name of the file, could include part of the path
-     * @return the File object given the parameters above
-     */
-    private File getFile(Long proposalCode, String which, String filename) {
-        return new File(
-                documentStoreRoot
-                        + "/proposals/"
-                        + proposalCode
-                        + "/justifications/"
-                        + which,
-                filename
-        );
+
+    //*********** LATEX Justifications ************
+
+    @GET
+    @Path("{which}/latexResource")
+    @Operation(summary = "list the latex resource files uploaded by the user")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Set<String> getLatexResourceFiles(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("which") String which)
+        throws WebApplicationException
+    {
+        try {
+            return listResourceFilesInDir(
+                    documentStoreRoot
+                    + "/proposals/"
+                    + proposalCode
+                    + "/justifications/"
+                    + which
+            );
+        } catch (IOException e) {
+            throw new WebApplicationException(e.getMessage());
+        }
     }
 
     //required to make form-upload input work
@@ -229,54 +195,19 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //non-transactional, no modification to the database occurs
     @POST
-    @Path("{which}/fileUpload")
-    @Operation(summary = "upload files for latex Justifications, only *.bib, *.jpg, and *.png supported")
+    @Path("{which}/latexResource")
+    @Operation(summary = "add a resource file for latex Justifications, only *.bib, *.jpg, and *.png supported")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadLatexFiles(@PathParam("proposalCode") Long proposalCode,
-                                     @PathParam("which") String which,
-                                     @RestForm("document") @Schema(implementation = UploadItemSchema.class)
-                                         FileUpload fileUpload)
+    public Response addLatexResourceFile(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("which") String which,
+            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            FileUpload fileUpload)
         throws WebApplicationException
     {
-        if (!which.equals("technical") && !which.equals("scientific")) {
-            throw new WebApplicationException(
-                    String.format("Justifications are either 'scientific' or 'technical'; I got %s", which)
-            );
-        }
+        justificationIsLatex(proposalCode, which);
 
-        if (fileUpload == null) {
-            throw new WebApplicationException("No file uploaded");
-        }
-
-        String contentType = fileUpload.contentType();
-        if (contentType == null) {
-            throw new WebApplicationException("No content type information available");
-        }
-
-        String extension = FilenameUtils.getExtension(fileUpload.fileName());
-        if (extension == null || extension.isEmpty()) {
-            throw new WebApplicationException("Uploads require the correct file extension");
-        }
-
-        switch (contentType) {
-            //.bib, .png, or .jpg (.jpeg) only; notice .bib may have 'application/octet-stream' type
-            case "application/octet-stream":
-            case "application/x-bibtex":
-            case "image/jpeg":
-            case "image/png":
-                if (!extension.equals("bib") && !extension.equals("jpeg") &&
-                        !extension.equals("jpg") && !extension.equals("png"))
-                    throw new WebApplicationException("Invalid file extension");
-                break;
-            default:
-                throw new WebApplicationException(
-                        String.format("content-type: %s is not supported", contentType));
-        }
-
-        //NOTICE: content-type and file extension can be manipulated so that they misrepresent the
-        // actual contents of the file. However, on Linux and Linux-like systems uploaded files saved
-        // in this way have read-write permissions for the 'user' only (the "application" is the user here),
-        // i.e. no executable permissions, and no permissions for 'groups' or 'other users'.
+        checkFileUpload(fileUpload);
 
         String filename = fileUpload.fileName();
 
@@ -285,7 +216,7 @@ public class JustificationsResource extends ObjectResourceBase {
         //check filename is unique per Justification
         if (destination.exists()) {
             throw new WebApplicationException(
-                    String.format("File %s already exists: Please use unique names for uploads",
+                    String.format("File %s already exists, please 'replace' this file instead",
                             filename));
         }
 
@@ -297,20 +228,50 @@ public class JustificationsResource extends ObjectResourceBase {
         return Response.ok(String.format("File %s saved", filename)).build();
     }
 
-    //non-transactional, no modification to the database occurs
-    @DELETE
-    @Path("{which}/fileUpload")
-    @Operation(summary = "delete the given file from the Justification document store")
-    public Response removeLaTexFile(@PathParam("proposalCode") Long proposalCode,
-                                    @PathParam("which") String which,
-                                    String filename)
-    throws WebApplicationException
+
+    @PUT
+    @Path("{which}/latexResource")
+    @Operation(summary = "replace a resource file for the given latex Justification")
+    public Response replaceLatexResourceFile(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("which") String which,
+            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            FileUpload fileUpload)
+        throws WebApplicationException
     {
-        if (!which.equals("technical") && !which.equals("scientific")) {
+        justificationIsLatex(proposalCode, which);
+
+        checkFileUpload(fileUpload);
+
+        String filename = fileUpload.fileName();
+
+        File destination = getFile(proposalCode, which, filename);
+
+        if (!destination.exists()) {
             throw new WebApplicationException(
-                    String.format("Justifications are either 'scientific' or 'technical'; I got %s", which)
+                    String.format("%s, does not exist, please 'add' this file instead", filename)
             );
         }
+
+        //replace the file to the assigned location
+        if (!fileUpload.uploadedFile().toFile().renameTo(destination)) {
+            throw new WebApplicationException("Unable to save uploaded file");
+        }
+
+        return Response.ok(String.format("File %s replaced", filename)).build();
+    }
+
+    //non-transactional, no modification to the database occurs
+    @DELETE
+    @Path("{which}/latexResource")
+    @Operation(summary = "remove the given resource file from the latex Justification")
+    public Response removeLatexResourceFile(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("which") String which,
+            String filename)
+    throws WebApplicationException
+    {
+        justificationIsLatex(proposalCode, which);
 
         File toDelete = getFile(proposalCode, which, filename);
 
@@ -325,64 +286,8 @@ public class JustificationsResource extends ObjectResourceBase {
         return Response.ok(String.format("File %s deleted", filename)).build();
     }
 
-    private ProcessBuilder getLatexmkProcessBuilder(String filePath, String which) {
-        return new ProcessBuilder(
-                "latexmk",
-                "-cd", //change directory into source file
-                "-pdf", //we want PDF output
-                "-interaction=nonstopmode", //i.e. non-interactive
-                "-output-directory=out", //relative to source directory due to '-cd' option
-                "-jobname=" + which + "-justification", //output base name
-                filePath
-        );
-    }
-
-    /**
-     * Function to find the "LaTeX Warning"s in the provided string. The input string should
-     * be specifically obtained from the output log file of 'latexmk'
-     * @param searchStr String to search
-     * @return list of distinct warnings
-     */
-    private List<String> findWarnings(String searchStr) {
-        Matcher matcher = Pattern
-                .compile("^LaTeX Warning.*$", Pattern.MULTILINE)
-                .matcher(searchStr);
-        List<String> list = new ArrayList<>();
-        //"LaTex Warning"s have the details on the same line
-        while (matcher.find()) {
-            list.add(matcher.group());
-        }
-        return list.stream().distinct().toList();
-    }
-
-    /**
-     * Function to scan the latexmk log file for errors generated during compilation of the output
-     * @param file File the log file
-     * @return list of distinct errors
-     * @throws FileNotFoundException thrown by Scanner constructor if the input file does not exist
-     */
-    private List<String> scanLogForErrors(File file)
-            throws FileNotFoundException {
-        List<String> list = new ArrayList<>();
-        Scanner scanner = new Scanner(file);
-        while (scanner.hasNextLine()) {
-            String line = scanner.nextLine();
-            //all errors start with "! "
-            if (line.contains("! ")) {
-                if (line.contains("LaTeX Error")) {
-                    // "LaTeX Error"s contain the details on the current line
-                    list.add(line);
-                } else if (scanner.hasNextLine()) {
-                    // other errors have the details on the next line
-                    list.add(line + ": " + scanner.nextLine());
-                }
-            }
-        }
-        return list.stream().distinct().toList();
-    }
-
     @GET
-    @Path("{which}/pdf")
+    @Path("{which}/latexPdf")
     @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
     public Response createPDFLaTex(@PathParam("proposalCode") Long proposalCode,
                                               @PathParam("which") String which,
@@ -401,21 +306,7 @@ public class JustificationsResource extends ObjectResourceBase {
         // Removing the output directory on a failed run avoids this issue; subsequent runs do so
         // on a clean directory, but obviously they do not benefit from a speed-up.
 
-        Justification justification = getWhichJustification(proposalCode, which);
-
-        if (justification == null) {
-            throw new WebApplicationException(String.format(
-                    "Proposal code %d, %s justification does not exist",
-                    proposalCode, which
-            ));
-        }
-
-        if (justification.getFormat() != TextFormats.LATEX) {
-            throw new WebApplicationException(String.format(
-                    "%s Justification not LaTeX format, current format: %s",
-                    which, justification.getFormat().toString()
-            ));
-        }
+        justificationIsLatex(proposalCode, which);
 
         File mainTex = getFile(proposalCode, which, texFileName);
 
@@ -495,5 +386,232 @@ public class JustificationsResource extends ObjectResourceBase {
                 .build();
 
     }
+
+
+
+// ****** Convenience functions private to this class ********
+
+
+    /**
+     * List *.bib, *.png, *.jp(e)g files in the given directory
+     * @param dir the directory to search
+     * @return Set of Strings containing the resource files
+     * @throws IOException in case of 'dir' not being a directory
+     */
+    private Set<String> listResourceFilesInDir(String dir) throws IOException {
+        try (Stream<java.nio.file.Path> stream = Files.list(Paths.get(dir))) {
+            return stream
+                    .filter(file -> !Files.isDirectory(file))
+                    .map(java.nio.file.Path::getFileName)
+                    .map(java.nio.file.Path::toString)
+                    .filter(string -> string.endsWith(".bib")
+                            || string.endsWith(".png")
+                            || string.endsWith(".jpg")
+                            || string.endsWith(".jpeg")
+                    )
+                    .collect(Collectors.toSet());
+        }
+    }
+
+    /**
+     * convenience function to get the specific Justification
+     * @param proposalCode Long id from rest endpoint path
+     * @param which String "type" of Justification from rest endpoint path
+     * @return the Justification given by the specified parameters, can be null
+     */
+    private Justification getWhichJustification(Long proposalCode, String which) {
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        return switch (which) {
+            case "technical" -> observingProposal.getTechnicalJustification();
+            case "scientific" -> observingProposal.getScientificJustification();
+            default -> throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
+                    400
+            );
+        };
+    }
+
+    /**
+     * convenience function to write a latex string to file - assumes calling function has checked
+     * that the format of the Justification is LATEX, thus is sending a "Latex" string
+     * @param latexText String of the contents of 'main.tex'
+     * @param proposalCode Long proposal id
+     * @param which String "type" of Justification
+     * @throws IOException from FileWriter
+     */
+    private void writeLatexToFile(String latexText, Long proposalCode, String which)
+            throws IOException {
+
+        //use rest end-point path for the storage location
+        String filePath = documentStoreRoot
+                + "/proposals/"
+                + proposalCode
+                + "/justifications/"
+                + which
+                + "/" + texFileName;
+
+        //To consider: BufferedWriter for performance?
+
+        //either create the file and write to it, or overwrite the existing file
+        try (FileWriter fw = new FileWriter(filePath)) {
+            fw.write(latexText);
+        }
+    }
+
+
+    /**
+     * Convenience function to create the ProcessBuilder for 'latexmk'
+     *
+     * @param filePath  String containing the path-filename of the source *.tex file to compile
+     * @param which     String "type" of Justification
+     * @return ProcessBuilder of the 'latexmk' command with desired options
+     */
+    private ProcessBuilder getLatexmkProcessBuilder(String filePath, String which) {
+        return new ProcessBuilder(
+                "latexmk",
+                "-cd", //change directory into source file
+                "-pdf", //we want PDF output
+                "-interaction=nonstopmode", //i.e. non-interactive
+                "-output-directory=out", //relative to source directory due to '-cd' option
+                "-jobname=" + which + "-justification", //output base name
+                filePath
+        );
+    }
+
+    /**
+     * Function to find the "LaTeX Warning"s in the provided string. The input string should
+     * be specifically obtained from the output log file of 'latexmk'
+     *
+     * @param searchStr String to search
+     * @return List of Strings containing distinct warnings
+     */
+    private List<String> findWarnings(String searchStr) {
+        Matcher matcher = Pattern
+                .compile("^LaTeX Warning.*$", Pattern.MULTILINE)
+                .matcher(searchStr);
+        List<String> list = new ArrayList<>();
+        //"LaTex Warning"s have the details on the same line
+        while (matcher.find()) {
+            list.add(matcher.group());
+        }
+        return list.stream().distinct().toList();
+    }
+
+    /**
+     * Function to scan the latexmk log file for errors generated during compilation of the output
+     *
+     * @param file File the log file
+     * @return List of Strings containing distinct errors
+     * @throws FileNotFoundException thrown by Scanner constructor if the input file does not exist
+     */
+    private List<String> scanLogForErrors(File file)
+            throws FileNotFoundException {
+        List<String> list = new ArrayList<>();
+        Scanner scanner = new Scanner(file);
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            //all errors start with "! "
+            if (line.contains("! ")) {
+                if (line.contains("LaTeX Error")) {
+                    // "LaTeX Error"s contain the details on the current line
+                    list.add(line);
+                } else if (scanner.hasNextLine()) {
+                    // other errors have the details on the next line
+                    list.add(line + ": " + scanner.nextLine());
+                }
+            }
+        }
+        return list.stream().distinct().toList();
+    }
+
+    /**
+     * Function to get the file identified by the parameters
+     * @param proposalCode the proposal id (determined by rest end-point path)
+     * @param which 'scientific' or 'technical' (determined by rest end-point path)
+     * @param filename the name of the file, could include part of the path
+     * @return the File object given the parameters above
+     */
+    private File getFile(Long proposalCode, String which, String filename) {
+        return new File(
+                documentStoreRoot
+                        + "/proposals/"
+                        + proposalCode
+                        + "/justifications/"
+                        + which,
+                filename
+        );
+    }
+
+    /**
+     * Checks that the Justification exists and has Latex format
+     *
+     * @param proposalCode Long proposal id
+     * @param which        String "type" of Justification
+     * @throws WebApplicationException if either the Justification does not exist or the format is not LATEX
+     */
+    private void justificationIsLatex(Long proposalCode, String which)
+            throws WebApplicationException
+    {
+        Justification justification = getWhichJustification(proposalCode, which);
+
+        if (justification == null) {
+            throw new WebApplicationException(String.format(
+                    "Proposal code %d, %s justification does not exist",
+                    proposalCode, which
+            ));
+        }
+
+        if (justification.getFormat() != TextFormats.LATEX) {
+            throw new WebApplicationException(String.format(
+                    "%s Justification not LaTeX format, current format: %s",
+                    which, justification.getFormat().toString()
+            ));
+        }
+    }
+
+    /**
+     * Function to check uploaded files content-type and file extension
+     * @param fileUpload the uploaded file
+     * @throws WebApplicationException if fileUpload is null, or content-type is null,
+     * or file extension is empty, or file extension does not match the content-type
+     */
+    private void checkFileUpload(FileUpload fileUpload)
+            throws WebApplicationException {
+
+        if (fileUpload == null) {
+            throw new WebApplicationException("No file uploaded");
+        }
+
+        String contentType = fileUpload.contentType();
+        if (contentType == null) {
+            throw new WebApplicationException("No content type information available");
+        }
+
+        String extension = FilenameUtils.getExtension(fileUpload.fileName());
+        if (extension == null || extension.isEmpty()) {
+            throw new WebApplicationException("Uploads require the correct file extension");
+        }
+
+        switch (contentType) {
+            //.bib, .png, or .jpg (.jpeg) only; notice .bib may have 'application/octet-stream' type
+            case "application/octet-stream":
+            case "application/x-bibtex":
+            case "image/jpeg":
+            case "image/png":
+                if (!extension.equals("bib") && !extension.equals("jpeg") &&
+                        !extension.equals("jpg") && !extension.equals("png"))
+                    throw new WebApplicationException("Invalid file extension");
+                break;
+            default:
+                throw new WebApplicationException(
+                        String.format("content-type: %s is not supported", contentType));
+        }
+
+        //NOTICE: content-type and file extension can be manipulated so that they misrepresent the
+        // actual contents of the file. However, on Linux and Linux-like systems uploaded files saved
+        // in this way have read-write permissions for the 'user' only (the "application" is the user here),
+        // i.e. no executable permissions, and no permissions for 'groups' or 'other users'.
+    }
+
 }
 
