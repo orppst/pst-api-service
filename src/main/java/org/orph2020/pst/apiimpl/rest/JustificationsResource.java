@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -19,7 +20,13 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /*
     Dev note: there are two "types" of Justification: 'scientific' and 'technical', and these
@@ -40,8 +47,15 @@ public class JustificationsResource extends ObjectResourceBase {
     //common file name for the Tex file for Latex type Justifications
     String texFileName = "main.tex";
 
-    //convenience function to get the specific Justification
+    //
     // - note that here the return value can be null
+
+    /**
+     * convenience function to get the specific Justification
+     * @param proposalCode Long id from rest endpoint path
+     * @param which String "type" of Justification from rest endpoint path
+     * @return the Justification given by the specified parameters, can be null
+     */
     private Justification getWhichJustification(Long proposalCode, String which) {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         return switch (which) {
@@ -312,7 +326,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private ProcessBuilder getLatexmkProcessBuilder(String filePath, String which) {
-        ProcessBuilder processBuilder = new ProcessBuilder(
+        return new ProcessBuilder(
                 "latexmk",
                 "-cd", //change directory into source file
                 "-pdf", //we want PDF output
@@ -321,26 +335,86 @@ public class JustificationsResource extends ObjectResourceBase {
                 "-jobname=" + which + "-justification", //output base name
                 filePath
         );
+    }
 
-        //tie stderr to stdout for convenience extracting 'latexmk' errors
-        return processBuilder.redirectErrorStream(true);
+    /**
+     * Function to find the "LaTeX Warning"s in the provided string. The input string should
+     * be specifically obtained from the output log file of 'latexmk'
+     * @param searchStr String to search
+     * @return list of distinct warnings
+     */
+    private List<String> findWarnings(String searchStr) {
+        Matcher matcher = Pattern
+                .compile("^LaTeX Warning.*$", Pattern.MULTILINE)
+                .matcher(searchStr);
+        List<String> list = new ArrayList<>();
+        //"LaTex Warning"s have the details on the same line
+        while (matcher.find()) {
+            list.add(matcher.group());
+        }
+        return list.stream().distinct().toList();
+    }
+
+    /**
+     * Function to scan the latexmk log file for errors generated during compilation of the output
+     * @param file File the log file
+     * @return list of distinct errors
+     * @throws FileNotFoundException thrown by Scanner constructor if the input file does not exist
+     */
+    private List<String> scanLogForErrors(File file)
+            throws FileNotFoundException {
+        List<String> list = new ArrayList<>();
+        Scanner scanner = new Scanner(file);
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            //all errors start with "! "
+            if (line.contains("! ")) {
+                if (line.contains("LaTeX Error")) {
+                    // "LaTeX Error"s contain the details on the current line
+                    list.add(line);
+                } else if (scanner.hasNextLine()) {
+                    // other errors have the details on the next line
+                    list.add(line + ": " + scanner.nextLine());
+                }
+            }
+        }
+        return list.stream().distinct().toList();
     }
 
     @GET
     @Path("{which}/pdf")
-    @Operation(summary = "create and return a PDF of the LaTex Justification from supplied files")
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    public Response createAndDownloadPDFLaTex(@PathParam("proposalCode") Long proposalCode,
+    @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
+    public Response createPDFLaTex(@PathParam("proposalCode") Long proposalCode,
                                               @PathParam("which") String which,
                                               @RestQuery Boolean warningsAsErrors
     )
         throws WebApplicationException
     {
-        if (!which.equals("technical") && !which.equals("scientific")) {
-            throw new WebApplicationException(
-                    String.format("Justifications are either 'scientific' or 'technical'; I got %s",
-                            which)
-            );
+        // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
+        // this API call has functioned correctly; it is the user defined files that need attention.
+        // Errors are flagged back to the user as simple string message containing the list of issues.
+        // If there is a problem server side we throw an exception.
+
+        // NOTICE: 'latexmk' leaves intermediate files in the output directory on failed runs in an
+        // attempt to speed up the next compilation. This has been observed to lead to potential
+        // problems when producing the PDF output.
+        // Removing the output directory on a failed run avoids this issue; subsequent runs do so
+        // on a clean directory, but obviously they do not benefit from a speed-up.
+
+        Justification justification = getWhichJustification(proposalCode, which);
+
+        if (justification == null) {
+            throw new WebApplicationException(String.format(
+                    "Proposal code %d, %s justification does not exist",
+                    proposalCode, which
+            ));
+        }
+
+        if (justification.getFormat() != TextFormats.LATEX) {
+            throw new WebApplicationException(String.format(
+                    "%s Justification not LaTeX format, current format: %s",
+                    which, justification.getFormat().toString()
+            ));
         }
 
         File mainTex = getFile(proposalCode, which, texFileName);
@@ -357,32 +431,67 @@ public class JustificationsResource extends ObjectResourceBase {
 
             int exitCode = process.waitFor();
 
+            File outputDir = new File(documentStoreRoot
+                    + "/proposals/"
+                    + proposalCode
+                    + "/justifications/"
+                    + which
+                    + "/out");
+
+            //the outputDir should exist here
+            if (!outputDir.exists()) {
+                throw new WebApplicationException("Output directory does not exist");
+            }
+
+            File logFile = new File(outputDir, which + "-justification.log");
+
+            //the log file should exist here
+            if (!logFile.exists()) {
+                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
+                throw new WebApplicationException("Log file does not exist: " + logFile.getAbsolutePath());
+            }
+
+            List<String> warnings = findWarnings(Files.readString(logFile.toPath()));
+
+            StringBuilder errorsStringBuilder = new StringBuilder();
+
+            //if user selects 'warningsAsErrors' then we need to feed back the warnings along
+            //with potential errors for them to attempt to fix the issues, potentially in one go.
+            if (warningsAsErrors && !warnings.isEmpty()) {
+                errorsStringBuilder
+                        .append("You have LaTeX compilation warnings:\n")
+                        .append(String.join("\n", warnings))
+                        .append("\n\n");
+            }
+
+            //check 'latexmk' exit code
             if (exitCode != 0) {
-                //Todo: try to build list of errors from <output>.log to send back to client
-                throw new WebApplicationException("Latex error(s): blah");
+                List<String> errors = scanLogForErrors(logFile);
+
+                errorsStringBuilder
+                        .append("You have LaTeX compilation errors:\n")
+                        .append(String.join("\n", errors));
+
+                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
+                return Response.ok(errorsStringBuilder.toString()).build();
+            }
+
+            // exit code is zero here, but there may be warnings
+            if (warningsAsErrors && !warnings.isEmpty()) {
+                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
+                return Response.ok(errorsStringBuilder.toString()).build();
             }
 
         } catch (IOException | InterruptedException e) {
             throw new WebApplicationException(e.getMessage());
         }
 
-        if (warningsAsErrors) {
-            //Todo: compile list of warnings, if there are any return back to client in the message of an exception
-            //if no warnings here continue
-            throw new WebApplicationException("Latex warnings treated as errors: blah");
-        }
-
         //fetch the output PDF of the Justification
         File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
 
-        //this shouldn't happen at this point but check anyway
-        if (!output.exists()) {
-            throw new WebApplicationException("output PDF not found");
-        }
-
-        //this makes the file downloadable
-        return Response.ok(output)
-                .header("Content-Disposition", "attachment;filename=" + output.getName())
+        return Response.ok(
+                String.format("Latex compilation successful, PDF produced, file saved as: %s",
+                        output.getName()))
                 .build();
 
     }
