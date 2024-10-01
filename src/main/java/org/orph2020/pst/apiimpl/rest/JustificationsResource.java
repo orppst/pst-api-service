@@ -196,7 +196,7 @@ public class JustificationsResource extends ObjectResourceBase {
     //non-transactional, no modification to the database occurs
     @POST
     @Path("{which}/latexResource")
-    @Operation(summary = "add a resource file for latex Justifications, only *.bib, *.jpg, and *.png supported")
+    @Operation(summary = "add a resource file for latex Justifications; *.bib, *.jpg, and *.png supported only")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response addLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
@@ -388,7 +388,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @GET
     @Path("{which}/latexPdf/download")
-    @Operation(summary = "download the pdf file produced after running successfully running 'latexmk'")
+    @Operation(summary = "download the pdf file produced after successfully running 'latexmk'")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response downloadLatexPdf(
             @PathParam("proposalCode") Long proposalCode,
