@@ -384,6 +384,29 @@ public class JustificationsResource extends ObjectResourceBase {
                 String.format("Latex compilation successful, PDF produced, file saved as: %s",
                         output.getName()))
                 .build();
+    }
+
+    @GET
+    @Path("{which}/latexPdf/download")
+    @Operation(summary = "download the pdf file produced after running successfully running 'latexmk'")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response downloadLatexPdf(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("which") String which)
+        throws WebApplicationException {
+
+        justificationIsLatex(proposalCode, which);
+
+        //fetch the output PDF of the Justification
+        File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
+
+        if (!output.exists()) {
+            throw new WebApplicationException(String.format("Nonexistent file: %s", output.getName()));
+        }
+
+        return Response.ok(output)
+                .header("Content-Disposition", "attachment; filename=" + output.getName())
+                .build();
 
     }
 
