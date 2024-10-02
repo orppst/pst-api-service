@@ -11,7 +11,6 @@ import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.prop.EmerlinExample;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Person;
-import org.ivoa.dm.proposal.prop.SupportingDocument;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -24,6 +23,8 @@ import jakarta.transaction.Transactional;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @ApplicationScoped
 public class AppLifecycleBean {
@@ -50,6 +51,33 @@ public class AppLifecycleBean {
             ObservingProposal pr = ex.getProposal();
             pr.persistRefs(em);
             em.persist(pr);
+
+            //here we create document store directories that would be normally created
+            // in the implementation of API call "createProposal"
+            try {
+                Files.createDirectories(Paths.get(
+                        documentStoreRoot,
+                        "proposals",
+                        pr.getId().toString(),
+                        "supportingDocuments"
+                ));
+                Files.createDirectories(Paths.get(
+                        documentStoreRoot,
+                        "proposals",
+                        pr.getId().toString(),
+                        "justifications",
+                        "scientific"
+                ));
+                Files.createDirectories(Paths.get(
+                        documentStoreRoot,
+                        "proposals",
+                        pr.getId().toString(),
+                        "justifications",
+                        "technical"
+                ));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         //only try to populate the SubjectMap if not already done
@@ -79,36 +107,25 @@ public class AppLifecycleBean {
 
             }
         }
-
-        TypedQuery<SupportingDocument> supp_doc =  em.createQuery("select s from SupportingDocument s",
-                SupportingDocument.class);
-        if (supp_doc.getResultList().isEmpty()) {
-            //assume anything in the document store is now stale
-            File documentStorePath = new File(documentStoreRoot);
-
-            try {
-                FileUtils.deleteDirectory(documentStorePath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            //restore the document store root
-            if(!documentStorePath.mkdirs()) {
-                throw new RuntimeException("Unable to create " + documentStoreRoot);
-            }
-
-        }
-        //else assume we shouldn't touch the document store
-        /*
-            We may need to add more logic here to check that each entry in 'supportingDocuments' actually
-            has a matching file in the document store, and remove any extraneous files. Though if there
-            are fewer files in the store than 'SupportingDocuments' in the database that's a problem we
-            can't solve here!!
-         */
     }
 
     void onStop(@Observes ShutdownEvent ev) {
+
         LOGGER.info("The application is stopping...");
+
+        LOGGER.info("Deleting document store...");
+
+        //*****************************************************
+        //This code obliterates the document store - okay for dev, but prod?
+        File documentStorePath = new File(documentStoreRoot);
+        try {
+            FileUtils.deleteDirectory(documentStorePath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        //*****************************************************
+
+        LOGGER.info("Deleted document store");
     }
 
 }
