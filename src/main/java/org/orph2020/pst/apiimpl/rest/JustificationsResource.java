@@ -191,7 +191,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //required to make form-upload input work
     @Schema(type = SchemaType.STRING, format = "binary")
-    public static class UploadItemSchema {}
+    public static class UploadLatexResourceSchema {}
 
     //non-transactional, no modification to the database occurs
     @POST
@@ -201,7 +201,7 @@ public class JustificationsResource extends ObjectResourceBase {
     public Response addLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
-            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            @RestForm("document") @Schema(implementation = UploadLatexResourceSchema.class)
             FileUpload fileUpload)
         throws WebApplicationException
     {
@@ -235,7 +235,7 @@ public class JustificationsResource extends ObjectResourceBase {
     public Response replaceLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
-            @RestForm("document") @Schema(implementation = UploadItemSchema.class)
+            @RestForm("document") @Schema(implementation = UploadLatexResourceSchema.class)
             FileUpload fileUpload)
         throws WebApplicationException
     {
@@ -265,6 +265,7 @@ public class JustificationsResource extends ObjectResourceBase {
     @DELETE
     @Path("{which}/latexResource")
     @Operation(summary = "remove the given resource file from the latex Justification")
+    @Consumes(MediaType.TEXT_PLAIN)
     public Response removeLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
