@@ -6,6 +6,8 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
+import org.apache.commons.io.FileUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -28,6 +30,10 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 /*
@@ -43,10 +49,13 @@ import java.util.*;
 @ApplicationScoped
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
-
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
+
+    @ConfigProperty(name= "supporting-documents.store-root")
+    String documentStoreRoot;
+
     @Inject
     ObservationResource observationResource;
     @Inject
@@ -155,9 +164,36 @@ public class ProposalResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     @ResponseStatus(value = 201)
     public ObservingProposal createObservingProposal(ObservingProposal op)
-            throws WebApplicationException
-    {
-        return persistObject(op);
+            throws WebApplicationException {
+        ObservingProposal persisted = persistObject(op);
+
+        //use the newly persisted proposal id (code) to create storage locations
+        try {
+            Files.createDirectories(Paths.get(
+                    documentStoreRoot,
+                    "proposals",
+                    persisted.getId().toString(),
+                    "supportingDocuments"
+            ));
+            Files.createDirectories(Paths.get(
+                    documentStoreRoot,
+                    "proposals",
+                    persisted.getId().toString(),
+                    "justifications",
+                    "scientific"
+            ));
+            Files.createDirectories(Paths.get(
+                    documentStoreRoot,
+                    "proposals",
+                    persisted.getId().toString(),
+                    "justifications",
+                    "technical"
+            ));
+        } catch (IOException e) {
+            //if these directories cannot be created then we should roll back
+            throw new WebApplicationException(e);
+        }
+        return persisted;
     }
 
     @DELETE
@@ -167,6 +203,14 @@ public class ProposalResource extends ObjectResourceBase {
     public Response deleteObservingProposal(@PathParam("proposalCode") long code)
             throws WebApplicationException
     {
+        //clean up the document store for this proposal
+        File documentStorePath = new File(documentStoreRoot, "proposals/" + code);
+        try {
+            FileUtils.deleteDirectory(documentStorePath);
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
         return removeObject(ObservingProposal.class, code);
     }
 
@@ -311,148 +355,6 @@ public class ProposalResource extends ObjectResourceBase {
 
         return responseWrapper(proposal.getKind(), 201);
     }
-
-    //********************** JUSTIFICATIONS ***************************
-
-    @GET
-    @Path(proposalRoot +"/justifications/{which}")
-    @Operation(summary = "get the technical or scientific justification associated with the ObservingProposal specified by 'proposalCode'")
-    public Justification getJustification(@PathParam("proposalCode") Long proposalCode,
-                                          @PathParam("which") String which)
-        throws WebApplicationException
-    {
-        ObservingProposal observingProposal = getObservingProposal(proposalCode);
-
-        //avoid returning nulls to frontend clients
-        return switch (which) {
-            case "technical" -> {
-                Justification technical = observingProposal.getTechnicalJustification();
-                yield Objects.requireNonNullElseGet(technical,
-                        () -> new Justification("", TextFormats.ASCIIDOC));
-            }
-            case "scientific" -> {
-                Justification scientific = observingProposal.getScientificJustification();
-                yield Objects.requireNonNullElseGet(scientific,
-                        () -> new Justification("", TextFormats.ASCIIDOC));
-            }
-            default -> throw new WebApplicationException(
-                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                    400
-            );
-        };
-    }
-
-
-    @PUT
-    @Operation( summary = "update a technical or scientific Justification in the ObservingProposal specified by the 'proposalCode'")
-    @Path(proposalRoot +"/justifications/{which}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn={WebApplicationException.class})
-    public Justification updateJustification(
-            @PathParam("proposalCode") long proposalCode,
-            @PathParam("which") String which,
-            Justification incoming )
-            throws WebApplicationException
-    {
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
-        switch (which)
-        {
-            case "technical":
-            {
-                Justification justification = proposal.getTechnicalJustification();
-
-                if (justification == null)
-                    throw new WebApplicationException(
-                        "The Proposal has no existing Technical Justification, please use the 'add' method"
-                    );
-
-                justification.updateUsing(incoming);
-
-                em.merge(justification);
-
-                return justification;
-            }
-
-            case "scientific":
-            {
-                Justification justification = proposal.getScientificJustification();
-
-                if (justification == null)
-                    throw new WebApplicationException(
-                        "The Proposal has no existing Scientific Justification, please use the 'add' method"
-                    );
-
-                justification.updateUsing(incoming);
-
-                em.merge(justification);
-
-                return justification;
-            }
-
-            default:
-            {
-                throw new WebApplicationException(
-                        String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                        418);
-            }
-        }
-    }
-
-
-    @POST
-    @Operation( summary = "add a technical or scientific Justification to the ObservingProposal specified by the 'proposalCode'")
-    @Path(proposalRoot +"/justifications/{which}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn={WebApplicationException.class})
-    public Justification addJustification(
-            @PathParam("proposalCode") long proposalCode,
-            @PathParam("which") String which,
-            Justification incoming )
-            throws WebApplicationException
-    {
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-
-        switch (which)
-        {
-            case "technical":
-            {
-                if (proposal.getTechnicalJustification() == null)
-                {
-                    return addNewChildObject(proposal, incoming, proposal::setTechnicalJustification);
-                }
-                else
-                {
-                    throw new WebApplicationException(
-                            "Proposal has an existing Technical Justification, please use the 'update' method instead"
-                    );
-                }
-            }
-
-            case "scientific":
-            {
-                if (proposal.getScientificJustification() == null)
-                {
-                    return addNewChildObject(proposal, incoming, proposal::setScientificJustification);
-                }
-                else
-                {
-                    throw new WebApplicationException(
-                            "Proposal has an existing Scientific Justification, please use the 'update' method instead"
-                    );
-                }
-
-            }
-
-            default:
-            {
-                throw new WebApplicationException(
-                        String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                        418);
-            }
-        }
-    }
-
 
     //********************** RELATED PROPOSALS ***************************
     @PUT

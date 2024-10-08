@@ -143,7 +143,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
         // is deleted on return from this request (quarkus configuration)
 
-        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + resultId;
+        String destinationStr = documentStoreRoot
+                + "/proposals/"
+                + proposalCode
+                + "/supportingDocuments/"
+                + resultId;
 
         File destinationPath = new File(destinationStr);
 
@@ -177,7 +181,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                         "supportingDocuments", proposalCode, id);
 
         // first save the "new" upload file in the related directory of the store
-        String destinationStr = documentStoreRoot + proposalCode + "/supportingDocuments/" + id ;
+        String destinationStr = documentStoreRoot
+                + "/proposals/"
+                + proposalCode
+                + "/supportingDocuments/"
+                + id;
 
         File destination = new File(destinationStr, fileUpload.fileName());
 

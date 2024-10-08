@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+\title{Test document}
+\author{Darren Walker\thanks{Funded by the ORP}}
+\date{\today}
+
+\newcommand{\myfigures}[2]{%
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\textwidth]{#1}
+    \caption{#2}
+    \label{fig:#1}
+    \end{figure}
+}
+
+\begin{document}
+    \maketitle
+    The universe is immense, and it seems to be homogeneous,
+    on a large scale, everywhere we look.
+
+    \myfigures{hhg2g_dp}{Dolphins}
+
+    There's a picture of a galaxy above.
+    Ha, not really.
+    Figure~\ref{fig:hhg2g_dp} shows something to do with the
+    meaning of life,the universe, and everything.
+    Remember to bring a towel.
+
+    \myfigures{earth_profile}{See, NOT flat}
+
+    Whereas, Figure~\ref{fig:earth_profile} shows a spinning rock of mostly
+    molten iron, with some supposedly intelligent creatures living on its
+    thin crust.
+
+    Now for some fake citations.
+    The Moon is made of cheese~\cite{fakearticle}.
+    Female dwarves have beards~\cite{fakebook}.
+    I am Ironman~\cite{fakeproceedings}.
+
+
+    \bibliographystyle{plain}
+    \bibliography{refs}
+
+\end{document}
