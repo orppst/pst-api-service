@@ -97,12 +97,14 @@ public class SupportingDocumentResource extends ObjectResourceBase {
           throw new WebApplicationException("No file uploaded", 400);
         }
 
-        if(localTitle == null) {
+        if(localTitle == null || localTitle.isEmpty()) {
             localTitle = fileUpload.fileName();
-            if(localTitle == null) {
+            if(localTitle == null || localTitle.isEmpty()) {
                 throw new WebApplicationException("No title or filename provided", 400);
             }
         }
+
+        System.out.println("localTitle = " + localTitle);
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         String _title = sanitiseTitle(localTitle, proposal);
