@@ -397,7 +397,7 @@ public class JustificationsResource extends ObjectResourceBase {
         File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
 
         return responseWrapper(
-                String.format("Latex compilation successful, PDF produced, file saved as: %s",
+                String.format("Latex compilation successful!\nPDF output file saved as: %s",
                 output.getName()), 200);
     }
 
