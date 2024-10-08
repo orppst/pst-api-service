@@ -288,11 +288,26 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     @GET
+    @Path ("{which}/checkForPdf")
+    @Operation(summary = "checks for the existence of a latex PDF output file")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response checkForPdf(@PathParam("proposalCode") Long proposalCode,
+                                @PathParam("which") String which
+    )
+        throws WebApplicationException
+    {
+        File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
+        return responseWrapper(output.exists(), 200);
+    }
+
+
+    @GET
     @Path("{which}/latexPdf")
     @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response createPDFLaTex(@PathParam("proposalCode") Long proposalCode,
-                                              @PathParam("which") String which,
-                                              @RestQuery Boolean warningsAsErrors
+                                   @PathParam("which") String which,
+                                   @RestQuery Boolean warningsAsErrors
     )
         throws WebApplicationException
     {
@@ -365,13 +380,13 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append(String.join("\n", errors));
 
                 FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
-                return Response.ok(errorsStringBuilder.toString()).build();
+                return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
             // exit code is zero here, but there may be warnings
             if (warningsAsErrors && !warnings.isEmpty()) {
                 FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
-                return Response.ok(errorsStringBuilder.toString()).build();
+                return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
         } catch (IOException | InterruptedException e) {
@@ -381,10 +396,9 @@ public class JustificationsResource extends ObjectResourceBase {
         //fetch the output PDF of the Justification
         File output = getFile(proposalCode, which, "out/" + which + "-justification.pdf");
 
-        return Response.ok(
+        return responseWrapper(
                 String.format("Latex compilation successful, PDF produced, file saved as: %s",
-                        output.getName()))
-                .build();
+                output.getName()), 200);
     }
 
     @GET
