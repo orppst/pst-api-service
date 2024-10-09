@@ -104,8 +104,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             }
         }
 
-        System.out.println("localTitle = " + localTitle);
-
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         String _title = sanitiseTitle(localTitle, proposal);
 
