@@ -8,12 +8,10 @@ import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
-import io.smallrye.graphql.cdi.event.BeforeExecute;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -95,25 +93,10 @@ public class ProposalExportImportTest {
         exportedProposal.setTitle(importExportModifiedProposal);
 
         //Add a new investigator and organisation
-        Organization newOrg = new Organization();
-        newOrg.setName("New Org");
-        newOrg.setAddress("1 Avenue, A Town");
-        Person newPerson = new Person();
-        newPerson.setHomeInstitute(newOrg);
-        newPerson.setEMail("a.n.other@unreal.not.email");
-        newPerson.setFullName("New Imported Person");
-        StringIdentifier orchidId = new StringIdentifier("8888-1234-5678-9012");
-        newPerson.setOrcidId(orchidId);
-        Investigator newInvestigator = new Investigator();
-        newInvestigator.setPerson(newPerson);
-        newInvestigator.setType(InvestigatorKind.COI);
+        Investigator newInvestigator = getInvestigator();
         exportedProposal.addToInvestigators(newInvestigator);
 
         //Update details of an existing person, should create a new investigator with the same name!
-        Investigator updatedInvestigator = exportedProposal
-                .getInvestigators()
-                .get(0);
-
         exportedProposal
                 .getInvestigators()
                 .get(0)
@@ -160,6 +143,22 @@ public class ProposalExportImportTest {
                         "$.size()", equalTo(1)
                 );
 
+    }
+
+    private static Investigator getInvestigator() {
+        Organization newOrg = new Organization();
+        newOrg.setName("New Org");
+        newOrg.setAddress("1 Avenue, A Town");
+        Person newPerson = new Person();
+        newPerson.setHomeInstitute(newOrg);
+        newPerson.setEMail("a.n.other@unreal.not.email");
+        newPerson.setFullName("New Imported Person");
+        StringIdentifier orchidId = new StringIdentifier("8888-1234-5678-9012");
+        newPerson.setOrcidId(orchidId);
+        Investigator newInvestigator = new Investigator();
+        newInvestigator.setPerson(newPerson);
+        newInvestigator.setType(InvestigatorKind.COI);
+        return newInvestigator;
     }
 
 }

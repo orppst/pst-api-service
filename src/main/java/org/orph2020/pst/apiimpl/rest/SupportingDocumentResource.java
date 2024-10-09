@@ -92,12 +92,20 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
+        String localTitle = title;
         if(fileUpload == null) {
           throw new WebApplicationException("No file uploaded", 400);
         }
 
+        if(localTitle == null || localTitle.isEmpty()) {
+            localTitle = fileUpload.fileName();
+            if(localTitle == null || localTitle.isEmpty()) {
+                throw new WebApplicationException("No title or filename provided", 400);
+            }
+        }
+
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        String _title = sanitiseTitle(title, proposal);
+        String _title = sanitiseTitle(localTitle, proposal);
 
         //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
         SupportingDocument result =
@@ -105,14 +113,14 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 proposal::addToSupportingDocuments);
 
         File destination = createDestination(
-            proposalCode, title,
+            proposalCode, localTitle,
             result.getId());
 
         //move the uploaded file to the new destination
         if(!fileUpload.uploadedFile().toFile().renameTo(destination))
         {
             throw new WebApplicationException(
-                "Unable to save file " + title, 400);
+                "Unable to save file " + localTitle, 400);
         }
         //else all good, set the location for the result
         result.setLocation(destination.toString());
