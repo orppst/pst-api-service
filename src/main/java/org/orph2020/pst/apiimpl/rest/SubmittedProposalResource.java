@@ -69,6 +69,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, long proposalId)
     {
+        //FIXME -this needs to do new submission process
         /*
             SubmittedProposals need to remember the original proposalId from which they create
             a clone; it is the clone to which the SubmittedProposal refers, NOT the original
@@ -89,8 +90,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         pclone.updateClonedReferences();// TODO API subject to change
         pclone.setSubmitted(true);
         em.persist(pclone);
-        //constructor args.:(submission date, successful, reviews-complete-date, reviews, the-proposal)
-        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, new Date(), false, new Date(0L), null );
+        //constructor args.:(submission date, config, successful, reviews-complete-date, reviews, the-proposal)
+        //FIXME need to gather the config
+        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, null, new Date(), false, new Date(0L), null );
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 

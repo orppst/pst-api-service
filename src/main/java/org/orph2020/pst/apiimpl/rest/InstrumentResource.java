@@ -173,20 +173,4 @@ public class InstrumentResource extends ObjectResourceBase {
         return responseWrapper(instrument, 201);
     }
 
-    @PUT
-    @Path("{instrumentId}/frequencyCoverage")
-    @Operation(summary = "replace the frequencyCoverage of the Instrument specified by the 'instrumentId'")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceInstrumentFrequencyCoverage(@PathParam("observatoryId") Long observatoryId,
-                                                       @PathParam("instrumentId") Long instrumentId,
-                                                       SpectralWindowSetup replacementFrequencyCoverage)
-            throws WebApplicationException
-    {
-        Instrument instrument = findInstrumentByQuery(observatoryId, instrumentId);
-
-        instrument.setFrequencyCoverage(replacementFrequencyCoverage);
-
-        return responseWrapper(instrument, 201);
-    }
 }
