@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.internal.mapping.Jackson2Mapper;
 import org.ivoa.dm.proposal.management.*;
-import org.ivoa.dm.proposal.prop.ObservingMode;
+import org.ivoa.dm.proposal.management.ObservingMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

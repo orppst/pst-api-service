@@ -6,8 +6,11 @@ package org.orph2020.pst.apiimpl.rest;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.ivoa.Ivorn;
+import org.ivoa.dm.proposal.management.Backend;
+import org.ivoa.dm.proposal.management.Observatory;
+import org.ivoa.dm.proposal.management.TelescopeArray;
+import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 

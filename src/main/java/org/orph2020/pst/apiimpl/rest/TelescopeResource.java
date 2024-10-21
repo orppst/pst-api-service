@@ -2,8 +2,8 @@ package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.Observatory;
-import org.ivoa.dm.proposal.prop.Telescope;
+import org.ivoa.dm.proposal.management.Observatory;
+import org.ivoa.dm.proposal.management.Telescope;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.ivoa.dm.stc.coords.CoordSys;
 import org.ivoa.dm.stc.coords.RealCartesianPoint;

@@ -80,7 +80,13 @@
 FROM registry.access.redhat.com/ubi8/openjdk-17:1.18
 
 ENV LANGUAGE='en_US:en'
+USER root
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y perl tar gzip
+RUN curl  -4  -L  https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xvfz - && cd install* && \
+    perl ./install-tl --no-interaction -persistent-downloads -no-doc-install -no-src-install --scheme basic
 
+#TODO need to set path
+RUN tlmgr install latexmk
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
 COPY --chown=185 build/quarkus-app/lib/ /deployments/lib/
