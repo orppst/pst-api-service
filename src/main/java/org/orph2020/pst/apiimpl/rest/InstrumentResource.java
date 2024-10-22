@@ -2,7 +2,10 @@ package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.*;
+import org.ivoa.dm.proposal.management.Instrument;
+import org.ivoa.dm.proposal.management.InstrumentKind;
+import org.ivoa.dm.proposal.management.Observatory;
+import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
@@ -173,20 +176,4 @@ public class InstrumentResource extends ObjectResourceBase {
         return responseWrapper(instrument, 201);
     }
 
-    @PUT
-    @Path("{instrumentId}/frequencyCoverage")
-    @Operation(summary = "replace the frequencyCoverage of the Instrument specified by the 'instrumentId'")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceInstrumentFrequencyCoverage(@PathParam("observatoryId") Long observatoryId,
-                                                       @PathParam("instrumentId") Long instrumentId,
-                                                       SpectralWindowSetup replacementFrequencyCoverage)
-            throws WebApplicationException
-    {
-        Instrument instrument = findInstrumentByQuery(observatoryId, instrumentId);
-
-        instrument.setFrequencyCoverage(replacementFrequencyCoverage);
-
-        return responseWrapper(instrument, 201);
-    }
 }

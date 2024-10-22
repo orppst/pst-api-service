@@ -2,7 +2,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.ObservingMode;
+import org.ivoa.dm.proposal.management.ObservingMode;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import jakarta.persistence.TypedQuery;

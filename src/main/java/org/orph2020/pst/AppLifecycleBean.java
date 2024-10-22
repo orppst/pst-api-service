@@ -9,6 +9,7 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.prop.EmerlinExample;
+import org.ivoa.dm.proposal.prop.ExampleProposal;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.Person;
 import org.jboss.logging.Logger;
@@ -44,11 +45,12 @@ public class AppLifecycleBean {
         LOGGER.info("initializing Database");
         Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
+
             EmerlinExample ex = new EmerlinExample();
             ProposalCycle cy = ex.getCycle();
             cy.persistRefs(em);
             em.persist(cy);
-            ObservingProposal pr = ex.getProposal();
+            ObservingProposal pr = new ExampleProposal().getProposal();
             pr.persistRefs(em);
             em.persist(pr);
 
