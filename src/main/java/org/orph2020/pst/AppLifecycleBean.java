@@ -8,10 +8,7 @@ import io.quarkus.runtime.StartupEvent;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.prop.EmerlinExample;
-import org.ivoa.dm.proposal.prop.ExampleProposal;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
-import org.ivoa.dm.proposal.prop.Person;
+import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -46,16 +43,13 @@ public class AppLifecycleBean {
         Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
 
-            EmerlinExample ex = new EmerlinExample();
-            ProposalCycle cy = ex.getCycle();
-            cy.persistRefs(em);
-            em.persist(cy);
-            ObservingProposal pr = new ExampleProposal().getProposal();
-            pr.persistRefs(em);
-            em.persist(pr);
-
+           // add the example proposals.
+            FullExample fullExample = new FullExample();
+            fullExample.saveTodB(em);
+            ObservingProposal pr = fullExample.getProposalModel().getContent(ObservingProposal.class).get(0);
             //here we create document store directories that would be normally created
             // in the implementation of API call "createProposal"
+            // FIXME not sure if justifications are copied too...
             try {
                 Files.createDirectories(Paths.get(
                         documentStoreRoot,

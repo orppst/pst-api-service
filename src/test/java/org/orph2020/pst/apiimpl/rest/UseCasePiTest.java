@@ -9,25 +9,34 @@ import io.quarkus.test.security.TestSecurity;
 import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
+import io.restassured.common.mapper.TypeRef;
 import io.restassured.internal.mapping.Jackson2Mapper;
+import io.restassured.path.json.config.JsonPathConfig;
+import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
+import org.ivoa.dm.proposal.management.ObservingMode;
 import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.stc.coords.*;
 import org.ivoa.vodml.stdtypes.Unit;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
+import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
+import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.*;
@@ -54,6 +63,8 @@ public class UseCasePiTest {
     private Unit ghz;
     private Unit degrees;
     private SpaceSys ICRS_SYS;
+    private JsonPathConfig jpathConfig;
+    private static final Logger LOGGER = Logger.getLogger("UseCasePiTest");
 
     @BeforeEach
     void setUp() {
@@ -66,6 +77,13 @@ public class UseCasePiTest {
               .then()
               .statusCode(200)
               .extract().as(SpaceSys.class, raObjectMapper);
+
+         jpathConfig = new JsonPathConfig().with().jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
+           @Override
+           public ObjectMapper create(Type cls, String charset) {
+               return mapper;
+           }
+       });
     }
 
     @Test
@@ -353,7 +371,7 @@ public class UseCasePiTest {
                     .post("proposals/"+proposalid+"/fields")
                     .then()
                     .contentType(JSON)
-                    .log().body()
+                    //.log().body()
                     .extract().as(Field.class,raObjectMapper);
 
         TechnicalGoal technicalGoal = TechnicalGoal.createTechnicalGoal((g) -> {
@@ -395,7 +413,7 @@ public class UseCasePiTest {
                     .post("proposals/"+proposalid+"/technicalGoals")
                     .then()
                     .contentType(JSON)
-                    .log().body()
+                    //.log().body()
                     .extract().as(TechnicalGoal.class,raObjectMapper);
 
         //create a target observation
@@ -411,10 +429,10 @@ public class UseCasePiTest {
          given()
               .body(mapper.writeValueAsString(targetObservation))
               .contentType(JSON)
-              .log().body()
+              //.log().body()
               .post("proposals/" + proposalid + "/observations")
               .then()
-              .log().body() //IMPL to print out the response
+              //.log().body() //IMPL to print out the response
               .statusCode(201)
               .extract().response();
 
@@ -511,7 +529,7 @@ public class UseCasePiTest {
 
 
 
-       //finally submit the proposal.
+       // get the current cycle
 
        int cycleId = given()
              .when()
@@ -523,11 +541,31 @@ public class UseCasePiTest {
              )
              .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
 
+        LOGGER.info("getting observing mode");
+        ObservingMode obsMode = given()
+              .when()
+              .get("/proposalCycles/"+cycleId+"/observingModes")
+                    .then()
+                          .statusCode(200).body("$.size()", greaterThanOrEqualTo(1))
+              //.log().body()
+              .extract()
+              .jsonPath(jpathConfig).getObject("[0]", ObservingMode.class); //IMPL just getting the first one as extracting the whole list not really working (I think because the mapper is intiailiex for each
+
+
+        List<Long> obsIds = given().when().get("proposals/" + proposalid + "/observations/")
+              .then()
+              .statusCode(200)
+              .log().body()
+              .extract().jsonPath().getList(".", ObjectIdentifier.class).stream().map(f -> f.dbid).toList();
+
+        SubmissionConfiguration submittedConfig = new SubmissionConfiguration(proposalid, List.of(new SubmissionConfiguration.ObservationConfigMapping(obsIds, obsMode.getId())));
+
+        //finally submit the proposal.
        given()
-             .contentType("text/plain")
-             .body(proposalid)
+             .contentType(JSON)
+             .body(mapper.writeValueAsString(submittedConfig))
              .when()
-             .put("/proposalCycles/"+cycleId+"/submittedProposals")
+             .post("/proposalCycles/"+cycleId+"/submittedProposals")
              .then()
              .statusCode(200)
        ;

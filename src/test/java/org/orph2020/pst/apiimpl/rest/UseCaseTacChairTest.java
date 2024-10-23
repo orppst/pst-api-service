@@ -132,6 +132,7 @@ public class UseCaseTacChairTest {
 
       long subId = revprop.getId();
 
+
       //push reviewed proposal to 'allocatedProposals' list
       given()
               .when()
@@ -159,21 +160,7 @@ public class UseCaseTacChairTest {
               .extract().as(AllocationGrade.class, raObjectMapper);
 
 
-      Integer modeId = given()
-              .when()
-              .get("proposalCycles/" + cycleId + "/observingModes")
-              .then()
-              .body(
-                      "$.size()", greaterThan(0)
-              )
-              .extract().jsonPath().getInt("[0].dbid");
 
-      ObservingMode mode = given()
-              .when()
-              .get("proposalCycles/" + cycleId + "/observingModes/" + modeId)
-              .then()
-              .statusCode(200)
-              .extract().as(ObservingMode.class, raObjectMapper);
 
       Integer resourceTypeId = given()
               .when()
@@ -188,6 +175,9 @@ public class UseCaseTacChairTest {
               .then()
               .statusCode(200)
               .extract().as(ResourceType.class, raObjectMapper);
+
+      //NB - this is not really representative of what should happen in reality - there could be several modes on different observations
+      ObservingMode mode = revprop.getConfig().get(0).getMode();
 
       AllocatedBlock allocatedBlock = AllocatedBlock.createAllocatedBlock(
             a -> {
