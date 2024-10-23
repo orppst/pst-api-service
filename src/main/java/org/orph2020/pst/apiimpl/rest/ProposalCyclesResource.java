@@ -16,6 +16,7 @@ import org.orph2020.pst.common.json.ProposalCycleDates;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+
 import java.util.*;
 
 @Path("proposalCycles")
@@ -35,7 +36,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         if(includeClosed)
             return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
         else
-            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");//FIXME actually do only return open
+            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o WHERE o.submissionDeadline > CURRENT_TIMESTAMP() ORDER BY o.title");
     }
 
 
@@ -96,7 +97,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
 
         return new ProposalCycleDates(fullCycle.getTitle(), fullCycle.getSubmissionDeadline(),
-                fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd());
+                fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd(),
+                fullCycle.getObservatory());
     }
 
     @PUT
@@ -115,7 +117,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.setSubmissionDeadline(replacementDeadline);
 
         return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
+                cycle.getObservatory());
     }
 
 
@@ -135,7 +138,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.setObservationSessionStart(replacementStart);
 
         return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
+                cycle.getObservatory());
     }
 
     @PUT
@@ -154,7 +158,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.setObservationSessionEnd(replacementEnd);
 
         return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd());
+                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
+                cycle.getObservatory());
     }
 
 
