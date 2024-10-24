@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -8,10 +9,13 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
+import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -24,13 +28,13 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle")
     public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") Long cycleCode)
     {
-        String select = "select s._id,p.title ";
+        String select = "select s._id,s.proposal.title ";
         String from = "from ProposalCycle c ";
         String innerJoins = "inner join c.submittedProposals s inner join s.proposal p ";
         String where = "where c._id=" + cycleCode + " ";
         String orderBy = "order by p.title";
 
-        return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
+        return getObjectIdentifiers("select s._id, s.proposal.title from ProposalCycle c inner join c.submittedProposals s where c._id=" + cycleCode + "  order by s.proposal.title ");
     }
 
     @GET
@@ -63,27 +67,36 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
 
-    @PUT
+    @POST
     @Operation(summary = "submit a proposal")
-    @Consumes(MediaType.TEXT_PLAIN)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, long proposalId)
+    public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
     {
-        //FIXME -this needs to do new submission process
+
         /*
-            SubmittedProposals need to remember the original proposalId from which they create
+           TODO  SubmittedProposals need to remember the original proposalId from which they create
             a clone; it is the clone to which the SubmittedProposal refers, NOT the original
             proposal. SubmittedProposals currently do not have a means to do this.
 
-            In this way, we can check for proposals that have been re-submitted i.e., compare the
-            'proposalId' input to the same in the list of SubmittedProposals, and remove any now stale
-            SubmittedProposals and their clones, before adding a new SubmittedProposal with a new,
-            updated clone.
+            It is debatable whether this should be in the model or just a separate table that POLARIS itself maintains
          */
 
+        final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
+
+        List<ObservationConfiguration> configMappings = new ArrayList<>();
+        for (SubmissionConfiguration.ObservationConfigMapping cm: submissionConfiguration.config)
+        {
+            ObservingMode mode = findObject(ObservingMode.class, cm.modeId);
+            TypedQuery<Observation> obsquery = em.createQuery("select o from Observation o where o._id in :ids ", Observation.class);
+            obsquery.setParameter("ids", cm.observationIds);
+            List<Observation> observations = obsquery.getResultList();
+            configMappings.add(new ObservationConfiguration(observations,mode));
+
+        }
 
         new ProposalManagementModel().createContext(); // TODO API subject to change
         ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
@@ -92,7 +105,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         em.persist(pclone);
         //constructor args.:(submission date, config, successful, reviews-complete-date, reviews, the-proposal)
         //FIXME need to gather the config
-        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, null, new Date(), false, new Date(0L), null );
+
+        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, configMappings, new Date(), false, new Date(0L), null );
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 

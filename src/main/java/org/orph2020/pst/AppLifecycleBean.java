@@ -8,10 +8,7 @@ import io.quarkus.runtime.StartupEvent;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.prop.EmerlinExample;
-import org.ivoa.dm.proposal.prop.ExampleProposal;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
-import org.ivoa.dm.proposal.prop.Person;
+import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -26,6 +23,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 
 @ApplicationScoped
 public class AppLifecycleBean {
@@ -46,16 +50,21 @@ public class AppLifecycleBean {
         Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
 
-            EmerlinExample ex = new EmerlinExample();
-            ProposalCycle cy = ex.getCycle();
-            cy.persistRefs(em);
-            em.persist(cy);
-            ObservingProposal pr = new ExampleProposal().getProposal();
-            pr.persistRefs(em);
-            em.persist(pr);
+           // add the example proposals.
+            FullExample fullExample = new FullExample();
+            List<ProposalCycle> cycles = fullExample.getManagementModel().getContent(ProposalCycle.class);
+            LocalDate now = LocalDate.now();
+            for (ProposalCycle cycle : cycles) {
+                cycle.setSubmissionDeadline(new Date(now.plusWeeks(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionStart(new Date(now.plusMonths(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionEnd(new Date(now.plusMonths(6).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+            }
+            fullExample.saveTodB(em);
 
+            ObservingProposal pr = fullExample.getProposalModel().getContent(ObservingProposal.class).get(0);
             //here we create document store directories that would be normally created
             // in the implementation of API call "createProposal"
+            // FIXME not sure if justifications are copied too...
             try {
                 Files.createDirectories(Paths.get(
                         documentStoreRoot,

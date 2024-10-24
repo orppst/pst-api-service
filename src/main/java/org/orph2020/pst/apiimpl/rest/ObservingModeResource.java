@@ -35,10 +35,15 @@ public class ObservingModeResource extends ObjectResourceBase {
     }
 
     @GET
-    @Operation(summary = "get all the ObservingMode identifiers associated with the given ProposalCycle")
-    public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
+    @Operation(summary = "get all the ObservingModes associated with the given ProposalCycle")
+    public List<ObservingMode> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
     {
-        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.observingModes o where p._id = "+cycleId+" order by o.name");
+        TypedQuery<ObservingMode>  q = em.createQuery(
+              "select om from ProposalCycle c join c.observingModes om where c._id = :cid",
+              ObservingMode.class
+        );
+        q.setParameter("cid", cycleId);
+        return q.getResultList();
     }
 
     @GET
