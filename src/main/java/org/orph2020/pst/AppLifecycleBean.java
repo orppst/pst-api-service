@@ -23,6 +23,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 
 @ApplicationScoped
 public class AppLifecycleBean {
@@ -45,7 +52,15 @@ public class AppLifecycleBean {
 
            // add the example proposals.
             FullExample fullExample = new FullExample();
+            List<ProposalCycle> cycles = fullExample.getManagementModel().getContent(ProposalCycle.class);
+            LocalDate now = LocalDate.now();
+            for (ProposalCycle cycle : cycles) {
+                cycle.setSubmissionDeadline(new Date(now.plusWeeks(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionStart(new Date(now.plusMonths(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionEnd(new Date(now.plusMonths(6).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+            }
             fullExample.saveTodB(em);
+
             ObservingProposal pr = fullExample.getProposalModel().getContent(ObservingProposal.class).get(0);
             //here we create document store directories that would be normally created
             // in the implementation of API call "createProposal"
