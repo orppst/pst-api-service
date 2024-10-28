@@ -103,7 +103,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         pclone.updateClonedReferences();// TODO API subject to change
         pclone.setSubmitted(true);
         em.persist(pclone);
-        //constructor args.:(submission date, config, successful, reviews-complete-date, reviews, the-proposal)
+        //constructor args.:(the-proposal, config, submission date, successful, reviews-complete-date, reviews)
         //FIXME need to gather the config
 
         SubmittedProposal submittedProposal = new SubmittedProposal(pclone, configMappings, new Date(), false, new Date(0L), null );
