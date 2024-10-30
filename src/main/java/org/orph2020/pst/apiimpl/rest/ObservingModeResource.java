@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ObservingMode;
@@ -35,15 +36,16 @@ public class ObservingModeResource extends ObjectResourceBase {
     }
 
     @GET
-    @Operation(summary = "get all the ObservingModes associated with the given ProposalCycle")
-    public List<ObservingMode> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
+    @Operation(summary = "get a list of object identifiers for all the ObservingModes associated with the given ProposalCycle")
+    public List<ObjectIdentifier> getCycleObservingModes(@PathParam("cycleId") Long cycleId)
     {
-        TypedQuery<ObservingMode>  q = em.createQuery(
-              "select om from ProposalCycle c join c.observingModes om where c._id = :cid",
-              ObservingMode.class
-        );
-        q.setParameter("cid", cycleId);
-        return q.getResultList();
+        String qlString = "select om._id,om.name,om.description from ProposalCycle c "
+                + "inner join c.observingModes om "
+                + "where c._id=" + cycleId + " order by om._id";
+
+        Query query = em.createQuery(qlString);
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
