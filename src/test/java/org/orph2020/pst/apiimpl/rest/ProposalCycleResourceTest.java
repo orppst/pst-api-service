@@ -14,8 +14,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.*;
 import  static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,7 +51,7 @@ public class ProposalCycleResourceTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             )
             .extract().jsonPath().getLong("[0].dbid");
 

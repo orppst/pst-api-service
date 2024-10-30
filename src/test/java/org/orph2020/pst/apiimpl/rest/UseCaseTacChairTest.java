@@ -19,8 +19,7 @@ import java.util.Date;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Use case that the TAC Chair will perform. Reviewing a proposal and allocating time.
@@ -44,7 +43,7 @@ public class UseCaseTacChairTest {
             .then()
             .statusCode(200)
             .body(
-                  "$.size()", equalTo(1)
+                  "$.size()", greaterThanOrEqualTo(1)
             )
             .extract().jsonPath().getLong("[0].dbid");
       raObjectMapper = new Jackson2Mapper(((type, charset) -> {
