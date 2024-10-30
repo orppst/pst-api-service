@@ -48,9 +48,9 @@ public class InstrumentResource extends ObjectResourceBase {
                                                             @RestQuery String name)
     {
         if (name == null) {
-            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' ORDER BY i.name");
+            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = "+observatoryId+" ORDER BY i.name");
         } else {
-            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = '"+observatoryId+"' and i.name like '"+name+"' ORDER BY i.name");
+            return getObjectIdentifiers("SELECT i._id,i.name FROM Observatory o Inner Join o.instruments i WHERE o._id = "+observatoryId+" and i.name like '"+name+"' ORDER BY i.name");
         }
     }
 
