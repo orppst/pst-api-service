@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.*;
@@ -41,19 +42,25 @@ public class ObservationResource extends ObjectResourceBase {
                                                   @RestQuery ObsType type)
             throws WebApplicationException
     {
-        String select = "select o._id,t.sourceName ";
+        String select = "select o._id,cast(Type(o) as string),t.sourceName ";
         String from = "from ObservingProposal p ";
         String innerJoin = "inner join p.observations o inner join o.target t ";
         String where = "where p._id=" + proposalCode + " ";
         String orderBy = "order by t.sourceName";
 
         String typeQuery = type != null ?
-                "and Type(o)=" + type.name() + " " : "";
+                "and Type(o) = :typeName" : "";
         String srcLike = srcName != null ?
-                "and t.sourceName like '" + srcName + "' " : "";
+                "and t.sourceName like :sourceName" : "";
 
-        return getObjectIdentifiers(select + from + innerJoin + where +
-                typeQuery + srcLike + orderBy);
+        String qlString = select + from + innerJoin + where +
+                typeQuery + srcLike + orderBy;
+
+        Query query = em.createQuery(qlString);
+        if (type != null) query.setParameter("typeName", type.name());
+        if (srcName != null) query.setParameter("sourceName", srcName);
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
