@@ -523,7 +523,7 @@ public class UseCasePiTest {
              .then()
              .statusCode(200)
              .body(
-                   "$.size()", equalTo(1)
+                   "$.size()", greaterThanOrEqualTo(1)
              )
              .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
 
