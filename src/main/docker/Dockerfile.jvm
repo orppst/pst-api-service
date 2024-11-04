@@ -85,7 +85,8 @@ RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y per
 RUN curl  -4  -L  https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz | tar xvfz - && cd install* && \
     perl ./install-tl --no-interaction -persistent-downloads -no-doc-install -no-src-install --scheme basic
 
-#TODO need to set path
+#FIXME need way to discover path - or fix version downloaded...
+ENV PATH="/usr/local/texlive/2024/bin/x86_64-linux/:${PATH}"
 RUN tlmgr install latexmk
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
