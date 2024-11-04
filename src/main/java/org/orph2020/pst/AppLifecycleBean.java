@@ -46,10 +46,10 @@ public class AppLifecycleBean {
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         LOGGER.info("The application is starting...");
-        LOGGER.info("initializing Database");
+
         Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
-
+            LOGGER.info("initializing Database");
            // add the example proposals.
             FullExample fullExample = new FullExample();
             List<ProposalCycle> cycles = fullExample.getManagementModel().getContent(ProposalCycle.class);
@@ -61,10 +61,11 @@ public class AppLifecycleBean {
             }
             fullExample.saveTodB(em);
 
-            ObservingProposal pr = fullExample.getProposalModel().getContent(ObservingProposal.class).get(0);
+
             //here we create document store directories that would be normally created
             // in the implementation of API call "createProposal"
-            // FIXME not sure if justifications are copied too...
+            // FIXME
+            for(ObservingProposal pr: fullExample.getProposalModel().getContent(ObservingProposal.class))
             try {
                 Files.createDirectories(Paths.get(
                         documentStoreRoot,
@@ -87,6 +88,7 @@ public class AppLifecycleBean {
                         "technical"
                 ));
             } catch (IOException e) {
+                LOGGER.error(e);
                 throw new RuntimeException(e);
             }
         }
