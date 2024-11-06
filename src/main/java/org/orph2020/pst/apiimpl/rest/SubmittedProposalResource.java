@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -26,15 +27,36 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle")
-    public List<ObjectIdentifier> getSubmittedProposals(@PathParam("cycleCode") Long cycleCode)
+    public List<ObjectIdentifier> getSubmittedProposals(
+            @PathParam("cycleCode") Long cycleCode,
+            @RestQuery String title,
+            @RestQuery String investigatorName
+    )
     {
-        String select = "select s._id,s.proposal.title ";
-        String from = "from ProposalCycle c ";
-        String innerJoins = "inner join c.submittedProposals s inner join s.proposal p ";
-        String where = "where c._id=" + cycleCode + " ";
-        String orderBy = "order by p.title";
+        boolean noQuery = investigatorName == null && title == null;
+        boolean investigatorOnly = investigatorName != null && title == null;
+        boolean titleOnly = title != null && investigatorName == null;
 
-        return getObjectIdentifiers("select s._id, s.proposal.title from ProposalCycle c inner join c.submittedProposals s where c._id=" + cycleCode + "  order by s.proposal.title ");
+
+        String baseStr = "select distinct s._id, s.proposal.title from ProposalCycle c, Investigator i "
+                + "inner join c.submittedProposals s "
+                + "where i member of s.proposal.investigators "
+                + "and c._id=" + cycleCode + " ";
+
+        String orderByStr = "order by s.proposal.title";
+
+        String investigatorLikeStr = "and i.person.fullName like '" + investigatorName + "' ";
+        String titleLikeStr = "and s.proposal.title like '" + title + "' ";
+
+        if (noQuery) {
+            return getObjectIdentifiers(baseStr + orderByStr);
+        } else if (investigatorOnly) {
+            return getObjectIdentifiers(baseStr + investigatorLikeStr + orderByStr);
+        } else if (titleOnly) {
+            return getObjectIdentifiers(baseStr + titleLikeStr + orderByStr);
+        } else {
+            return getObjectIdentifiers(baseStr + investigatorLikeStr + titleLikeStr + orderByStr);
+        }
     }
 
     @GET
