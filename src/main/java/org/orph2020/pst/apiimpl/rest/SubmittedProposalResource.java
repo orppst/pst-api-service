@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -33,30 +34,31 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             @RestQuery String investigatorName
     )
     {
-        boolean noQuery = investigatorName == null && title == null;
-        boolean investigatorOnly = investigatorName != null && title == null;
-        boolean titleOnly = title != null && investigatorName == null;
+        String qlString = getQlString(cycleCode, title, investigatorName);
 
+        Query query = em.createQuery(qlString);
 
-        String baseStr = "select distinct s._id, s.proposal.title from ProposalCycle c, Investigator i "
+        if (investigatorName != null) query.setParameter("investigatorName", investigatorName);
+        if (title != null) query.setParameter("title", title);
+
+        return getObjectIdentifiersAlt(query);
+    }
+
+    private static String getQlString(Long cycleCode, String title, String investigatorName) {
+        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.proposal.title "
+                + "from ProposalCycle c, Investigator i "
                 + "inner join c.submittedProposals s "
                 + "where i member of s.proposal.investigators "
                 + "and c._id=" + cycleCode + " ";
 
         String orderByStr = "order by s.proposal.title";
 
-        String investigatorLikeStr = "and i.person.fullName like '" + investigatorName + "' ";
-        String titleLikeStr = "and s.proposal.title like '" + title + "' ";
+        String investigatorLikeStr = investigatorName != null ?
+                "and i.person.fullName like :investigatorName " : "";
+        String titleLikeStr = title != null ?
+                "and s.proposal.title like :title " : "";
 
-        if (noQuery) {
-            return getObjectIdentifiers(baseStr + orderByStr);
-        } else if (investigatorOnly) {
-            return getObjectIdentifiers(baseStr + investigatorLikeStr + orderByStr);
-        } else if (titleOnly) {
-            return getObjectIdentifiers(baseStr + titleLikeStr + orderByStr);
-        } else {
-            return getObjectIdentifiers(baseStr + investigatorLikeStr + titleLikeStr + orderByStr);
-        }
+        return baseStr + investigatorLikeStr + titleLikeStr + orderByStr;
     }
 
     @GET
