@@ -446,6 +446,7 @@ public class JustificationsResource extends ObjectResourceBase {
                             || string.endsWith(".png")
                             || string.endsWith(".jpg")
                             || string.endsWith(".jpeg")
+                            || string.endsWith(".eps")
                     )
                     .collect(Collectors.toSet());
         }
@@ -630,14 +631,23 @@ public class JustificationsResource extends ObjectResourceBase {
             throw new WebApplicationException("Uploads require the correct file extension");
         }
 
+        // mime types aren't very well-defined so we include octect-stream as a coverall for .bib
+        // extensions, and postscript as a coverall for .eps extensions.
+
         switch (contentType) {
-            //.bib, .png, or .jpg (.jpeg) only; notice .bib may have 'application/octet-stream' type
+            //.bib, .png, .jpg (.jpeg), .eps only
             case "application/octet-stream":
             case "application/x-bibtex":
+            case "application/postscript":
             case "image/jpeg":
             case "image/png":
-                if (!extension.equals("bib") && !extension.equals("jpeg") &&
-                        !extension.equals("jpg") && !extension.equals("png"))
+            case "image/x-eps":
+                if (!extension.equals("bib") &&
+                        !extension.equals("jpeg") &&
+                        !extension.equals("jpg") &&
+                        !extension.equals("png") &&
+                        !extension.equals("eps")
+                )
                     throw new WebApplicationException("Invalid file extension");
                 break;
             default:
