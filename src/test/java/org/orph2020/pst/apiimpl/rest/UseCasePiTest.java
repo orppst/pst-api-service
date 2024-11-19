@@ -126,7 +126,7 @@ public class UseCasePiTest {
 
 
         //create minimal proposal
-        ObservingProposal prop = new ObservingProposal().withTitle("My New Proposal")
+        ObservingProposal prop = (ObservingProposal) new ObservingProposal().withTitle("My New Proposal")
                 .withKind(ProposalKind.STANDARD)
                 .withSummary("search for something new")
                 .withScientificJustification(
@@ -134,8 +134,7 @@ public class UseCasePiTest {
                                 TextFormats.ASCIIDOC))
                 .withTechnicalJustification(
                         new Justification("technical justification",
-                                TextFormats.ASCIIDOC))
-                ;
+                                TextFormats.ASCIIDOC));
 
         prop.setInvestigators(List.of(
                 new Investigator(principalInvestigator, InvestigatorKind.PI, false)));

@@ -45,18 +45,18 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     private static String getQlString(Long cycleCode, String title, String investigatorName) {
-        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.proposal.title "
+        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.title "
                 + "from ProposalCycle c, Investigator i "
                 + "inner join c.submittedProposals s "
-                + "where i member of s.proposal.investigators "
+                + "where i member of s.investigators "
                 + "and c._id=" + cycleCode + " ";
 
-        String orderByStr = "order by s.proposal.title";
+        String orderByStr = "order by s.title";
 
         String investigatorLikeStr = investigatorName != null ?
                 "and i.person.fullName like :investigatorName " : "";
         String titleLikeStr = title != null ?
-                "and s.proposal.title like :title " : "";
+                "and s.title like :title " : "";
 
         return baseStr + investigatorLikeStr + titleLikeStr + orderByStr;
     }
@@ -86,7 +86,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .stream()
                 .filter(sp -> allocatedProposals.stream().noneMatch(
                         ap -> sp.getId().equals(ap.getSubmitted().getId())))
-                .map(sp -> new ObjectIdentifier(sp.getId(), sp.getProposal().getTitle()))
+                .map(sp -> new ObjectIdentifier(sp.getId(), sp.getTitle()))
                 .toList();
     }
 
@@ -125,7 +125,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         new ProposalManagementModel().createContext(); // TODO API subject to change
         ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
         pclone.updateClonedReferences();// TODO API subject to change
-        pclone.setSubmitted(true);
         em.persist(pclone);
         //constructor args.:(the-proposal, config, submission date, successful, reviews-complete-date, reviews)
         //FIXME need to gather the config
@@ -134,12 +133,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
-        //get the proposal we have just submitted
-        List<SubmittedProposal> submittedProposals = cycle.getSubmittedProposals();
-        ObservingProposal responseProposal =
-                submittedProposals.get(submittedProposals.size() - 1).getProposal();
 
-        return new ProposalSynopsis(responseProposal);
+        return new ProposalSynopsis(proposal);
     }
 
     @PUT

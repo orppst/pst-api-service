@@ -90,8 +90,7 @@ public class ProposalResource extends ObjectResourceBase {
         List<Object[]> results = query.getResultList();
         for (Object[] r : results) {
             result.add(
-                    new ProposalSynopsis((long) r[0], (String) r[1], (String) r[2], (ProposalKind) r[3],
-                            (Boolean) r[4])
+                    new ProposalSynopsis((long) r[0], (String) r[1], (String) r[2], (ProposalKind) r[3])
             );
         }
         return result;
@@ -99,7 +98,7 @@ public class ProposalResource extends ObjectResourceBase {
 
     private ProposalSynopsis createSynopsisFromProposal(ObservingProposal proposal) {
         return new ProposalSynopsis(proposal.getId(), proposal.getTitle(), proposal.getSummary(),
-                proposal.getKind(), proposal.getSubmitted());
+                proposal.getKind());
     }
 
     @GET
@@ -114,21 +113,20 @@ public class ProposalResource extends ObjectResourceBase {
 
         //if 'ProposalSynopsis' is modified we should check these Strings for suitability
         //Investigator table is joined twice, once for user view scope and again for searching other investigators.
-        String baseStr = "select distinct o._id,o.title,o.summary,o.kind,o.submitted from ObservingProposal o, Investigator inv, Investigator i "
+        String baseStr = "select distinct o._id,o.title,o.summary,o.kind from ObservingProposal o, Investigator inv, Investigator i "
                         + "where inv member of o.investigators and inv.person._id = " + personId + " and i member of o.investigators ";
-        String submittedStr = "(o.submitted is null OR not o.submitted) ";
         String orderByStr = "order by o.title";
         String investigatorLikeStr = "and i.person.fullName like '" +investigatorName+ "' ";
         String titleLikeStr = "o.title like '" +title+ "' ";
 
         if (noQuery) {
-            return getSynopses(baseStr + "and " + submittedStr + orderByStr);
+            return getSynopses(baseStr  + orderByStr);
         } else if (investigatorOnly) {
-            return getSynopses(baseStr + investigatorLikeStr + "and " + submittedStr + orderByStr);
+            return getSynopses(baseStr + investigatorLikeStr +  orderByStr);
         } else if (titleOnly) {
-            return getSynopses(baseStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
+            return getSynopses(baseStr + "and " + titleLikeStr  + orderByStr);
         } else { //name and title given as queries
-            return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr + "and " + submittedStr + orderByStr);
+            return getSynopses(baseStr + investigatorLikeStr + "and " + titleLikeStr  + orderByStr);
         }
     }
 

@@ -25,12 +25,12 @@ public class AllocatedProposalResource extends ObjectResourceBase{
     public List<ObjectIdentifier> getAllocatedProposals(@PathParam("cycleCode") Long cycleCode,
                                                         @RestQuery String title) {
 
-        String select = "select o._id,o.submitted.proposal.title ";
+        String select = "select o._id,o.submitted.title ";
         String from = "from ProposalCycle p ";
         String innerJoins = "inner join p.allocatedProposals o ";
         String where = "where p._id=" + cycleCode + " ";
-        String titleLike = title == null ? "" : "and o.submitted.proposal.title like '" + title + "' ";
-        String orderBy = "order by o.submitted.proposal.title";
+        String titleLike = title == null ? "" : "and o.submitted.title like '" + title + "' ";
+        String orderBy = "order by o.submitted.title";
 
         return getObjectIdentifiers(select + from + innerJoins + where + titleLike + orderBy);
     }
@@ -63,7 +63,7 @@ public class AllocatedProposalResource extends ObjectResourceBase{
 
         em.merge(cycle);
 
-        return new ProposalSynopsis(allocatedProposal.getSubmitted().getProposal());
+        return new ProposalSynopsis(allocatedProposal.getSubmitted());
     }
 
 
