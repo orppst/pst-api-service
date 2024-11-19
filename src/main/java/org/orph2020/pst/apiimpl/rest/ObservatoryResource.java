@@ -6,7 +6,7 @@ package org.orph2020.pst.apiimpl.rest;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.ivoa.Ivorn;
+import org.ivoa.dm.ivoa.Ivoid;
 import org.ivoa.dm.proposal.management.Backend;
 import org.ivoa.dm.proposal.management.Observatory;
 import org.ivoa.dm.proposal.management.TelescopeArray;
@@ -108,7 +108,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     {
         Observatory observatory = findObject(Observatory.class, id);
 
-        observatory.setIvoid(new Ivorn(replacementIvoId));
+        observatory.setIvoid(new Ivoid(replacementIvoId));
 
         return responseWrapper(observatory, 201);
     }
