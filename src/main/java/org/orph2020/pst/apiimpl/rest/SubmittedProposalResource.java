@@ -12,6 +12,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -123,13 +124,14 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         }
 
         new ProposalManagementModel().createContext(); // TODO API subject to change
-        ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
-        pclone.updateClonedReferences();// TODO API subject to change
-        em.persist(pclone);
         //constructor args.:(the-proposal, config, submission date, successful, reviews-complete-date, reviews)
         //FIXME need to gather the config
 
-        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, configMappings, new Date(), false, new Date(0L), null );
+        // TODO Double check all references are updated correctly
+        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, configMappings, new Date(), false, new Date(0L), null );
+        submittedProposal.updateClonedReferences();
+        em.persist(submittedProposal);
+        submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
