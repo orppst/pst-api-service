@@ -208,8 +208,27 @@ public class ProposalResource extends ObjectResourceBase {
         } catch (IOException e) {
             throw new WebApplicationException(e);
         }
-
+        // IMPL need to delete observations first
+        ObservingProposal prop = findObject(ObservingProposal.class, code);
+        prop.getObservations().forEach(observation -> em.remove(observation));
         return removeObject(ObservingProposal.class, code);
+    }
+    @POST
+    @Path(proposalRoot)
+    @Consumes(MediaType.TEXT_PLAIN)//IMPL slightly arbitrary choice - content does not matter and this will distinguish
+    @Operation(summary = "clone ObservingProposal specified by the 'proposalCode'")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    @ResponseStatus(value = 201)
+    public ObservingProposal cloneObservingProposal(@PathParam("proposalCode") long code)
+          throws WebApplicationException
+    {
+        //FIXME documentstore stuff needs dealing with - this should be abstracted into Objects/API....
+        ObservingProposal prop = findObject(ObservingProposal.class, code);
+        prop.forceLoad();
+        new ProposalModel().createContext(); //IMPL nasty clone API...
+        ObservingProposal newProp = new ObservingProposal(prop);
+        newProp.updateClonedReferences();
+        return persistObject(newProp);
     }
 
 

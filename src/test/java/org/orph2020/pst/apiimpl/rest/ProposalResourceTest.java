@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.MediaType;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static io.restassured.http.ContentType.TEXT;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.Matchers.*;
 
@@ -318,5 +319,24 @@ public class ProposalResourceTest {
 
 
    }
+   @Test
+   void cloneAndDelete() {
 
+      //first clone
+      ObservingProposal cloned =  given()
+            .when()
+            .contentType(TEXT)
+            .post("proposals/"+proposalId)
+            .then()
+            .statusCode(201)
+            .extract().as(ObservingProposal.class, raObjectMapper);
+
+      // delete the clone
+      given()
+         .when()
+            .delete("proposals/"+cloned.getId())
+      .then()
+      .statusCode(204);
+
+   }
 }
