@@ -12,6 +12,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -45,18 +46,18 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     private static String getQlString(Long cycleCode, String title, String investigatorName) {
-        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.proposal.title "
+        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.title "
                 + "from ProposalCycle c, Investigator i "
                 + "inner join c.submittedProposals s "
-                + "where i member of s.proposal.investigators "
+                + "where i member of s.investigators "
                 + "and c._id=" + cycleCode + " ";
 
-        String orderByStr = "order by s.proposal.title";
+        String orderByStr = "order by s.title";
 
         String investigatorLikeStr = investigatorName != null ?
                 "and i.person.fullName like :investigatorName " : "";
         String titleLikeStr = title != null ?
-                "and s.proposal.title like :title " : "";
+                "and s.title like :title " : "";
 
         return baseStr + investigatorLikeStr + titleLikeStr + orderByStr;
     }
@@ -86,7 +87,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .stream()
                 .filter(sp -> allocatedProposals.stream().noneMatch(
                         ap -> sp.getId().equals(ap.getSubmitted().getId())))
-                .map(sp -> new ObjectIdentifier(sp.getId(), sp.getProposal().getTitle()))
+                .map(sp -> new ObjectIdentifier(sp.getId(), sp.getTitle()))
                 .toList();
     }
 
@@ -123,23 +124,19 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         }
 
         new ProposalManagementModel().createContext(); // TODO API subject to change
-        ObservingProposal pclone = new ObservingProposal(proposal); // create clone TODO perhaps we should not create the clone
-        pclone.updateClonedReferences();// TODO API subject to change
-        pclone.setSubmitted(true);
-        em.persist(pclone);
         //constructor args.:(the-proposal, config, submission date, successful, reviews-complete-date, reviews)
         //FIXME need to gather the config
 
-        SubmittedProposal submittedProposal = new SubmittedProposal(pclone, configMappings, new Date(), false, new Date(0L), null );
+        // TODO Double check all references are updated correctly
+        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, configMappings, new Date(), false, new Date(0L), null );
+        submittedProposal.updateClonedReferences();
+        em.persist(submittedProposal);
+        submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
-        //get the proposal we have just submitted
-        List<SubmittedProposal> submittedProposals = cycle.getSubmittedProposals();
-        ObservingProposal responseProposal =
-                submittedProposals.get(submittedProposals.size() - 1).getProposal();
 
-        return new ProposalSynopsis(responseProposal);
+        return new ProposalSynopsis(proposal);
     }
 
     @PUT
