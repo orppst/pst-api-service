@@ -40,7 +40,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
                 + "from SubmittedProposal o, ProposalCycle c "
                 + "where o member of c.submittedProposals";
 
-        String queryStr = "select distinct o._id,o.title,o.summary,o.kind,c._id "
+        String queryStr = "select distinct o._id,c._id "
                 + "from SubmittedProposal o, Investigator inv, Investigator i, ProposalCycle c "
                 + "where inv member of o.investigators and inv.person._id = " + personId + " "
                 + "and i member of o.investigators "
@@ -51,17 +51,23 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
         for (Object[] r : results) {
             SubmittedProposal prop = findObject(SubmittedProposal.class, (long)r[0]);
             List<RelatedProposal> sourcePropList = prop.getRelatedProposals();
+            String status = "Waiting";
             long sourcePropId = 0;
             if(!sourcePropList.isEmpty())
                 sourcePropId = sourcePropList.get(0).getId();
+            if(!prop.getReviews().isEmpty())
+                status = "In review";
+            if(prop.getSuccessful())
+                status = "Success";
             listOfSubmitted.add(new SubmittedProposalSynopsis(
-                    (long) r[0],        // db id
-                    (String) r[1],      // title
-                    (String) r[2],      // summary
-                    (ProposalKind) r[3],// kind
-                    sourcePropId,       // source proposal db id
-                    (long) r[4],        // cycle id
-                    "UNKNOWN"           // current status
+                    prop.getId(),               // db id
+                    prop.getTitle(),            // title
+                    prop.getSummary(),          // summary
+                    prop.getKind(),             // kind
+                    sourcePropId,               // source proposal db id
+                    (long) r[1],                // cycle id
+                    prop.getSubmissionDate(),   // submission date
+                    status                      // current status
             ));
         }
 
