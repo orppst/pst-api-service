@@ -30,10 +30,10 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user")
-    //@RolesAllowed("default-roles-orppst")
+    @RolesAllowed("default-roles-orppst")
     public List<SubmittedProposalSynopsis> getProposalsSubmitted()
     {
-        long personId = 4L;//subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<SubmittedProposalSynopsis> listOfSubmitted = new ArrayList<>();
 
         String queryStr1 = "select distinct o._id,o.title,o.summary,o.kind,c._id "
@@ -55,13 +55,13 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             if(!sourcePropList.isEmpty())
                 sourcePropId = sourcePropList.get(0).getId();
             listOfSubmitted.add(new SubmittedProposalSynopsis(
-                    (long) r[0],         // db id
-                    (String) r[1],       // title
-                    (String) r[2],       // summary
-                    (ProposalKind) r[3], // kind
-                    sourcePropId,        // source proposal db id
-                    (long) r[4],         // cycle id
-                    "Nothing yet"
+                    (long) r[0],        // db id
+                    (String) r[1],      // title
+                    (String) r[2],      // summary
+                    (ProposalKind) r[3],// kind
+                    sourcePropId,       // source proposal db id
+                    (long) r[4],        // cycle id
+                    "UNKNOWN"           // current status
             ));
         }
 
