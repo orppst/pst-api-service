@@ -9,9 +9,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.AllocatedProposal;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
-import org.ivoa.dm.proposal.prop.ProposalKind;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
@@ -35,10 +33,6 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     {
         long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<SubmittedProposalSynopsis> listOfSubmitted = new ArrayList<>();
-
-        String queryStr1 = "select distinct o._id,o.title,o.summary,o.kind,c._id "
-                + "from SubmittedProposal o, ProposalCycle c "
-                + "where o member of c.submittedProposals";
 
         String queryStr = "select distinct o._id,c._id "
                 + "from SubmittedProposal o, Investigator inv, Investigator i, ProposalCycle c "
