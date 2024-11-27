@@ -553,9 +553,19 @@ public class UseCasePiTest {
              .statusCode(200)
        ;
 
-       // take a look at what is there now
+        // check we can see a submitted proposal
+        given()
+                .when()
+                .get("/proposalsSubmitted")
+                .then()
+                .statusCode(200)
+                .body("$.size()", greaterThanOrEqualTo(1));
+
+
+        // take a look at what is there now
 
        given().when().get("proposals").then().log().body();
+
     }
 
 
