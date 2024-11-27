@@ -543,8 +543,9 @@ public class UseCasePiTest {
 
         SubmissionConfiguration submittedConfig = new SubmissionConfiguration(proposalid, List.of(new SubmissionConfiguration.ObservationConfigMapping(obsIds, obsModeId)));
 
-        //finally submit the proposal.
-       given()
+        //submit the proposal.
+        LOGGER.info("submitting proposal");
+        given()
              .contentType(JSON)
              .body(mapper.writeValueAsString(submittedConfig))
              .when()
@@ -553,6 +554,7 @@ public class UseCasePiTest {
              .statusCode(200)
        ;
 
+       LOGGER.info("list submitted proposal");
         // check we can see a submitted proposal
         given()
                 .when()
@@ -561,6 +563,13 @@ public class UseCasePiTest {
                 .statusCode(200)
                 .body("$.size()", greaterThanOrEqualTo(1));
 
+
+        LOGGER.info("withdraw submitted proposal");
+        given()
+                .when()
+                .get("/proposalsSubmitted/" + 2 + "/withdraw")
+                .then()
+                .statusCode(200);
 
         // take a look at what is there now
 
