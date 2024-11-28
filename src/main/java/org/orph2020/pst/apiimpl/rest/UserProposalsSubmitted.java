@@ -9,13 +9,18 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.ProposalReview;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.ivoa.dm.proposal.prop.Investigator;
+import org.ivoa.dm.proposal.prop.InvestigatorKind;
+import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Path("proposalsSubmitted")
 @Tag(name="user-proposals-submitted")
@@ -45,7 +50,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
         for (Object[] r : results) {
             SubmittedProposal prop = findObject(SubmittedProposal.class, (long)r[0]);
             List<RelatedProposal> sourcePropList = prop.getRelatedProposals();
-            String status = "Waiting";
+            String status = "Awaiting";
             long sourcePropId = 0;
             if(!sourcePropList.isEmpty())
                 sourcePropId = sourcePropList.get(0).getId();
@@ -78,16 +83,32 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
                                      @QueryParam("cycleId") long cycleCode)
         throws WebApplicationException
     {
-        long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        Person currentUser = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson();
         SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
 
         //Check this person has rights to withdraw this submitted proposal
+        AtomicBoolean foundPI = new AtomicBoolean(false);
+        submittedProposal.getInvestigators().forEach(investigator -> {
+            if(investigator.getType() == InvestigatorKind.PI
+                    && investigator.getPerson() == currentUser)
+                foundPI.set(true);
+        });
 
-        //Check if the cycle deadline has passed
+        //Authenticated user is not associated with this submittedProposal.
+        if(!foundPI.get()) {
+            throw new WebApplicationException("You are not a PI on this submitted proposal", Response.Status.FORBIDDEN);
+        }
+
+        //Has this been assigned reviewer(s)
+        List<ObjectIdentifier> reviews = getObjectIdentifiers(
+                "select r._id,r.reviewer.person.fullName from ProposalCycle c "
+                + "inner join c.submittedProposals p inner join p.reviews r where p._id =" + submittedProposalId);
+        if(!reviews.isEmpty()) {
+            throw new WebApplicationException("Reviews have already been submitted please contact the TAC",
+                    Response.Status.CONFLICT);
+        }
 
         //Withdraw from observing cycle & delete it
-        //AllocatedProposal allocatedProposal = findChildByQuery(AllocatedProposal.class, SubmittedProposal.class, "submitted_ID", cycleCode, submittedProposalId);
-
         submittedProposal.getObservations().forEach(observation -> em.remove(observation));
         return removeObject(SubmittedProposal.class, submittedProposalId);
 

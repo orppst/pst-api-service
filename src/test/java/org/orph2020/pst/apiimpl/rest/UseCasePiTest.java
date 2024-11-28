@@ -556,18 +556,20 @@ public class UseCasePiTest {
 
        LOGGER.info("list submitted proposal");
         // check we can see a submitted proposal
-        given()
+        int submittedId = given()
                 .when()
                 .get("/proposalsSubmitted")
                 .then()
                 .statusCode(200)
-                .body("$.size()", greaterThanOrEqualTo(1));
+                .body("$.size()", greaterThanOrEqualTo(1))
+                .extract()
+                .jsonPath().getInt("[0].code");
 
 
         LOGGER.info("withdraw submitted proposal");
         given()
                 .when()
-                .get("/proposalsSubmitted/" + 2 + "/withdraw")
+                .get("/proposalsSubmitted/" + submittedId + "/withdraw")
                 .then()
                 .statusCode(200);
 

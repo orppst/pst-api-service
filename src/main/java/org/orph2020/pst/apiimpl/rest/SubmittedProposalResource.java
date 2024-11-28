@@ -98,15 +98,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
     {
-
-        /*
-           TODO  SubmittedProposals need to remember the original proposalId from which they create
-            a clone; it is the clone to which the SubmittedProposal refers, NOT the original
-            proposal. SubmittedProposals currently do not have a means to do this.
-
-            It is debatable whether this should be in the model or just a separate table that POLARIS itself maintains
-         */
-
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
 
