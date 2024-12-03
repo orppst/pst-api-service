@@ -1,6 +1,5 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -26,7 +25,7 @@ import java.util.List;
     uniqueness when a supporting document is uploaded or when a user decides to change the title of
     an existing document.
 
-    Uniqueness should be case-sensitive, and with leading and trailing white space ignored
+    Uniqueness should be case-sensitive, and with leading and trailing white space trimmed
  */
 
 @Path("proposals/{proposalCode}/supportingDocuments")
@@ -34,19 +33,17 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
 
-    @ConfigProperty(name= "supporting-documents.store-root")
-    String documentStoreRoot;
-
     private
     String sanitiseTitle(String input, ObservingProposal proposal)
     {
         //we could add more restrictions if needed
         String result = input.trim();
         for (SupportingDocument s : proposal.getSupportingDocuments()) {
-            if (s.getTitle().equals(input)) {
+            if (s.getTitle().equals(result)) {
                 throw new WebApplicationException(
-                        "'" + input + "'" +
-                                " already exists, please provide a unique title for your supporting document",
+                        "'" + result + "'" +
+                                " already exists, please provide a unique title for your supporting document. "
+                                + "Notice that leading and trailing whitespaces trimmed.",
                         400);
             }
         }
@@ -92,14 +89,17 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
+        //potentially user provided alternate name for the file upload
         String localTitle = title;
-        if(fileUpload == null) {
+        if (fileUpload == null) {
           throw new WebApplicationException("No file uploaded", 400);
         }
 
-        if(localTitle == null || localTitle.isEmpty()) {
+        //if no user supplied title use uploaded filename as title
+        if (localTitle == null || localTitle.isEmpty()) {
             localTitle = fileUpload.fileName();
-            if(localTitle == null || localTitle.isEmpty()) {
+            //uploaded file should have a name but check anyway
+            if (localTitle == null || localTitle.isEmpty()) {
                 throw new WebApplicationException("No title or filename provided", 400);
             }
         }
@@ -112,55 +112,20 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             addNewChildObject(proposal, new SupportingDocument(_title, ""),
                 proposal::addToSupportingDocuments);
 
-        File destination = createDestination(
-            proposalCode, localTitle,
-            result.getId());
+        SupportingDocumentsStore supportingDocumentsStore = new SupportingDocumentsStore(proposalCode);
 
-        //move the uploaded file to the new destination
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        String saveFileAs = result.getId() + "/" + _title;
+
+        //save the uploaded file to the new destination
+        if (!supportingDocumentsStore
+                .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs))
         {
-            throw new WebApplicationException(
-                "Unable to save file " + localTitle, 400);
+            throw new WebApplicationException("Unable to save file " + _title, 400);
         }
         //else all good, set the location for the result
-        result.setLocation(destination.toString());
+        result.setLocation(supportingDocumentsStore.fetchFile(saveFileAs).getAbsolutePath());
 
         return result;
-    }
-
-    /**
-     * creates the destination location file as needed.
-     *
-     * @param proposalCode: the proposal code.
-     * @param fileName: the filename for the destination.
-     * @return The destination file.
-     */
-    private File createDestination(
-            Long proposalCode,
-            String fileName, long resultId) {
-        //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
-        // is deleted on return from this request (quarkus configuration)
-
-        String destinationStr = documentStoreRoot
-                + "/proposals/"
-                + proposalCode
-                + "/supportingDocuments/"
-                + resultId;
-
-        File destinationPath = new File(destinationStr);
-
-        if (destinationPath.exists())
-        {
-            throw new WebApplicationException(destinationStr + " already exists", 400);
-        }
-
-        if (!destinationPath.mkdirs())
-        {
-            throw new WebApplicationException("Unable to create path " + destinationPath);
-        }
-
-        //create the file-location
-        return new File(destinationStr, fileName);
     }
 
     @PUT
@@ -178,36 +143,33 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 findChildByQuery(ObservingProposal.class, SupportingDocument.class,
                         "supportingDocuments", proposalCode, id);
 
-        // first save the "new" upload file in the related directory of the store
-        String destinationStr = documentStoreRoot
-                + "/proposals/"
-                + proposalCode
-                + "/supportingDocuments/"
-                + id;
+        // 1. save the "new" upload file in the related directory of the store
+        SupportingDocumentsStore supportingDocumentsStore = new SupportingDocumentsStore(proposalCode);
 
-        File destination = new File(destinationStr, fileUpload.fileName());
+        String saveFileAs = id + "/" + fileUpload.fileName();
 
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
+        if (!supportingDocumentsStore
+                .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs))
         {
             throw new
-                    WebApplicationException("Unable to save (new) file "
-                    + fileUpload.fileName(), 400);
+                    WebApplicationException("Unable to save uploaded file " + fileUpload.fileName(), 400);
         }
 
-        // second if the files names are different remove the "old" file from the store and
-        // update the SupportingDocument location else, do nothing - file replaced and
-        // locations the same
+        // 2. if the input file name is different to the "old" file then delete the "old" file and
+        // update the SupportingDocument location
         File oldFile = new File(supportingDocument.getLocation());
 
         if (!oldFile.getName().equals(fileUpload.fileName()))
         {
             if (!oldFile.delete())
             {
-                throw new WebApplicationException("Unable to delete (old) file " + oldFile.getName());
+                throw new WebApplicationException("Unable to delete old file " + oldFile.getName());
             }
 
-            supportingDocument.setLocation(destination.getAbsolutePath());
+            supportingDocument
+                    .setLocation(supportingDocumentsStore.fetchFile(saveFileAs).getAbsolutePath());
         }
+        //else, do nothing - file replaced and locations the same
 
         return responseWrapper(supportingDocument, 201);
     }
@@ -241,6 +203,8 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         String parentDirStr = pathStr.substring(0, pathStr.lastIndexOf('/'));
 
         File dirToRemove = new File(parentDirStr);
+
+        //at this point, the parent directory named '<id>' should be empty
 
         if (!dirToRemove.delete())
         {
@@ -284,7 +248,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         File fileDownload = new File(supportingDocument.getLocation());
 
-        if(!fileDownload.exists())
+        if (!fileDownload.exists())
         {
             throw new WebApplicationException("Cannot find " + fileDownload.getName(), 400);
         }

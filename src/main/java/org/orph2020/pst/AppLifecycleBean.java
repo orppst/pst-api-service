@@ -24,10 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -37,7 +34,7 @@ public class AppLifecycleBean {
     @PersistenceContext
     protected EntityManager em;  // exists for the application lifetime no need to close
 
-    @ConfigProperty(name = "supporting-documents.store-root")
+    @ConfigProperty(name = "document-store.root")
     String documentStoreRoot;
 
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
@@ -66,31 +63,31 @@ public class AppLifecycleBean {
             // in the implementation of API call "createProposal"
             // FIXME
             for(ObservingProposal pr: fullExample.getProposalModel().getContent(ObservingProposal.class))
-            try {
-                Files.createDirectories(Paths.get(
-                        documentStoreRoot,
-                        "proposals",
-                        pr.getId().toString(),
-                        "supportingDocuments"
-                ));
-                Files.createDirectories(Paths.get(
-                        documentStoreRoot,
-                        "proposals",
-                        pr.getId().toString(),
-                        "justifications",
-                        "scientific"
-                ));
-                Files.createDirectories(Paths.get(
-                        documentStoreRoot,
-                        "proposals",
-                        pr.getId().toString(),
-                        "justifications",
-                        "technical"
-                ));
-            } catch (IOException e) {
-                LOGGER.error(e);
-                throw new RuntimeException(e);
-            }
+                try {
+                    Files.createDirectories(Paths.get(
+                            documentStoreRoot,
+                            "proposals",
+                            pr.getId().toString(),
+                            "supportingDocuments"
+                    ));
+                    Files.createDirectories(Paths.get(
+                            documentStoreRoot,
+                            "proposals",
+                            pr.getId().toString(),
+                            "justifications",
+                            "scientific"
+                    ));
+                    Files.createDirectories(Paths.get(
+                            documentStoreRoot,
+                            "proposals",
+                            pr.getId().toString(),
+                            "justifications",
+                            "technical"
+                    ));
+                } catch (IOException e) {
+                    LOGGER.error(e);
+                    throw new RuntimeException(e);
+                }
         }
 
         //only try to populate the SubjectMap if not already done

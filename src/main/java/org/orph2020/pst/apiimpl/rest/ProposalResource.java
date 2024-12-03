@@ -32,8 +32,6 @@ import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 
 /*
@@ -53,7 +51,7 @@ public class ProposalResource extends ObjectResourceBase {
         this.logger = logger;
     }
 
-    @ConfigProperty(name= "supporting-documents.store-root")
+    @ConfigProperty(name= "document-store.root")
     String documentStoreRoot;
 
     @Inject
@@ -166,27 +164,17 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal persisted = persistObject(op);
 
         //use the newly persisted proposal id (code) to create storage locations
+        SupportingDocumentsStore supportingDocumentsStore =
+                new SupportingDocumentsStore(persisted.getId());
+        JustificationStore scientificStore =
+                new JustificationStore(persisted.getId(), "scientific");
+        JustificationStore technicalStore =
+                new JustificationStore(persisted.getId(), "technical");
+
         try {
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "supportingDocuments"
-            ));
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "justifications",
-                    "scientific"
-            ));
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "justifications",
-                    "technical"
-            ));
+            supportingDocumentsStore.createDirectories();
+            scientificStore.createDirectories();
+            technicalStore.createDirectories();
         } catch (IOException e) {
             //if these directories cannot be created then we should roll back
             throw new WebApplicationException(e);
