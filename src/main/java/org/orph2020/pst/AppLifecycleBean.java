@@ -5,6 +5,7 @@ package org.orph2020.pst;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
@@ -18,11 +19,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
+import org.orph2020.pst.apiimpl.rest.ProposalDocumentStore;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Date;
@@ -34,8 +34,11 @@ public class AppLifecycleBean {
     @PersistenceContext
     protected EntityManager em;  // exists for the application lifetime no need to close
 
-    @ConfigProperty(name = "document-store.root")
+    @ConfigProperty(name = "document-store.proposals.root")
     String documentStoreRoot;
+
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
 
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
@@ -58,32 +61,9 @@ public class AppLifecycleBean {
             }
             fullExample.saveTodB(em);
 
-
-            //here we create document store directories that would be normally created
-            // in the implementation of API call "createProposal"
-            // FIXME
             for(ObservingProposal pr: fullExample.getProposalModel().getContent(ObservingProposal.class))
                 try {
-                    Files.createDirectories(Paths.get(
-                            documentStoreRoot,
-                            "proposals",
-                            pr.getId().toString(),
-                            "supportingDocuments"
-                    ));
-                    Files.createDirectories(Paths.get(
-                            documentStoreRoot,
-                            "proposals",
-                            pr.getId().toString(),
-                            "justifications",
-                            "scientific"
-                    ));
-                    Files.createDirectories(Paths.get(
-                            documentStoreRoot,
-                            "proposals",
-                            pr.getId().toString(),
-                            "justifications",
-                            "technical"
-                    ));
+                    proposalDocumentStore.createStorePaths(pr.getId());
                 } catch (IOException e) {
                     LOGGER.error(e);
                     throw new RuntimeException(e);

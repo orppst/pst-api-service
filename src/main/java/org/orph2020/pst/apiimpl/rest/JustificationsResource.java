@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -40,6 +41,8 @@ public class JustificationsResource extends ObjectResourceBase {
     //common file name for the Tex file for Latex type Justifications
     String texFileName = "main.tex";
 
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
 
     @GET
     @Path("{which}")
@@ -98,8 +101,8 @@ public class JustificationsResource extends ObjectResourceBase {
         //if justification format is Latex then update the *.tex file
         if (justification.getFormat() == TextFormats.LATEX) {
             try {
-                JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-                justificationStore.writeLatexStringToFile(justification.getText());
+                proposalDocumentStore.writeStringToFile(justification.getText(),
+                        storePath(proposalCode, which) + "/" + texFileName);
             } catch (IOException e) {
                 //if we can't write the update to the *.tex file then we should roll back
                 //the database transaction - otherwise may have mismatch between the database string
@@ -147,8 +150,8 @@ public class JustificationsResource extends ObjectResourceBase {
         if (persisted.getFormat() == TextFormats.LATEX) {
             try {
                 //create and write the string to file
-                JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-                justificationStore.writeLatexStringToFile(persisted.getText());
+                proposalDocumentStore.writeStringToFile(persisted.getText(),
+                        storePath(proposalCode, which) + "/" + texFileName);
             } catch (IOException e) {
                 //if we can't write the justification text to the *.tex file then we should roll back
                 //the database transaction - otherwise may have mismatch between the database string
@@ -172,8 +175,8 @@ public class JustificationsResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         try {
-            JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-            return justificationStore.listResourceFiles();
+            String[] extensions = {".bib", ".jpg", "jpeg", ".png", ".eps"};
+            return proposalDocumentStore.listFilesIn(storePath(proposalCode, which), extensions);
         } catch (IOException e) {
             throw new WebApplicationException(e.getMessage());
         }
@@ -201,11 +204,10 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String filename = fileUpload.fileName();
 
-        JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-
         // save the uploaded file to the document store
         // this will overwrite existing files with the same filename
-        if (!justificationStore.moveFile(fileUpload.uploadedFile().toFile(), filename)) {
+        if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(),
+                storePath(proposalCode, which) + "/" + filename)) {
             throw new WebApplicationException("Unable to save uploaded file");
         }
 
@@ -226,9 +228,7 @@ public class JustificationsResource extends ObjectResourceBase {
     {
         justificationIsLatex(proposalCode, which);
 
-        JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-
-        if (!justificationStore.deleteFile(filename)) {
+        if (!proposalDocumentStore.deleteFile(storePath(proposalCode, which) + "/" + filename)) {
             throw new WebApplicationException(String.format("Unable to delete file: %s", filename));
         }
 
@@ -244,10 +244,9 @@ public class JustificationsResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
-        JustificationStore justificationStore = new JustificationStore(proposalCode, which);
         return responseWrapper(
-                justificationStore
-                        .fetchFile("out/" + which + "-justification.pdf")
+                proposalDocumentStore
+                        .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf")
                         .exists(), 200);
     }
 
@@ -275,9 +274,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         justificationIsLatex(proposalCode, which);
 
-        JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-
-        File mainTex = justificationStore.fetchFile(texFileName);
+        File mainTex = proposalDocumentStore.fetchFile(storePath(proposalCode, which) + "/" + texFileName);
 
         if (!mainTex.exists()) {
             throw new WebApplicationException(String.format("%s file not found", texFileName));
@@ -292,9 +289,10 @@ public class JustificationsResource extends ObjectResourceBase {
             int exitCode = process.waitFor();
 
             // output directory "out" created by latexmk process
-            File outputDir = justificationStore.fetchFile("out");
+            File outputDir = proposalDocumentStore.fetchFile(storePath(proposalCode, which) + "/out");
 
-            File logFile = justificationStore.fetchFile("out/" + which + "-justification.log");
+            File logFile = proposalDocumentStore
+                    .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.log");
 
             List<String> warnings = findWarnings(Files.readString(logFile.toPath()));
 
@@ -332,7 +330,8 @@ public class JustificationsResource extends ObjectResourceBase {
         }
 
         //fetch the output PDF of the Justification
-        File output = justificationStore.fetchFile("out/" + which + "-justification.pdf");
+        File output = proposalDocumentStore
+                .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf");
 
         return responseWrapper(
                 String.format("Latex compilation successful!\nPDF output file saved as: %s",
@@ -351,8 +350,8 @@ public class JustificationsResource extends ObjectResourceBase {
         justificationIsLatex(proposalCode, which);
 
         //fetch the output PDF of the Justification
-        JustificationStore justificationStore = new JustificationStore(proposalCode, which);
-        File output = justificationStore.fetchFile("out/" + which + "-justification.pdf");
+        File output = proposalDocumentStore
+                .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf");
 
         if (!output.exists()) {
             throw new WebApplicationException(String.format("Nonexistent file: %s", output.getName()));
@@ -366,6 +365,16 @@ public class JustificationsResource extends ObjectResourceBase {
 
 
 // ****** Convenience functions private to this class ********
+
+    /**
+     * Create the path to the justifications section of the proposal document store
+     * @param proposalCode proposal id
+     * @param which "scientific" or "technical"
+     * @return string of the path to the justifications section
+     */
+    private String storePath(Long proposalCode, String which) {
+        return proposalCode + "/justifications/" + which;
+    }
 
     /**
      * convenience function to get the specific Justification

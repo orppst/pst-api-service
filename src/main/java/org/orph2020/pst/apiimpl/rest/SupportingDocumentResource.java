@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -32,6 +33,13 @@ import java.util.List;
 @Tag(name = "proposals-supportingDocuments")
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
+
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
+
+    private String storePath(Long proposalCode) {
+        return proposalCode.toString() + "/supportingDocuments";
+    }
 
     private
     String sanitiseTitle(String input, ObservingProposal proposal)
@@ -112,18 +120,16 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             addNewChildObject(proposal, new SupportingDocument(_title, ""),
                 proposal::addToSupportingDocuments);
 
-        SupportingDocumentsStore supportingDocumentsStore = new SupportingDocumentsStore(proposalCode);
-
-        String saveFileAs = result.getId() + "/" + _title;
+        String saveFileAs = storePath(proposalCode) + "/" + result.getId() + "/" + _title;
 
         //save the uploaded file to the new destination
-        if (!supportingDocumentsStore
+        if (!proposalDocumentStore
                 .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs))
         {
             throw new WebApplicationException("Unable to save file " + _title, 400);
         }
         //else all good, set the location for the result
-        result.setLocation(supportingDocumentsStore.fetchFile(saveFileAs).getAbsolutePath());
+        result.setLocation(proposalDocumentStore.fetchFile(saveFileAs).getAbsolutePath());
 
         return result;
     }
@@ -144,11 +150,9 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                         "supportingDocuments", proposalCode, id);
 
         // 1. save the "new" upload file in the related directory of the store
-        SupportingDocumentsStore supportingDocumentsStore = new SupportingDocumentsStore(proposalCode);
+        String saveFileAs = storePath(proposalCode) + "/" + id + "/" + fileUpload.fileName();
 
-        String saveFileAs = id + "/" + fileUpload.fileName();
-
-        if (!supportingDocumentsStore
+        if (!proposalDocumentStore
                 .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs))
         {
             throw new
@@ -167,7 +171,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             }
 
             supportingDocument
-                    .setLocation(supportingDocumentsStore.fetchFile(saveFileAs).getAbsolutePath());
+                    .setLocation(proposalDocumentStore.fetchFile(saveFileAs).getAbsolutePath());
         }
         //else, do nothing - file replaced and locations the same
 

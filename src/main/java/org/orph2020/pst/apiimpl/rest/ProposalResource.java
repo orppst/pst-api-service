@@ -6,8 +6,6 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
-import org.apache.commons.io.FileUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -30,7 +28,6 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
@@ -47,12 +44,12 @@ import java.util.*;
 @ApplicationScoped
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
+
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
-
-    @ConfigProperty(name= "document-store.root")
-    String documentStoreRoot;
 
     @Inject
     ObservationResource observationResource;
@@ -164,17 +161,8 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal persisted = persistObject(op);
 
         //use the newly persisted proposal id (code) to create storage locations
-        SupportingDocumentsStore supportingDocumentsStore =
-                new SupportingDocumentsStore(persisted.getId());
-        JustificationStore scientificStore =
-                new JustificationStore(persisted.getId(), "scientific");
-        JustificationStore technicalStore =
-                new JustificationStore(persisted.getId(), "technical");
-
         try {
-            supportingDocumentsStore.createDirectories();
-            scientificStore.createDirectories();
-            technicalStore.createDirectories();
+            proposalDocumentStore.createStorePaths(persisted.getId());
         } catch (IOException e) {
             //if these directories cannot be created then we should roll back
             throw new WebApplicationException(e);
@@ -190,9 +178,8 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         //clean up the document store for this proposal
-        File documentStorePath = new File(documentStoreRoot, "proposals/" + code);
         try {
-            FileUtils.deleteDirectory(documentStorePath);
+            proposalDocumentStore.removeStorePath(String.valueOf(code));
         } catch (IOException e) {
             throw new WebApplicationException(e);
         }
