@@ -543,19 +543,40 @@ public class UseCasePiTest {
 
         SubmissionConfiguration submittedConfig = new SubmissionConfiguration(proposalid, List.of(new SubmissionConfiguration.ObservationConfigMapping(obsIds, obsModeId)));
 
-        //finally submit the proposal.
-       given()
+        //submit the proposal.
+        LOGGER.info("submitting proposal");
+        given()
              .contentType(JSON)
              .body(mapper.writeValueAsString(submittedConfig))
              .when()
              .post("/proposalCycles/"+cycleId+"/submittedProposals")
              .then()
-             .statusCode(200)
-       ;
+             .statusCode(200);
 
-       // take a look at what is there now
+        LOGGER.info("list submitted proposals");
+        // check we can see at least 1 submitted proposal
+        int submittedId = given()
+                .when()
+                .get("/proposalsSubmitted?cycleId=" + cycleId)
+                .then()
+                .statusCode(200)
+                .body("$.size()", greaterThanOrEqualTo(1))
+                .extract()
+                .jsonPath().getInt("[0].code");
 
-       given().when().get("proposals").then().log().body();
+        LOGGER.info("withdraw submitted proposal id=" + submittedId);
+        given()
+                .when()
+                .get("/proposalsSubmitted/" + submittedId + "/withdraw?cycleId=" + cycleId)
+                .then()
+                .statusCode(200);
+
+        // take a look at what is there now
+        LOGGER.info("List of proposals");
+        given().when().get("proposals").then().log().body();
+        LOGGER.info("List of submitted proposals");
+        given().when().get("proposalsSubmitted").then().log().body();
+
     }
 
 
