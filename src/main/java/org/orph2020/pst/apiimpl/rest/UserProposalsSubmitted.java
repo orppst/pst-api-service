@@ -9,9 +9,8 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.ProposalReview;
+import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
-import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
@@ -32,9 +31,9 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     JsonWebToken userInfo;
 
     @GET
-    @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user")
+    @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user optionally pass a cycle id, or include all cycles that have not passed")
     @RolesAllowed("default-roles-orppst")
-    public List<SubmittedProposalSynopsis> getProposalsSubmitted()
+    public List<SubmittedProposalSynopsis> getProposalsSubmitted(@QueryParam("cycleId") long cycleId)
     {
         long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<SubmittedProposalSynopsis> listOfSubmitted = new ArrayList<>();
@@ -44,6 +43,12 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
                 + "where inv member of o.investigators and inv.person._id = " + personId + " "
                 + "and i member of o.investigators "
                 + "and o member of c.submittedProposals";
+
+        //Filter either by observing cycle, or only new and current observing cycles.
+        if (cycleId > 0)
+            queryStr += " and c._id = " + cycleId;
+        else
+            queryStr += " and c.observationSessionEnd >= current_date()";
 
         Query query = em.createQuery(queryStr);
         List<ObjectIdentifier[]> results = query.getResultList();
@@ -100,17 +105,18 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
         }
 
         //Has this been assigned reviewer(s)
-        List<ObjectIdentifier> reviews = getObjectIdentifiers(
-                "select r._id,r.reviewer.person.fullName from ProposalCycle c "
-                + "inner join c.submittedProposals p inner join p.reviews r where p._id =" + submittedProposalId);
-        if(!reviews.isEmpty()) {
+        if(!submittedProposal.getReviews().isEmpty()) {
             throw new WebApplicationException("Reviews have already been submitted please contact the TAC",
                     Response.Status.CONFLICT);
         }
 
-        //Withdraw from observing cycle & delete it
-        submittedProposal.getObservations().forEach(observation -> em.remove(observation));
-        return removeObject(SubmittedProposal.class, submittedProposalId);
+        //Withdraw from observing cycle
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+        cycle.removeFromSubmittedProposals(submittedProposal);
+
+        //TODO: Check for and clean up and orphaned objects and documents
+
+        return responseWrapper("Withdrawn", 200);
 
     }
 
