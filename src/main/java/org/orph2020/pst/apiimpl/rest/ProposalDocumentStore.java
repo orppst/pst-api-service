@@ -110,7 +110,7 @@ public class ProposalDocumentStore {
      * List files in the given directory, optionally provide a non-empty array of specific file
      * extension strings to look for
      * @param filePath where to look
-     * @param fileExtensions optional list of file extensions, can be left empty to list all files
+     * @param fileExtensions optional list of file extensions, can be left empty or null to list all files
      * @return Set of strings containing the files found
      * @throws IOException thrown by Files.list()
      */
@@ -120,7 +120,13 @@ public class ProposalDocumentStore {
                     .filter(file -> !Files.isDirectory(file))
                     .map(java.nio.file.Path::getFileName)
                     .map(java.nio.file.Path::toString)
-                    .filter(f -> Arrays.stream(fileExtensions).anyMatch(f::endsWith))
+                    .filter(f -> {
+                        if (fileExtensions != null && fileExtensions.length > 0) {
+                            return Arrays.stream(fileExtensions).anyMatch(f::endsWith);
+                        } else {
+                            return true;
+                        }
+                    })
                     .collect(Collectors.toSet());
         }
 
