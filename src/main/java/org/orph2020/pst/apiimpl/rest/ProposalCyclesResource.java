@@ -106,7 +106,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the submission deadline of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalCycleDates replaceCycleDeadline(
+    public Response replaceCycleDeadline(
             @PathParam("cycleCode") Long cycleCode,
             Date replacementDeadline
     )
@@ -116,9 +116,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
         cycle.setSubmissionDeadline(replacementDeadline);
 
-        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
-                cycle.getObservatory());
+        return responseWrapper(cycle.getSubmissionDeadline(), 200);
     }
 
 
@@ -127,7 +125,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the observation session start of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalCycleDates replaceCycleSessionStart(
+    public Response replaceCycleSessionStart(
             @PathParam("cycleCode") Long cycleCode,
             Date replacementStart
     )
@@ -137,9 +135,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
         cycle.setObservationSessionStart(replacementStart);
 
-        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
-                cycle.getObservatory());
+        return responseWrapper(cycle.getObservationSessionStart(), 200);
     }
 
     @PUT
@@ -147,7 +143,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the observation session end of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalCycleDates replaceCycleSessionEnd(
+    public Response replaceCycleSessionEnd(
             @PathParam("cycleCode") Long cycleCode,
             Date replacementEnd
     )
@@ -157,9 +153,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
         cycle.setObservationSessionEnd(replacementEnd);
 
-        return new ProposalCycleDates(cycle.getTitle(), cycle.getSubmissionDeadline(),
-                cycle.getObservationSessionStart(), cycle.getObservationSessionEnd(),
-                cycle.getObservatory());
+        return responseWrapper(cycle.getObservationSessionEnd(), 200);
     }
 
 
