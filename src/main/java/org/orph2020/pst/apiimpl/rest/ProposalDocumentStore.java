@@ -60,6 +60,17 @@ public class ProposalDocumentStore {
         FileUtils.deleteDirectory(fetchFile(proposalDirectory));
     }
 
+    /**
+     * Copies the contents of directory 'source' to the directory 'destination', this includes
+     * subdirectories and files
+     * @param source a string representing the source directory
+     * @param destination a string representing the destination directory
+     * @throws IOException if copy operation fails
+     */
+    public void copyStore(String source, String destination) throws IOException {
+        FileUtils.copyDirectory(fetchFile(source), fetchFile(destination));
+    }
+
 
     /**
      * Convenience method to fetch the file given from this DocumentStore, may refer to a directory

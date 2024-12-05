@@ -197,13 +197,30 @@ public class ProposalResource extends ObjectResourceBase {
     public ObservingProposal cloneObservingProposal(@PathParam("proposalCode") long code)
           throws WebApplicationException
     {
-        //FIXME documentstore stuff needs dealing with - this should be abstracted into Objects/API....
         ObservingProposal prop = findObject(ObservingProposal.class, code);
         prop.forceLoad();
         new ProposalModel().createContext(); //IMPL nasty clone API...
         ObservingProposal newProp = new ObservingProposal(prop);
         newProp.updateClonedReferences();
-        return persistObject(newProp);
+
+        ObservingProposal clonedProp = persistObject(newProp);
+
+        //copy the document store for the new, cloned proposal
+        try {
+            proposalDocumentStore.copyStore(prop.getId().toString(), clonedProp.getId().toString());
+        }
+        catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
+        //clonedProp now has SupportingDocuments with 'locations' indicating the original proposal,
+        //these need to be updated with the clone's id.
+        clonedProp.getSupportingDocuments().forEach(
+                s -> s.setLocation(s.getLocation().replace(
+                        "proposals/" + prop.getId(),"proposals/" + clonedProp.getId()))
+        );
+
+        return clonedProp;
     }
 
 
