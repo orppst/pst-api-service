@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.ivoa.dm.proposal.prop.SupportingDocument;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -11,10 +12,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ *  This is a convenience class bean to help with file I/O and bookkeeping for the document store
+ *  of individual proposals
+ */
 @RequestScoped
 public class ProposalDocumentStore {
 
@@ -61,14 +67,22 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Copies the contents of directory 'source' to the directory 'destination', this includes
-     * subdirectories and files
-     * @param source a string representing the source directory
-     * @param destination a string representing the destination directory
+     * Copies the contents of directory 'source' to the directory 'destination', this includes subdirectories
+     * and files (intention is that 'source' and 'destination' are unique identifiers for proposals)
+     * @param source a string representing the source directory or path (not including the store root)
+     * @param destination a string representing the destination directory or path (not including the store root)
+     * @param supportingDocuments list of supporting documents from the CLONED proposal to update
+     *                            their 'locations' to use the 'destination' path - can be empty
      * @throws IOException if copy operation fails
      */
-    public void copyStore(String source, String destination) throws IOException {
+    public void copyStore(String source, String destination, List<SupportingDocument> supportingDocuments)
+            throws IOException {
         FileUtils.copyDirectory(fetchFile(source), fetchFile(destination));
+        supportingDocuments.forEach(s ->
+            s.setLocation(s.getLocation().replace(
+                    "proposals/" + source,"proposals/" + destination
+            ))
+        );
     }
 
 

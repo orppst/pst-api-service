@@ -207,18 +207,15 @@ public class ProposalResource extends ObjectResourceBase {
 
         //copy the document store for the new, cloned proposal
         try {
-            proposalDocumentStore.copyStore(prop.getId().toString(), clonedProp.getId().toString());
+            proposalDocumentStore.copyStore(
+                    prop.getId().toString(),
+                    clonedProp.getId().toString(),
+                    clonedProp.getSupportingDocuments()
+            );
         }
         catch (IOException e) {
             throw new WebApplicationException(e);
         }
-
-        //clonedProp now has SupportingDocuments with 'locations' indicating the original proposal,
-        //these need to be updated with the clone's id.
-        clonedProp.getSupportingDocuments().forEach(
-                s -> s.setLocation(s.getLocation().replace(
-                        "proposals/" + prop.getId(),"proposals/" + clonedProp.getId()))
-        );
 
         return clonedProp;
     }

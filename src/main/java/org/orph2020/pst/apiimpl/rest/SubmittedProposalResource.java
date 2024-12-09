@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
@@ -18,6 +19,7 @@ import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -26,6 +28,9 @@ import java.util.List;
 @Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
 public class SubmittedProposalResource extends ObjectResourceBase{
+
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle")
@@ -123,6 +128,21 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         submittedProposal.updateClonedReferences();
         em.persist(submittedProposal);
         submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
+
+        //**** clone the document store of the original proposal ****
+        //in essence creates a snapshot of the documents at the point of submission
+        try {
+            proposalDocumentStore.copyStore(
+                    proposal.getId().toString(),
+                    submittedProposal.getId().toString(),
+                    submittedProposal.getSupportingDocuments()
+            );
+        } catch (IOException e) {
+            // if we can't copy the store then we need to rollback
+            throw new WebApplicationException(e);
+        }
+        //************************************************************
+
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
