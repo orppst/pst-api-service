@@ -47,7 +47,7 @@ public class AllocatedProposalResource extends ObjectResourceBase{
 
 
     @PUT
-    @Operation(summary = "upgrade a proposal under review to an allocated proposal")
+    @Operation(summary = "upgrade a submitted proposal to an allocated proposal")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalSynopsis allocateProposalToCycle(@PathParam("cycleCode") Long cycleCode,
@@ -74,11 +74,13 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         return new ProposalSynopsis(allocatedProposal.getSubmitted());
     }
 
+    //TODO: make this callable by a 'TAC Chair' user only
     @DELETE
-    @Operation(summary = "withdraw a previously allocated proposal from the cycle, (to implement: TAC chair only)")
+    @Path("{allocatedId}")
+    @Operation(summary = "withdraw a previously allocated proposal from the cycle")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response withdrawAllocatedProposal(@PathParam("cycleCode") Long cycleCode,
-                                              Long allocatedId)
+                                              @PathParam("allocatedId") Long allocatedId)
     throws WebApplicationException {
 
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
