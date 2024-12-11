@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.AllocatedProposal;
@@ -54,8 +55,15 @@ public class AllocatedProposalResource extends ObjectResourceBase{
             throws WebApplicationException
     {
         AllocatedProposal allocatedProposal = new AllocatedProposal(
-                findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
-                        "submittedProposals", cycleCode, submittedId),new ArrayList<>());
+                findChildByQuery(
+                        ProposalCycle.class,
+                        SubmittedProposal.class,
+                        "submittedProposals",
+                        cycleCode,
+                        submittedId
+                ),
+                new ArrayList<>() //empty allocations list to be added to later
+        );
 
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
@@ -64,6 +72,30 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         em.merge(cycle);
 
         return new ProposalSynopsis(allocatedProposal.getSubmitted());
+    }
+
+    @DELETE
+    @Operation(summary = "withdraw a previously allocated proposal from the cycle, (to implement: TAC chair only)")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response withdrawAllocatedProposal(@PathParam("cycleCode") Long cycleCode,
+                                              Long allocatedId)
+    throws WebApplicationException {
+
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        AllocatedProposal allocatedProposal = findChildByQuery(
+                ProposalCycle.class,
+                AllocatedProposal.class,
+                "allocatedProposals",
+                cycleCode,
+                allocatedId
+        );
+
+        cycle.removeFromAllocatedProposals(allocatedProposal);
+
+        em.merge(cycle);
+
+        return Response.noContent().build();
     }
 
 
