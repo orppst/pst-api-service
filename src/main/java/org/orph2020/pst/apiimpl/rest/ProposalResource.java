@@ -6,8 +6,6 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
-import org.apache.commons.io.FileUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -30,10 +28,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 
 /*
@@ -49,12 +44,12 @@ import java.util.*;
 @ApplicationScoped
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
+
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
-
-    @ConfigProperty(name= "supporting-documents.store-root")
-    String documentStoreRoot;
 
     @Inject
     ObservationResource observationResource;
@@ -167,26 +162,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         //use the newly persisted proposal id (code) to create storage locations
         try {
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "supportingDocuments"
-            ));
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "justifications",
-                    "scientific"
-            ));
-            Files.createDirectories(Paths.get(
-                    documentStoreRoot,
-                    "proposals",
-                    persisted.getId().toString(),
-                    "justifications",
-                    "technical"
-            ));
+            proposalDocumentStore.createStorePaths(persisted.getId());
         } catch (IOException e) {
             //if these directories cannot be created then we should roll back
             throw new WebApplicationException(e);
@@ -202,9 +178,8 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         //clean up the document store for this proposal
-        File documentStorePath = new File(documentStoreRoot, "proposals/" + code);
         try {
-            FileUtils.deleteDirectory(documentStorePath);
+            proposalDocumentStore.removeStorePath(String.valueOf(code));
         } catch (IOException e) {
             throw new WebApplicationException(e);
         }
@@ -222,13 +197,27 @@ public class ProposalResource extends ObjectResourceBase {
     public ObservingProposal cloneObservingProposal(@PathParam("proposalCode") long code)
           throws WebApplicationException
     {
-        //FIXME documentstore stuff needs dealing with - this should be abstracted into Objects/API....
         ObservingProposal prop = findObject(ObservingProposal.class, code);
         prop.forceLoad();
         new ProposalModel().createContext(); //IMPL nasty clone API...
         ObservingProposal newProp = new ObservingProposal(prop);
         newProp.updateClonedReferences();
-        return persistObject(newProp);
+
+        ObservingProposal clonedProp = persistObject(newProp);
+
+        //copy the document store for the new, cloned proposal
+        try {
+            proposalDocumentStore.copyStore(
+                    prop.getId().toString(),
+                    clonedProp.getId().toString(),
+                    clonedProp.getSupportingDocuments()
+            );
+        }
+        catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
+        return clonedProp;
     }
 
 

@@ -1,6 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -26,7 +26,7 @@ import java.util.List;
     uniqueness when a supporting document is uploaded or when a user decides to change the title of
     an existing document.
 
-    Uniqueness should be case-sensitive, and with leading and trailing white space ignored
+    Uniqueness should be case-sensitive, and with leading and trailing white space trimmed
  */
 
 @Path("proposals/{proposalCode}/supportingDocuments")
@@ -34,19 +34,24 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class SupportingDocumentResource extends ObjectResourceBase {
 
-    @ConfigProperty(name= "supporting-documents.store-root")
-    String documentStoreRoot;
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
+
+    private String storePath(Long proposalCode) {
+        return proposalCode.toString() + "/supportingDocuments";
+    }
 
     private
-    String sanitiseTitle(String input, ObservingProposal proposal)
+    String sanitiseTitle(String input, List<SupportingDocument> supportingDocuments)
     {
         //we could add more restrictions if needed
         String result = input.trim();
-        for (SupportingDocument s : proposal.getSupportingDocuments()) {
-            if (s.getTitle().equals(input)) {
+        for (SupportingDocument s : supportingDocuments) {
+            if (s.getTitle().equals(result)) {
                 throw new WebApplicationException(
-                        "'" + input + "'" +
-                                " already exists, please provide a unique title for your supporting document",
+                        "'" + result + "'" +
+                                " already exists, please provide a unique title for your supporting document. "
+                                + "Notice that leading and trailing whitespaces trimmed.",
                         400);
             }
         }
@@ -92,126 +97,62 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             @RestForm @PartType(MediaType.APPLICATION_JSON) String title)
             throws WebApplicationException
     {
-        String localTitle = title;
-        if(fileUpload == null) {
-          throw new WebApplicationException("No file uploaded", 400);
-        }
-
-        if(localTitle == null || localTitle.isEmpty()) {
-            localTitle = fileUpload.fileName();
-            if(localTitle == null || localTitle.isEmpty()) {
-                throw new WebApplicationException("No title or filename provided", 400);
-            }
+        if (fileUpload == null) {
+            throw new WebApplicationException("No file uploaded", 400);
         }
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        String _title = sanitiseTitle(localTitle, proposal);
 
-        //'result' is the managed SupportingDocument object instance after return from 'addNewChildObject'
-        SupportingDocument result =
-            addNewChildObject(proposal, new SupportingDocument(_title, ""),
-                proposal::addToSupportingDocuments);
+        List<SupportingDocument> supportingDocuments = proposal.getSupportingDocuments();
 
-        File destination = createDestination(
-            proposalCode, localTitle,
-            result.getId());
+        String saveFileAs = storePath(proposalCode) + "/" + fileUpload.fileName();
 
-        //move the uploaded file to the new destination
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
-        {
-            throw new WebApplicationException(
-                "Unable to save file " + localTitle, 400);
-        }
-        //else all good, set the location for the result
-        result.setLocation(destination.toString());
+        String storeLocation = proposalDocumentStore.fetchFile(saveFileAs).getAbsolutePath();
 
-        return result;
-    }
+        //check for existence of file with the same filename
+        SupportingDocument supportingDocument = supportingDocuments.stream()
+                .filter(s -> s.getLocation().equals(storeLocation))
+                .findFirst()
+                .orElse(null);
 
-    /**
-     * creates the destination location file as needed.
-     *
-     * @param proposalCode: the proposal code.
-     * @param fileName: the filename for the destination.
-     * @return The destination file.
-     */
-    private File createDestination(
-            Long proposalCode,
-            String fileName, long resultId) {
-        //relocate to /tmp for testing only - on Mac upload random temporary location is in /var/folders which
-        // is deleted on return from this request (quarkus configuration)
+        if (supportingDocument == null) {
+            //adding a new supporting document
+            String _title = title == null ? fileUpload.fileName() : sanitiseTitle(title, supportingDocuments);
 
-        String destinationStr = documentStoreRoot
-                + "/proposals/"
-                + proposalCode
-                + "/supportingDocuments/"
-                + resultId;
+            SupportingDocument newSupportingDocument =
+                    addNewChildObject(
+                            proposal,
+                            new SupportingDocument(_title, ""),
+                            proposal::addToSupportingDocuments
+                    );
 
-        File destinationPath = new File(destinationStr);
+            //save the uploaded file to the new destination
+            if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
+                throw new WebApplicationException("Unable to save file " + fileUpload.fileName(), 400);
+            }
+            //else all good, set the location for the newSupportingDocument
+            newSupportingDocument.setLocation(storeLocation);
 
-        if (destinationPath.exists())
-        {
-            throw new WebApplicationException(destinationStr + " already exists", 400);
-        }
+            return newSupportingDocument;
 
-        if (!destinationPath.mkdirs())
-        {
-            throw new WebApplicationException("Unable to create path " + destinationPath);
-        }
+        } else {
+            //replacing an existing file i.e. overwrite the file
 
-        //create the file-location
-        return new File(destinationStr, fileName);
-    }
-
-    @PUT
-    @Path("/{id}")
-    @Operation(summary = "replace the supporting document with a new file upload")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceSupportingDocument(@PathParam("proposalCode") Long proposalCode,
-                                              @PathParam("id") Long id,
-                                              @RestForm("document") @Schema(implementation = UploadItemSchema.class)
-                                                  FileUpload fileUpload
-                                              )
-    {
-        SupportingDocument supportingDocument =
-                findChildByQuery(ObservingProposal.class, SupportingDocument.class,
-                        "supportingDocuments", proposalCode, id);
-
-        // first save the "new" upload file in the related directory of the store
-        String destinationStr = documentStoreRoot
-                + "/proposals/"
-                + proposalCode
-                + "/supportingDocuments/"
-                + id;
-
-        File destination = new File(destinationStr, fileUpload.fileName());
-
-        if(!fileUpload.uploadedFile().toFile().renameTo(destination))
-        {
-            throw new
-                    WebApplicationException("Unable to save (new) file "
-                    + fileUpload.fileName(), 400);
-        }
-
-        // second if the files names are different remove the "old" file from the store and
-        // update the SupportingDocument location else, do nothing - file replaced and
-        // locations the same
-        File oldFile = new File(supportingDocument.getLocation());
-
-        if (!oldFile.getName().equals(fileUpload.fileName()))
-        {
-            if (!oldFile.delete())
-            {
-                throw new WebApplicationException("Unable to delete (old) file " + oldFile.getName());
+            if(!proposalDocumentStore
+                    .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
+                throw new WebApplicationException("Unable to overwrite file " + fileUpload.fileName(), 400);
             }
 
-            supportingDocument.setLocation(destination.getAbsolutePath());
+            if (title != null && !title.equals(supportingDocument.getTitle())) {
+                //user has supplied a new, alternate name for the document
+                supportingDocument.setTitle(sanitiseTitle(title, supportingDocuments));
+            }
+
+            //location is the same
+
+            return supportingDocument;
         }
-
-        return responseWrapper(supportingDocument, 201);
     }
-
 
     @DELETE
     @Path("/{id}")
@@ -227,24 +168,19 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 findChildByQuery(ObservingProposal.class, SupportingDocument.class, "supportingDocuments",
                         proposalCode, id);
 
+        //DEV NOTE: it is more convenient NOT to use the proposalDocumentStore here
+
+        // need to get the File from the location BEFORE we remove the SupportingDocument object
         File fileToRemove = new File(supportingDocument.getLocation());
 
+        // remove the SupportingDocument
         Response response = deleteChildObject(observingProposal, supportingDocument,
                 observingProposal::removeFromSupportingDocuments);
 
+        // delete the file AFTER removing the entity in case of deletion failure and rollback
         if (!fileToRemove.delete())
         {
             throw new WebApplicationException("unable to delete file: " + fileToRemove.getName(), 400);
-        }
-
-        String pathStr = fileToRemove.getAbsolutePath();
-        String parentDirStr = pathStr.substring(0, pathStr.lastIndexOf('/'));
-
-        File dirToRemove = new File(parentDirStr);
-
-        if (!dirToRemove.delete())
-        {
-            throw new WebApplicationException("unable to delete directory: " + parentDirStr, 400);
         }
 
         return response;
@@ -262,7 +198,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
 
-        String _title = sanitiseTitle(replacementTitle, proposal);
+        String _title = sanitiseTitle(replacementTitle, proposal.getSupportingDocuments());
 
         SupportingDocument supportingDocument = findChildByQuery(ObservingProposal.class,
                 SupportingDocument.class, "supportingDocuments", proposalCode, id);
@@ -284,7 +220,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         File fileDownload = new File(supportingDocument.getLocation());
 
-        if(!fileDownload.exists())
+        if (!fileDownload.exists())
         {
             throw new WebApplicationException("Cannot find " + fileDownload.getName(), 400);
         }
