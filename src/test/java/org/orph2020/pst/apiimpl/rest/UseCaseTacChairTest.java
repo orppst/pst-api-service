@@ -211,7 +211,7 @@ public class UseCaseTacChairTest {
               .then()
               .statusCode(204);
 
-      //check the list of allocated proposals; should now be zero
+      //check the list of allocated proposals; should now one fewer than before
       given()
               .when()
               .get("proposalCycles/" + cycleId + "/allocatedProposals")
