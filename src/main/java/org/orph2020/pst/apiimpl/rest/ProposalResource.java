@@ -191,7 +191,6 @@ public class ProposalResource extends ObjectResourceBase {
 
     @POST
     @Path(proposalRoot)
-    @Consumes(MediaType.TEXT_PLAIN)//IMPL slightly arbitrary choice - content does not matter and this will distinguish
     @Operation(summary = "clone ObservingProposal specified by the 'proposalCode'")
     @Transactional(rollbackOn = {WebApplicationException.class})
     @ResponseStatus(value = 201)
