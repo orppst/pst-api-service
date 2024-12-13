@@ -13,9 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
-
-import java.util.Calendar;
-import java.util.Date;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
@@ -46,9 +44,7 @@ public class UseCaseTacChairTest {
                   "$.size()", greaterThanOrEqualTo(1)
             )
             .extract().jsonPath().getLong("[0].dbid");
-      raObjectMapper = new Jackson2Mapper(((type, charset) -> {
-         return mapper;
-      }));
+      raObjectMapper = new Jackson2Mapper(((type, charset) -> mapper));
 
       TAC tac =
             given()
@@ -87,7 +83,7 @@ public class UseCaseTacChairTest {
             .extract().jsonPath().getLong("[0].dbid");
 
       // the TAC member gets a proposal for review
-      SubmittedProposal revprop = given()
+      given()
             .when()
             .get("proposalCycles/" + cycleId + "/submittedProposals/" + revId)
             .then()
@@ -142,7 +138,7 @@ public class UseCaseTacChairTest {
 
       //Create a new AllocatedBlock
       //IMPL have chosen the first of everything here - in GUI each will be a list.
-      Integer gradeId = given()
+      int gradeId = given()
               .when()
               .get("proposalCycles/" + cycleId + "/grades")
               .then()
@@ -161,7 +157,7 @@ public class UseCaseTacChairTest {
 
 
 
-      Integer resourceTypeId = given()
+      int resourceTypeId = given()
               .when()
               .get("proposalCycles/" + cycleId + "/availableResources/types" )
               .then()
@@ -186,12 +182,19 @@ public class UseCaseTacChairTest {
             }
       );
 
-      Integer allocatedId = given()
+      int allocatedId = given()
               .when()
               .get("proposalCycles/" + cycleId + "/allocatedProposals")
               .then()
               .body("$.size()", greaterThan(0))
               .extract().jsonPath().getInt("[0].dbid");
+
+      int allocationsSize = given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/allocatedProposals")
+              .then()
+              .body("$.size()", greaterThan(0))
+              .extract().as(List.class).size();
 
       given()
               .when()
@@ -200,6 +203,20 @@ public class UseCaseTacChairTest {
               .post("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId + "/allocatedBlock")
               .then()
               .statusCode(200);
+
+      //test remove the allocated proposal
+      given()
+              .when()
+              .delete("proposalCycles/" + cycleId + "/allocatedProposals/" + allocatedId)
+              .then()
+              .statusCode(204);
+
+      //check the list of allocated proposals; should now one fewer than before
+      given()
+              .when()
+              .get("proposalCycles/" + cycleId + "/allocatedProposals")
+              .then()
+              .body("$.size()", equalTo(allocationsSize - 1));
 
    }
 
