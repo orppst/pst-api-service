@@ -188,6 +188,7 @@ public class ProposalResource extends ObjectResourceBase {
         prop.getObservations().forEach(observation -> em.remove(observation));
         return removeObject(ObservingProposal.class, code);
     }
+
     @POST
     @Path(proposalRoot)
     @Consumes(MediaType.TEXT_PLAIN)//IMPL slightly arbitrary choice - content does not matter and this will distinguish
@@ -205,6 +206,8 @@ public class ProposalResource extends ObjectResourceBase {
 
         ObservingProposal clonedProp = persistObject(newProp);
 
+        String cloneStr = "(clone)";
+
         //copy the document store for the new, cloned proposal
         try {
             proposalDocumentStore.copyStore(
@@ -215,6 +218,15 @@ public class ProposalResource extends ObjectResourceBase {
         }
         catch (IOException e) {
             throw new WebApplicationException(e);
+        }
+
+        int titleLength = prop.getTitle().length();
+        int maxTitleLength = 255; //have we got the max length codified somewhere?
+
+        if (titleLength > maxTitleLength - cloneStr.length()) {
+            clonedProp.setTitle(prop.getTitle().substring(0, titleLength - cloneStr.length()) + cloneStr);
+        } else {
+            clonedProp.setTitle(prop.getTitle() + cloneStr);
         }
 
         return clonedProp;
