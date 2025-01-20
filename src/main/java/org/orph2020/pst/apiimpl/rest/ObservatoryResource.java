@@ -7,7 +7,6 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.Ivoid;
-import org.ivoa.dm.proposal.management.Backend;
 import org.ivoa.dm.proposal.management.Observatory;
 import org.ivoa.dm.proposal.management.TelescopeArray;
 import org.ivoa.dm.proposal.prop.WikiDataId;
@@ -126,115 +125,6 @@ public class ObservatoryResource extends ObjectResourceBase {
         observatory.setWikiId(new WikiDataId(replacementWikiId));
 
         return responseWrapper(observatory, 201);
-    }
-
-
-    //BACKEND **************************************************************************************
-
-    @GET
-    @Path("{id}/backend")
-    @Operation(summary = "get all the Backends associated with the Observatory specified by the 'id'")
-    public List<Backend> getObservatoryBackends(@PathParam("id") Long id)
-        throws WebApplicationException
-    {
-        return findObject(Observatory.class, id).getBackends();
-    }
-
-    @GET
-    @Path("{id}/backend/{subId}")
-    @Operation(summary = "get the specific Backend associated with the Observatory")
-    public Backend getObservatoryBackend(@PathParam("id") Long id, @PathParam("subId") Long subId)
-        throws WebApplicationException
-    {
-        Backend backend =
-                (Backend) findObjectInList(subId, findObject(Observatory.class, id).getBackends());
-        if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
-                    422);
-        }
-
-        return backend;
-    }
-
-    @PUT
-    @Operation(summary = "add an Observatory backend")
-    @Path("{id}/backend")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response addBackend(@PathParam("id") Long id, Long backendId)
-            throws WebApplicationException
-    {
-        Observatory observatory = findObject(Observatory.class, id);
-
-        Backend backend = findObject(Backend.class, backendId);
-
-        observatory.addToBackends(backend);
-
-        return responseWrapper(observatory, 201);
-    }
-
-    @POST
-    @Operation(summary = "create a Backend in the database and add it to the Observatory specified by the 'id'")
-    @Path("{id}/backend")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Backend createAndAddBackend(@PathParam("id") Long observatoryId, Backend backend)
-            throws WebApplicationException
-    {
-        Observatory observatory = findObject(Observatory.class, observatoryId);
-
-        for (Backend b : observatory.getBackends()) {
-            if (b.equals(backend)) {
-                throw new WebApplicationException("Backend already added to Observatory", 400);
-            }
-        }
-        
-        return addNewChildObject(observatory, backend, observatory::addToBackends);
-    }
-
-    @PUT
-    @Path("{observatoryId}/backend/{backendId}/name")
-    @Operation(summary = "replace the name of the Backend specified by the 'subId'")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response replaceBackendName(@PathParam("observatoryId") Long id, @PathParam("backendId") Long subId,
-                                          String replacementName) throws WebApplicationException
-    {
-        Observatory observatory = findObject(Observatory.class, id);
-
-        Backend backend = (Backend) findObjectInList(subId, observatory.getBackends());
-
-        if (backend == null) {
-            throw new WebApplicationException(
-                    String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
-                    422);
-        }
-
-        backend.setName(replacementName);
-
-        return mergeObject(observatory);
-    }
-
-    @PUT
-    @Path("{id}/backend/{subId}/parallel")
-    @Operation(summary = "update the 'parallel' status (true/false) of the Backend specified by the 'subId'")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response updateBackendParallel(@PathParam("id") Long id, @PathParam("subId") Long subId,
-                                       Boolean updateParallel) throws WebApplicationException
-    {
-        Observatory observatory = findObject(Observatory.class, id);
-
-        Backend backend = (Backend) findObjectInList(subId, observatory.getBackends());
-
-        if (backend == null) {
-            throw new WebApplicationException(String.format(NON_ASSOCIATE_ID, "Backend", subId, "Observatory", id),
-                    422);
-        }
-
-        backend.setParallel(updateParallel);
-
-        return mergeObject(observatory);
     }
 
     //TELESCOPE ARRAY *****************************************************************************

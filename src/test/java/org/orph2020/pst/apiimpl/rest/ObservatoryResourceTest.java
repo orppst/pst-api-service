@@ -11,7 +11,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.Matchers.*;
 
 @QuarkusTest
@@ -81,7 +80,7 @@ public class ObservatoryResourceTest {
                 .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(backendToAdd))
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
-                .post("observatories/"+observatoryId+"/backend")
+                .post("observatories/"+observatoryId+"/backends")
                 .then()
                 .statusCode(200)
                 .body(
