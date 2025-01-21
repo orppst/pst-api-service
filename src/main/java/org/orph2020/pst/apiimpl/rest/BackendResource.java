@@ -12,6 +12,11 @@ import org.ivoa.dm.proposal.management.Observatory;
 
 import java.util.List;
 
+
+/*
+ semantics: Backends are "owned" or contained by Observatories.
+ */
+
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observatories/{observatoryId}/backends")
 @Tag(name = "observatory-backends" )
