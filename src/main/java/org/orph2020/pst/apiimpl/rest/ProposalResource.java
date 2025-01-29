@@ -621,6 +621,13 @@ public class ProposalResource extends ObjectResourceBase {
         //Persist the proposal
         em.persist(newProposal);
 
+        //create the document store area for the new proposal
+        try {
+            proposalDocumentStore.createStorePaths(newProposal.getId());
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
         //add '(import)' to the end of the imported proposal
         newProposal.setTitle(modifyProposalTitle(importProposal.getTitle(), " (import)"));
 
