@@ -71,6 +71,9 @@ public class AllocatedProposalResource extends ObjectResourceBase{
 
         em.merge(cycle);
 
+        //set the 'success' flag in the related submitted proposal
+        allocatedProposal.getSubmitted().setSuccessful(true);
+
         return new ProposalSynopsis(allocatedProposal.getSubmitted());
     }
 
@@ -96,6 +99,9 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         cycle.removeFromAllocatedProposals(allocatedProposal);
 
         em.merge(cycle);
+
+        //reset the success flag in the related submitted proposal
+        allocatedProposal.getSubmitted().setSuccessful(false);
 
         return Response.noContent().build();
     }
