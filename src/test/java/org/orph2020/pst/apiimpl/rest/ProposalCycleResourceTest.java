@@ -69,8 +69,8 @@ public class ProposalCycleResourceTest {
       newCycle.setObservationSessionEnd(new Date());
 
       String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(newCycle);
-      System.out.println("New proposal cycle looks like this: " + body);
-      
+      //System.out.println("New proposal cycle looks like this: " + body);
+
       given()
               .when()
               .body(body)
