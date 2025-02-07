@@ -252,7 +252,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
-        String info = "Your proposal is ready for submission";
+        String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
         StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
         //Count the targets
