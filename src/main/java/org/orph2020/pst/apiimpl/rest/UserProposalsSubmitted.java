@@ -79,7 +79,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
 
     }
 
-    @GET
+    @DELETE
     @Operation(summary = "Withdraw a submitted proposal from an observing cycle")
     @Path("{submittedProposalId}/withdraw")
     @RolesAllowed("default-roles-orppst")

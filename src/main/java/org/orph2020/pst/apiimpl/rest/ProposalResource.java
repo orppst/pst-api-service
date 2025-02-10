@@ -96,6 +96,17 @@ public class ProposalResource extends ObjectResourceBase {
                 proposal.getKind());
     }
 
+    private String modifyProposalTitle(String currentTitle, String modifier) {
+        int titleLength = currentTitle.length();
+        int maxTitleLength = 255; //have we got the max length codified somewhere?
+
+        if (titleLength > maxTitleLength - modifier.length()) {
+            return currentTitle.substring(0, titleLength - modifier.length()) + modifier;
+        } else {
+            return currentTitle + modifier;
+        }
+    }
+
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Filters out submitted copies.")
     @RolesAllowed("default-roles-orppst")
@@ -205,8 +216,6 @@ public class ProposalResource extends ObjectResourceBase {
 
         ObservingProposal clonedProp = persistObject(newProp);
 
-        String cloneStr = "(clone)";
-
         //copy the document store for the new, cloned proposal
         try {
             proposalDocumentStore.copyStore(
@@ -219,14 +228,8 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException(e);
         }
 
-        int titleLength = prop.getTitle().length();
-        int maxTitleLength = 255; //have we got the max length codified somewhere?
-
-        if (titleLength > maxTitleLength - cloneStr.length()) {
-            clonedProp.setTitle(prop.getTitle().substring(0, titleLength - cloneStr.length()) + cloneStr);
-        } else {
-            clonedProp.setTitle(prop.getTitle() + cloneStr);
-        }
+        //add '(clone)' to the end of the title string
+        clonedProp.setTitle(modifyProposalTitle(prop.getTitle(), " (clone)"));
 
         return clonedProp;
     }
@@ -249,7 +252,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
-        String info = "Your proposal is ready for submission";
+        String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
         StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
         //Count the targets
@@ -617,6 +620,16 @@ public class ProposalResource extends ObjectResourceBase {
 
         //Persist the proposal
         em.persist(newProposal);
+
+        //create the document store area for the new proposal
+        try {
+            proposalDocumentStore.createStorePaths(newProposal.getId());
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
+        //add '(import)' to the end of the imported proposal
+        newProposal.setTitle(modifyProposalTitle(importProposal.getTitle(), " (import)"));
 
         //Remove supporting document entries without deleting any files.
         List<ObjectIdentifier> oldDocuments = supportingDocumentResource.getSupportingDocuments(newProposal.getId(), null);

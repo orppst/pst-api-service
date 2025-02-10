@@ -55,6 +55,19 @@ public class InvestigatorResource extends ObjectResourceBase {
     }
 
     @GET
+    @Path("/asObjects")
+    @Operation(summary = "get a list of Investigators for a given ObservingProposal, returns a list of investigator objects")
+    public List<Investigator> getInvestigatorsAsObjects(@PathParam("proposalCode") Long proposalCode) {
+        //List<Investigator> result = new ArrayList<>();
+        TypedQuery<Investigator> q = em.createQuery(
+                "Select i from ObservingProposal p join p.investigators i where p._id = :pid order by i._id",
+                Investigator.class);
+        q.setParameter("pid", proposalCode);
+        return q.getResultList();
+    }
+
+
+    @GET
     @Path("/{investigatorId}")
     @Operation(summary = "get the Investigator specified by the 'id' associated with the given ObservingProposal")
     public Investigator getInvestigator(@PathParam("proposalCode") Long proposalCode,

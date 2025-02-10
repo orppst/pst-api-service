@@ -42,25 +42,55 @@ public class ObservationResource extends ObjectResourceBase {
                                                   @RestQuery ObsType type)
             throws WebApplicationException
     {
-        String select = "select o._id,cast(Type(o) as string),t.sourceName ";
+        String select = type == ObsType.CalibrationObservation ?
+                "select o._id,concat(cast(Type(o) as string), ':',o.intent),t.sourceName " :
+                "select o._id,cast(Type(o) as string),t.sourceName ";
         String from = "from ObservingProposal p ";
         String innerJoin = "inner join p.observations o inner join o.target t ";
         String where = "where p._id=" + proposalCode + " ";
         String orderBy = "order by t.sourceName";
 
         String typeQuery = type != null ?
-                "and Type(o) = :typeName" : "";
+                "and cast(Type(o) as string) like :typeName " : "";
         String srcLike = srcName != null ?
-                "and t.sourceName like :sourceName" : "";
+                "and t.sourceName like :sourceName " : "";
 
         String qlString = select + from + innerJoin + where +
                 typeQuery + srcLike + orderBy;
 
         Query query = em.createQuery(qlString);
-        if (type != null) query.setParameter("typeName", type.name());
+        if (type != null) query.setParameter("typeName", "%" + type.name() + "%");
         if (srcName != null) query.setParameter("sourceName", srcName);
 
-        return getObjectIdentifiersAlt(query);
+        List<ObjectIdentifier> result = getObjectIdentifiersAlt(query);
+
+        // edit the 'type' name i.e., the ObjectIdentifier.code member, to use as a display string
+        // general format: 'proposal:<Type>Observation'
+        // query ObsType='CalibrationObservation' format: 'proposal:CalibrationObservation:<INTENT>'
+        // we want '<Type>' in general, and 'Calibration (<intent>)' for the specified query
+
+        if (type == ObsType.CalibrationObservation) {
+            //specific query case
+            for (ObjectIdentifier oi : result) {
+                oi.code = "Calibration (" +
+                        oi.code
+                                .substring(oi.code.lastIndexOf(":") + 1)
+                                .toLowerCase()
+                        + ")";
+            }
+        } else {
+            //general case
+            for (ObjectIdentifier oi : result) {
+                if (oi.code.contains("TargetObservation")) {
+                    oi.code = "Target";
+                } else if (oi.code.contains("CalibrationObservation")) {
+                    oi.code = "Calibration";
+                }
+                //else nothing - 'code' remains as is from the query
+            }
+        }
+
+        return result;
     }
 
     @GET
@@ -85,12 +115,11 @@ public class ObservationResource extends ObjectResourceBase {
                                          Observation observation)
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        //note the use of copyme to  clone any input observation in case it has been cloned in the GUI and has any database Ids in it.
-        // also note that if Observation were not abstract then copy constructor would be the correct thing to do.
-        Observation ret = addNewChildObject(observingProposal, observation.copyMe(),
+        // Notice the use of 'copyMe' to clone any input observation in case it has been cloned
+        // in the GUI and has any database Ids in it. Also note that if Observation were not
+        // abstract then copy constructor would be the correct thing to do.
+        return addNewChildObject(observingProposal, observation.copyMe(),
               observingProposal::addToObservations);
-
-        return ret;
     }
 
 

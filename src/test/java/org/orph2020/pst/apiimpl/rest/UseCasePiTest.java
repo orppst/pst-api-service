@@ -567,7 +567,7 @@ public class UseCasePiTest {
         LOGGER.info("withdraw submitted proposal id=" + submittedId);
         given()
                 .when()
-                .get("/proposalsSubmitted/" + submittedId + "/withdraw?cycleId=" + cycleId)
+                .delete("/proposalsSubmitted/" + submittedId + "/withdraw?cycleId=" + cycleId)
                 .then()
                 .statusCode(200);
 
