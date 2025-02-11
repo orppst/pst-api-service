@@ -17,10 +17,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.List;
 
 /*
- semantics: you can create and add an Instrument to a specific Observatory. You can delete a specific
- Instrument from the given Observatory, which also removes the Instrument entity from the database.
- You can edit any field of a specific Instrument for a given Observatory. In other words, Instruments
- can only exist within the context of their associated Observatory.
+ semantics: Instruments are "owned" or contained by Observatories.
  */
 
 @Path("observatories/{observatoryId}/instruments")
