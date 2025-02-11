@@ -9,6 +9,8 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Backend;
 import org.ivoa.dm.proposal.management.Observatory;
+import org.jboss.resteasy.reactive.RestQuery;
+import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.List;
 
@@ -25,11 +27,18 @@ public class BackendResource extends ObjectResourceBase{
     //BACKEND **************************************************************************************
 
     @GET
-    @Operation(summary = "get all the Backends associated with the Observatory specified by the 'observatoryId'")
-    public List<Backend> getObservatoryBackends(@PathParam("observatoryId") Long observatoryId)
+    @Operation(summary = "get all the Backend Identifiers associated with the Observatory specified by the 'observatoryId', optionally provide a name to find a specific Backend")
+    public List<ObjectIdentifier> getObservatoryBackends(@PathParam("observatoryId") Long observatoryId,
+                                                         @RestQuery String name)
             throws WebApplicationException
     {
-        return findObject(Observatory.class, observatoryId).getBackends();
+        if (name == null) {
+            return getObjectIdentifiers(
+                    "SELECT b._id,b.name FROM Observatory o Inner Join o.backends b WHERE o._id = "+observatoryId+" ORDER BY b.name");
+        } else {
+            return getObjectIdentifiers(
+                    "SELECT b._id,b.name FROM Observatory o Inner Join o.backends b WHERE o._id = "+observatoryId+" and b.name like '"+name+"' ORDER BY b.name");
+        }
     }
 
     @GET
