@@ -33,21 +33,44 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     ProposalDocumentStore proposalDocumentStore;
 
     @GET
-    @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle")
+    @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
     public List<ObjectIdentifier> getSubmittedProposals(
             @PathParam("cycleCode") Long cycleCode,
             @RestQuery String title,
-            @RestQuery String investigatorName
+            @RestQuery String investigatorName,
+            @RestQuery Long sourceProposalId
     )
     {
-        String qlString = getQlString(cycleCode, title, investigatorName);
 
-        Query query = em.createQuery(qlString);
+        if (sourceProposalId != null) {
+            String qlString = getQlString(cycleCode);
+            Query query = em.createQuery(qlString);
+            query.setParameter("sourceProposalId", sourceProposalId);
+            return getObjectIdentifiersAlt(query);
 
-        if (investigatorName != null) query.setParameter("investigatorName", investigatorName);
-        if (title != null) query.setParameter("title", title);
+        } else {
 
-        return getObjectIdentifiersAlt(query);
+            String qlString = getQlString(cycleCode, title, investigatorName);
+            Query query = em.createQuery(qlString);
+            if (investigatorName != null) query.setParameter("investigatorName", investigatorName);
+            if (title != null) query.setParameter("title", title);
+            return getObjectIdentifiersAlt(query);
+
+        }
+
+    }
+
+    private String getQlString(Long cycleCode) {
+        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.title "
+                + "from ProposalCycle c "
+                + "inner join c.submittedProposals s "
+                + "inner join s.relatedProposals r "
+                + "where c._id=" + cycleCode + " "
+                + "and r.proposal._id = :sourceProposalId ";
+
+        String orderByStr = "order by s._id";
+
+        return baseStr + orderByStr;
     }
 
     private static String getQlString(Long cycleCode, String title, String investigatorName) {
