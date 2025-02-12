@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.Filter;
 import org.ivoa.dm.proposal.management.ObservingMode;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
@@ -56,5 +57,18 @@ public class ObservingModeResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         return findObservingModeByQuery(cycleId, modeId);
+    }
+
+    @GET
+    @Path("filters")
+    @Operation(summary = "get all the distinct filters associated with observing modes of a given cycle")
+    public List<Filter> getObservingModesFilters(@PathParam("cycleId") Long cycleId)
+        throws WebApplicationException
+    {
+        String qlString = "select distinct om.filter from ProposalCycle c inner join c.observingModes om where c._id=" + cycleId;
+
+        Query query = em.createQuery(qlString);
+
+        return query.getResultList();
     }
 }

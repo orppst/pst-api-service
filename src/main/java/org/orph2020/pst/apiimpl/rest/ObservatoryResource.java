@@ -129,6 +129,28 @@ public class ObservatoryResource extends ObjectResourceBase {
 
     //TELESCOPE ARRAY *****************************************************************************
 
+    @GET
+    @Path("{observatoryId}/array")
+    @Operation(summary = "get a list of all TelescopeArrays belonging to the given Observatory")
+    public List<ObjectIdentifier> getTelescopeArrays(@PathParam("observatoryId") Long observatoryId)
+        throws WebApplicationException
+    {
+        return getObjectIdentifiers("select a._id,a.name from Observatory o inner join o.arrays a where o._id = "+observatoryId+" order by a.name");
+    }
+
+    @GET
+    @Path("{observatoryId}/array/{arrayId}")
+    @Operation(summary = "get the TelescopeArray specified from the given Observatory")
+    public TelescopeArray getTelescopeArray(@PathParam("observatoryId") Long observatoryId,
+                                            @PathParam("arrayId") Long arrayId)
+        throws WebApplicationException
+    {
+        return findChildByQuery(Observatory.class, TelescopeArray.class,
+                "arrays", observatoryId, arrayId);
+    }
+
+
+
     @PUT
     @Operation(summary = "add an existing TelescopeArray to the Observatory")
     @Path("{id}/array")
