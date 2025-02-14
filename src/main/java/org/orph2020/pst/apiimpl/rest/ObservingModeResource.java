@@ -5,6 +5,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Filter;
 import org.ivoa.dm.proposal.management.ObservingMode;
+import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import jakarta.persistence.TypedQuery;
@@ -47,6 +48,17 @@ public class ObservingModeResource extends ObjectResourceBase {
         Query query = em.createQuery(qlString);
 
         return getObjectIdentifiersAlt(query);
+    }
+
+
+    // including this call to simplify building a filtered-search in the GUI for observing modes
+    // based on Instrument, Backend, and (Spectroscopic) Filter
+    @GET
+    @Path("objectList")
+    @Operation(summary = "get a list of ObservingModes (whole objects) for the given ProposalCycle")
+    public List<ObservingMode> getObservingModeObjects(@PathParam("cycleId") Long cycleId)
+    {
+        return findObject(ProposalCycle.class, cycleId).getObservingModes();
     }
 
     @GET
