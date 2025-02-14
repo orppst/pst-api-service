@@ -7,8 +7,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.Ivoid;
-import org.ivoa.dm.proposal.management.Observatory;
-import org.ivoa.dm.proposal.management.TelescopeArray;
+import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.WikiDataId;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -17,6 +16,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Produces(MediaType.APPLICATION_JSON)
@@ -145,8 +146,29 @@ public class ObservatoryResource extends ObjectResourceBase {
                                             @PathParam("arrayId") Long arrayId)
         throws WebApplicationException
     {
-        return findChildByQuery(Observatory.class, TelescopeArray.class,
-                "arrays", observatoryId, arrayId);
+        /*
+            Please note that a single Telescope as an ObservingPlatform is returned as a
+            TelescopeArray with a single TelescopeArrayMember. As these are NOT SAVED in
+            the DB both the TelescopeArray and TelescopeArrayMember _ids will be zero.
+            The Telescope itself will retain its _id.
+         */
+
+
+        ObservingPlatform observingPlatform = findObject(ObservingPlatform.class, arrayId);
+
+        if (observingPlatform.getClass() == TelescopeArray.class) {
+            return (TelescopeArray) observingPlatform;
+        } else if (observingPlatform.getClass() == Telescope.class) {
+            return TelescopeArray.createTelescopeArray((ta) -> {
+                ta.name = ((Telescope) observingPlatform).getName();
+                ta.arrayMembers = new ArrayList<>(
+                        List.of(new TelescopeArrayMember((Telescope) observingPlatform))
+                );
+            });
+        } else {
+            throw new WebApplicationException(
+                    "Class: " + observingPlatform.getClass() + " not recognized", 500);
+        }
     }
 
 
