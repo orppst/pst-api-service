@@ -19,8 +19,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 abstract public class ObjectResourceBase {
+    // exists for the application lifetime no need to close
     @PersistenceContext
-    protected EntityManager em;  // exists for the application lifetime no need to close
+    protected EntityManager em;
 
     @Inject
     protected ObjectMapper mapper;
