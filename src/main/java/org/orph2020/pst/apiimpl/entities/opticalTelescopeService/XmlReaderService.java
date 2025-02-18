@@ -1,4 +1,4 @@
-package org.orph2020.pst.apiimpl.entities.telescopeService;
+package org.orph2020.pst.apiimpl.entities.opticalTelescopeService;
 
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
@@ -25,7 +25,7 @@ import static java.util.logging.Level.WARNING;
 /**
  * business logic for the telescope config DB
  */
-public class TelescopeConfigService {
+public class XmlReaderService {
 
    private static final Logger LOGGER =
        Logger.getLogger("TelescopeConfigService");

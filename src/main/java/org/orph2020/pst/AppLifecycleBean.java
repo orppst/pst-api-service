@@ -19,6 +19,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.apiimpl.rest.ProposalDocumentStore;
 
 import java.io.File;
@@ -31,8 +32,9 @@ import java.util.List;
 @ApplicationScoped
 public class AppLifecycleBean {
 
+    // exists for the application lifetime no need to close
     @PersistenceContext
-    protected EntityManager em;  // exists for the application lifetime no need to close
+    protected EntityManager em;
 
     @ConfigProperty(name = "document-store.proposals.root")
     String documentStoreRoot;
@@ -46,22 +48,46 @@ public class AppLifecycleBean {
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         LOGGER.info("The application is starting...");
+        this.initialiseDatabase();
+        this.initialiseOpticalTelescopeDatabase();
+    }
 
-        Long i = em.createQuery("select count(o) from Observatory o", Long.class).getSingleResult();
+    /**
+     * builds the optic telescope database.
+     */
+    private void initialiseOpticalTelescopeDatabase() {
+        XmlReaderService config = new XmlReaderService();
+        config.initDB();
+    }
+
+    /**
+     * builds the basic database that contains proposals and such.
+     */
+    private void initialiseDatabase() {
+        Long i = em.createQuery(
+            "select count(o) from Observatory o", Long.class).getSingleResult();
         if(i.intValue() == 0) {
             LOGGER.info("initializing Database");
-           // add the example proposals.
+            // add the example proposals.
             FullExample fullExample = new FullExample();
-            List<ProposalCycle> cycles = fullExample.getManagementModel().getContent(ProposalCycle.class);
+            List<ProposalCycle> cycles = fullExample.getManagementModel().
+                getContent(ProposalCycle.class);
             LocalDate now = LocalDate.now();
             for (ProposalCycle cycle : cycles) {
-                cycle.setSubmissionDeadline(new Date(now.plusWeeks(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
-                cycle.setObservationSessionStart(new Date(now.plusMonths(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
-                cycle.setObservationSessionEnd(new Date(now.plusMonths(6).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setSubmissionDeadline(
+                    new Date(now.plusWeeks(2).atStartOfDay().atOffset(
+                        ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionStart(
+                    new Date(now.plusMonths(2).atStartOfDay().atOffset(
+                        ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setObservationSessionEnd(
+                    new Date(now.plusMonths(6).atStartOfDay().atOffset(
+                        ZoneOffset.UTC).toEpochSecond()*1000));
             }
             fullExample.saveTodB(em);
 
-            for(ObservingProposal pr: fullExample.getProposalModel().getContent(ObservingProposal.class))
+            for(ObservingProposal pr: fullExample.getProposalModel().getContent(
+                ObservingProposal.class))
                 try {
                     proposalDocumentStore.createStorePaths(pr.getId());
                 } catch (IOException e) {
@@ -71,24 +97,31 @@ public class AppLifecycleBean {
         }
 
         //only try to populate the SubjectMap if not already done
-        TypedQuery<SubjectMap> sq = em.createQuery("select o from SubjectMap o where o.uid = 'bb0b065f-6dc3-4062-9b3e-525c1a1a9bec'", SubjectMap.class);
+        TypedQuery<SubjectMap> sq = em.createQuery(
+            "select o from SubjectMap o where o.uid = " +
+                "'bb0b065f-6dc3-4062-9b3e-525c1a1a9bec'", SubjectMap.class);
         if(sq.getResultList().isEmpty()) {
 
-            TypedQuery<Person> pq = em.createQuery("select o from Person o", Person.class);
+            TypedQuery<Person> pq = em.createQuery(
+                "select o from Person o", Person.class);
             for (Person p : pq.getResultList()) {
                 switch (p.getEMail()) {
                     case "pi@unreal.not.email":
 
-                        em.persist(new SubjectMap(p, "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec"));
+                        em.persist(new SubjectMap(p,
+                            "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec"));
                         break;
                     case "reviewer@unreal.not.email":
-                        em.persist(new SubjectMap(p, "dda2fd0b-8bb4-4dd1-a216-f75087f3d946"));
+                        em.persist(new SubjectMap(p,
+                            "dda2fd0b-8bb4-4dd1-a216-f75087f3d946"));
                         break;
                     case "tacchair@unreal.not.email":
-                        em.persist(new SubjectMap(p, "b0f7b98e-ec1e-4cf9-844c-e9f192c97745"));
+                        em.persist(new SubjectMap(p,
+                            "b0f7b98e-ec1e-4cf9-844c-e9f192c97745"));
                         break;
                     case "coi@unreal.not.email":
-                        em.persist(new SubjectMap(p, "33767eee-35a1-4fef-b32a-f9b6fa6b36e6"));
+                        em.persist(new SubjectMap(p,
+                            "33767eee-35a1-4fef-b32a-f9b6fa6b36e6"));
                         break;
                     default:
                         //do nothing

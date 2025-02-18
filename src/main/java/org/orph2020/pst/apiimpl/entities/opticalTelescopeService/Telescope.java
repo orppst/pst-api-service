@@ -1,4 +1,4 @@
-package org.orph2020.pst.apiimpl.entities.telescopeService;
+package org.orph2020.pst.apiimpl.entities.opticalTelescopeService;
 import java.util.HashMap;
 
 /**

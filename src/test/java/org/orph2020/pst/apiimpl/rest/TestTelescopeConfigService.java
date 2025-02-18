@@ -7,9 +7,9 @@ import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.orph2020.pst.apiimpl.entities.telescopeService.Field;
-import org.orph2020.pst.apiimpl.entities.telescopeService.Instrument;
-import org.orph2020.pst.apiimpl.entities.telescopeService.TelescopeConfigService;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Field;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Instrument;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 
 import java.util.ArrayList;
 
@@ -28,15 +28,15 @@ import java.util.ArrayList;
 public class TestTelescopeConfigService {
 
     // the telescope service.
-    private TelescopeConfigService telescopeService;
+    private XmlReaderService xmlReaderService;
 
     /**
      * the setup used by each test.
      */
     @BeforeEach
     void setup() {
-        telescopeService = new TelescopeConfigService();
-        telescopeService.initDB();
+        xmlReaderService = new XmlReaderService();
+        xmlReaderService.initDB();
     }
 
     /**
@@ -45,7 +45,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testPickingUpExpectedNTelescopes() {
-        assert telescopeService.getTelescopes().values().size() == 14;
+        assert xmlReaderService.getTelescopes().values().size() == 14;
     }
 
     /**
@@ -54,7 +54,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testVerifySaltTelescopeExists() {
-        assert telescopeService.getTelescopes().get("SALT") != null;
+        assert xmlReaderService.getTelescopes().get("SALT") != null;
     }
 
     /**
@@ -62,7 +62,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testVerifyLcoTelescopeExists() {
-        assert telescopeService.getTelescopes().get("LCO") != null;
+        assert xmlReaderService.getTelescopes().get("LCO") != null;
     }
 
     /**
@@ -73,7 +73,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testSaltTelescopeInstrumentsQuantity() {
-        assert telescopeService.getTelescopes().get("SALT").
+        assert xmlReaderService.getTelescopes().get("SALT").
             getInstruments().values().size() == 3;
     }
 
@@ -87,7 +87,7 @@ public class TestTelescopeConfigService {
     void testSaltTelescopeInstrumentsNames() {
         ArrayList<String> names = new ArrayList<>();
         for (Instrument instrument:
-            telescopeService.getTelescopes().get("SALT").getInstruments()
+            xmlReaderService.getTelescopes().get("SALT").getInstruments()
                 .values()) {
             names.add(instrument.getName());
         }
@@ -103,7 +103,7 @@ public class TestTelescopeConfigService {
     @Test
     void testSaltURL() {
         for (Instrument instrument:
-            telescopeService.getTelescopes().get("SALT").getInstruments()
+            xmlReaderService.getTelescopes().get("SALT").getInstruments()
                 .values()) {
             assert instrument.getElements().get("instrumentUrl").
                 getValues().get(0).equals("http://pysalt.salt.ac.za/proposal_calls/current/ProposalCall.html");
@@ -118,7 +118,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testSaltFilterOptionsLength() {
-        ArrayList<String> options = telescopeService.getTelescopes().get(
+        ArrayList<String> options = xmlReaderService.getTelescopes().get(
             "SALT").getInstruments().get("Salticam").getElements().get(
                 "instrumentFilter").getValues();
         assert options.size() == 24;
@@ -132,7 +132,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testSaltElementsLength() {
-        assert telescopeService.getTelescopes().get(
+        assert xmlReaderService.getTelescopes().get(
             "SALT").getInstruments().get("Salticam").getElements().size() == 2;
     }
 
@@ -143,7 +143,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testSaltElementsNotContainingFloater() {
-        assert !telescopeService.getTelescopes().get(
+        assert !xmlReaderService.getTelescopes().get(
             "SALT").getInstruments().get("Salticam").getElements()
             .containsKey("instrumentReadOut");
     }
@@ -154,7 +154,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testTelescopeWithBoolean() {
-        assert telescopeService.getTelescopes().get(
+        assert xmlReaderService.getTelescopes().get(
             "LCO").getInstruments().get("1m Imaging (Sinistro)").
                 getElements().get("telescopeHours").getType() ==
             Field.TYPES.BOOLEAN;
@@ -166,9 +166,9 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testTelescopeWithInstrumentCommentedOut() {
-        assert telescopeService.getTelescopes().get(
+        assert xmlReaderService.getTelescopes().get(
                 "LCO").getInstruments().get("2m Imaging (Spectral)") == null;
-        assert telescopeService.getTelescopes().get(
+        assert xmlReaderService.getTelescopes().get(
             "LCO").getInstruments().get("2m Spectroscopy (Floyds)") == null;
     }
 
@@ -178,7 +178,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testTelescopeWithTexField() {
-        assert telescopeService.getTelescopes().get(
+        assert xmlReaderService.getTelescopes().get(
                 "LCO").getInstruments().get("1m Imaging (Sinistro)").
             getElements().get("instrumentComments").getType() ==
             Field.TYPES.TEXT;
