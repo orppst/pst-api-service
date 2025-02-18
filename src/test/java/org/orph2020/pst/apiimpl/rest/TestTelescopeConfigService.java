@@ -36,7 +36,7 @@ public class TestTelescopeConfigService {
     @BeforeEach
     void setup() {
         xmlReaderService = new XmlReaderService();
-        xmlReaderService.initDB();
+        xmlReaderService.read();
     }
 
     /**

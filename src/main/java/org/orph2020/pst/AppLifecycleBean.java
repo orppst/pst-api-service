@@ -56,8 +56,9 @@ public class AppLifecycleBean {
      * builds the optic telescope database.
      */
     private void initialiseOpticalTelescopeDatabase() {
-        XmlReaderService config = new XmlReaderService();
-        config.initDB();
+        XmlReaderService xmlReader = new XmlReaderService();
+        xmlReader.read();
+
     }
 
     /**

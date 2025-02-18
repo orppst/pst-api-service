@@ -65,8 +65,8 @@ public class XmlReaderService {
     * default public interface, forces to utilise the environment variable for
     * the location of the xml store.
     */
-   public void initDB() {
-      this.initDB(null);
+   public void read() {
+      this.read(null);
    }
 
    /**
@@ -74,7 +74,7 @@ public class XmlReaderService {
     * changed.
     * @param telescopeXMLPath: param for the environment setting.
     */
-   public void initDB(String telescopeXMLPath) {
+   public void read(String telescopeXMLPath) {
       LOGGER.info("initializing Database");
 
       // get class path to the location where the telescopes xml is located
