@@ -72,8 +72,8 @@ jobs:
 
     - name: Run Gradle test
       working-directory: ./main
-      env:
-        POLARIS_TELESCOPE_CONFIG_LOCATION: telescope-config-data
+      #env:
+      #  POLARIS_TELESCOPE_CONFIG_LOCATION: telescope-config-data
       run: ./gradlew  --info test
 
     - name: Publish Test Results
