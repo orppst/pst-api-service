@@ -85,6 +85,9 @@ public class XmlReaderService {
       if(telescopeXMLPath == null) {
          LOGGER.log(SEVERE, "no environment variable was found. Exiting");
          return;
+      } else {
+         LOGGER.log(INFO,
+             String.format("environment variable is %s", telescopeXMLPath));
       }
 
       // filter out all noise in the repo to locate just the xml.
