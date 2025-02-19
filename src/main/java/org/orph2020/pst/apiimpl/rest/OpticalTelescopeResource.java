@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -8,6 +9,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Instrument;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +22,9 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class OpticalTelescopeResource extends ObjectResourceBase {
 
+    @Inject
+    XmlReaderService xmlReader;
+
     /**
      * return the list of names for the available telescopes.
      * @return the list of the available telescopes.
@@ -27,7 +32,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     @GET
     @Operation(summary = "get a list of the optical telescopes available.")
     public List<String> getOpticalTelescopeNames() {
-
+        return xmlReader.getTelescopes().keySet().stream().toList();
     }
 
     /**
@@ -35,8 +40,10 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
      */
     @GET
     @Operation(summary = "returns the set of instruments and their options.")
-    public List<Instrument> getOpticalTelescopeInstruments() {
-
+    public List<Instrument> getOpticalTelescopeInstruments(
+            String telescopeName) {
+        return xmlReader.getTelescopes().get(telescopeName).
+            getInstruments().values().stream().toList();
     }
 
     /**
@@ -50,9 +57,9 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     @PUT
     @Operation(summary = "saves the telescope specific data")
     public boolean saveOpticalTelescopeData(
-        String proposalID, String observationID, String telescopeName,
-        HashMap<String, String> choices) {
-
+            String proposalID, String observationID, String telescopeName,
+            HashMap<String, String> choices) {
+        return true;
     }
 
 }

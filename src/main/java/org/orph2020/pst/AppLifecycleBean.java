@@ -5,7 +5,9 @@ package org.orph2020.pst;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
@@ -19,6 +21,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
+import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Telescope;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.apiimpl.rest.ProposalDocumentStore;
 
@@ -42,7 +45,17 @@ public class AppLifecycleBean {
     @Inject
     ProposalDocumentStore proposalDocumentStore;
 
+    // reader for xml files
+    XmlReaderService xmlReader;
+
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
+
+    // produces the array of telescopes.
+    @Singleton
+    @Produces
+    XmlReaderService produceTelescopes() {
+        return this.xmlReader;
+    }
 
 
     @Transactional
@@ -56,9 +69,8 @@ public class AppLifecycleBean {
      * builds the optic telescope database.
      */
     private void initialiseOpticalTelescopeDatabase() {
-        XmlReaderService xmlReader = new XmlReaderService();
+        xmlReader = new XmlReaderService();
         xmlReader.read();
-
     }
 
     /**
