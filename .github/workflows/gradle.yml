@@ -46,10 +46,6 @@ jobs:
         repository: orppst/telescope-config-data
         path: telescope-config-data
 
-    - name: create env entry
-      env:
-          POLARIS_TELESCOPE_CONFIG_LOCATION: ${{github.workspace}}/telescope-config-data
-      run: echo "$POLARIS_TELESCOPE_CONFIG_LOCATION"
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -77,6 +73,8 @@ jobs:
 
     - name: Run Gradle test
       working-directory: ./main
+      env:
+        POLARIS_TELESCOPE_CONFIG_LOCATION: /home/runner/work/pst-api-service/pst-api-service/telescope-config-data
       run: ./gradlew  --info test
 
     - name: Publish Test Results
