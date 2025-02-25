@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import java.util.List;
 @Path("proposals/{proposalCode}/observations")
 @Tag(name = "proposals-observations")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class ObservationResource extends ObjectResourceBase {
 
     private Observation findObservation(List<Observation> observations, Long id, Long proposalCode)
@@ -104,7 +106,12 @@ public class ObservationResource extends ObjectResourceBase {
                 proposalCode, observationId);
     }
 
-
+    private void CheckTimingWindow(TimingWindow timingWindow) throws WebApplicationException
+    {
+        if(timingWindow.getStartTime().getTime() > timingWindow.getEndTime().getTime()) {
+            throw new WebApplicationException("Start time cannot be after end time");
+        }
+    }
 
     @POST
     @Operation(summary = "add a new Observation to the given ObservingProposal")
@@ -114,6 +121,12 @@ public class ObservationResource extends ObjectResourceBase {
     public Observation addNewObservation(@PathParam("proposalCode") Long proposalCode,
                                          Observation observation)
     {
+        for(ObservingConstraint constraint : observation.getConstraints()) {
+            if(constraint.getClass() == TimingWindow.class) {
+                CheckTimingWindow((TimingWindow) constraint);
+            }
+        }
+
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         // Notice the use of 'copyMe' to clone any input observation in case it has been cloned
         // in the GUI and has any database Ids in it. Also note that if Observation were not
@@ -255,9 +268,15 @@ public class ObservationResource extends ObjectResourceBase {
                                                 ObservingConstraint constraint)
             throws WebApplicationException
     {
+
+        if(constraint.getClass() == TimingWindow.class) {
+            CheckTimingWindow((TimingWindow) constraint);
+         }
+
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
+
 
         return addNewChildObject(observation, constraint, observation::addToConstraints);
     }
@@ -299,6 +318,8 @@ public class ObservationResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
+        CheckTimingWindow(replacementWindow);
+
         Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
                 "observations", proposalCode, observationId);
 
