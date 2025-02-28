@@ -11,6 +11,7 @@ import jakarta.inject.Singleton;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.management.ProposalCycle;
+import org.ivoa.dm.proposal.management.Telescope;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
@@ -21,7 +22,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
-import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Telescope;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.apiimpl.rest.ProposalDocumentStore;
 
@@ -71,6 +71,13 @@ public class AppLifecycleBean {
     private void initialiseOpticalTelescopeDatabase() {
         xmlReader = new XmlReaderService();
         xmlReader.read();
+
+        // add telescopes to the proposal management system.
+        for (String telescopeName: xmlReader.getTelescopes().keySet()) {
+            Telescope managementTelescope = new Telescope();
+            managementTelescope.setName(telescopeName);
+            em.persist(managementTelescope);
+        }
     }
 
     /**
