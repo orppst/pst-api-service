@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -15,6 +16,7 @@ import java.util.List;
 @Path("resourceTypes")
 @Tag(name = "resource-types")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed({"tac_admin", "tac_member"})
 public class ResourceTypeResource extends ObjectResourceBase{
 
     @GET
@@ -33,6 +35,7 @@ public class ResourceTypeResource extends ObjectResourceBase{
 
     @POST
     @Operation(summary = "add a new ResourceType to the App, the name of the type must be unique")
+    @RolesAllowed("tac_admin")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ResourceType addNewResourceType(ResourceType resourceType)
@@ -49,6 +52,7 @@ public class ResourceTypeResource extends ObjectResourceBase{
 
     @DELETE
     @Path("{resourceTypeId}")
+    @RolesAllowed("tac_admin")
     @Operation(summary = "remove the ResourceType given by the 'resourceTypeId'")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeResourceType(@PathParam("resourceTypeId") Long resourceTypeId) {

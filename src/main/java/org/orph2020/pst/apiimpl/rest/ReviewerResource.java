@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -14,6 +15,7 @@ import java.util.List;
 @Path("reviewers")
 @Tag(name = "reviewers")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed({"tac_admin", "tac_member"})
 public class ReviewerResource extends ObjectResourceBase{
 
     @GET

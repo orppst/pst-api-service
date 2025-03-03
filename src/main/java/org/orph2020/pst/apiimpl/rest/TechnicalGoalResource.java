@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -10,12 +11,12 @@ import org.ivoa.dm.proposal.prop.*;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Path("proposals/{proposalCode}/technicalGoals")
 @Tag(name = "proposals-technicalGoals")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class TechnicalGoalResource extends ObjectResourceBase{
 
     // technicalGoals

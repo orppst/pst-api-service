@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -26,6 +27,7 @@ and/or different backends.
 @Path("proposalCycles/{cycleId}/observingModes")
 @Tag(name = "proposalCycles-observingModes")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class ObservingModeResource extends ObjectResourceBase {
 
     private ObservingMode findObservingModeByQuery(long cycleId, long modeId) {

@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -19,6 +20,7 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/allocatedProposals")
 @Tag(name = "proposalCycles-allocated-proposals")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed({"tac_admin", "tac_member"})
 public class AllocatedProposalResource extends ObjectResourceBase{
 
     @GET
@@ -78,6 +80,7 @@ public class AllocatedProposalResource extends ObjectResourceBase{
     }
 
     //TODO: make this callable by a 'TAC Chair' user only
+    @RolesAllowed("tac_admin")
     @DELETE
     @Path("{allocatedId}")
     @Operation(summary = "withdraw a previously allocated proposal from the cycle")

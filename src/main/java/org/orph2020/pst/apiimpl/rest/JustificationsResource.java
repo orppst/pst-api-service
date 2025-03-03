@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -36,6 +37,7 @@ import java.util.regex.Pattern;
 
 @Path("proposals/{proposalCode}/justifications")
 @Tag(name = "proposals-justifications")
+@RolesAllowed("default-roles-orppst")
 public class JustificationsResource extends ObjectResourceBase {
 
     //common file name for the Tex file for Latex type Justifications
