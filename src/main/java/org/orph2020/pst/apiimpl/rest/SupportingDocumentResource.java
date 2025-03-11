@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -32,6 +33,7 @@ import java.util.List;
 @Path("proposals/{proposalCode}/supportingDocuments")
 @Tag(name = "proposals-supportingDocuments")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class SupportingDocumentResource extends ObjectResourceBase {
 
     @Inject

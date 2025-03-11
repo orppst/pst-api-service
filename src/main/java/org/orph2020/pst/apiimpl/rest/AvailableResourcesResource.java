@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
@@ -15,6 +16,7 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/availableResources")
 @Tag(name = "proposalCycles-availableResources")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed({"tac_admin", "tac_member"})
 public class AvailableResourcesResource extends ObjectResourceBase {
 
     @GET

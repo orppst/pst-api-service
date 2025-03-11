@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.annotation.security.RolesAllowed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -50,6 +51,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @POST
     @Operation(summary = "create a new Observatory in the database")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Observatory createObservatory(Observatory observatory)
             throws WebApplicationException
@@ -61,6 +63,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @DELETE
     @Path("{id}")
     @Operation(summary = "delete the Observatory specified by the 'id' from the database")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response deleteObservatory(@PathParam("id") Long id)
             throws WebApplicationException
@@ -72,6 +75,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "update an Observatory name")
     @Path("{id}/name")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateObservatoryName(@PathParam("id") Long id, String replacementName )
             throws WebApplicationException
@@ -87,6 +91,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "update an Observatory's address")
     @Path("{id}/address")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateAddress(@PathParam("id") Long id, String replacementAddress )
             throws WebApplicationException
@@ -102,6 +107,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "update an Observatory's ivoId")
     @Path("{id}/ivoId")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateObservatoryIvoId(@PathParam("id") Long id, String replacementIvoId )
             throws WebApplicationException
@@ -117,6 +123,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "update an Observatory's wikiId")
     @Path("{id}/wikiId")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateObservatoryWikiId(@PathParam("id") Long id, String replacementWikiId )
             throws WebApplicationException
@@ -177,6 +184,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "add an existing TelescopeArray to the Observatory")
     @Path("{id}/array")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response addArray(@PathParam("id") Long id, Long telescopeArrayId )
             throws WebApplicationException
@@ -194,6 +202,7 @@ public class ObservatoryResource extends ObjectResourceBase {
     @Operation(summary = "create a TelescopeArray in the database and add it to the Observatory specified by the 'id'")
     @Path("{id}/array")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public TelescopeArray createAndAddArray(@PathParam("id") Long observatoryId, TelescopeArray telescopeArray)
             throws WebApplicationException

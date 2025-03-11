@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Instrument;
@@ -53,6 +54,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @DELETE
     @Path("/{instrumentId}")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "remove the Instrument specified by 'instrumentId' from the given Observatory, also removes the instrument from the database")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeInstrumentFromObservatory(@PathParam("observatoryId") Long observatoryId,
@@ -69,6 +71,7 @@ public class InstrumentResource extends ObjectResourceBase {
     }
 
     @POST
+    @RolesAllowed("obs_administration")
     @Operation(summary = "create an Instrument in the database and add it to the Observatory specified by the 'id'")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -90,6 +93,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @PUT
     @Path("{instrumentId}/name")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "replace the name of the Instrument specified by the 'subId'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -106,6 +110,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @PUT
     @Path("{instrumentId}/description")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "replace the description of the Instrument specified by the 'instrumentId'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -123,6 +128,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @PUT
     @Path("{instrumentId}/wikiId")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "replace the wikiId of the Instrument specified by the 'instrumentId'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -139,6 +145,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @PUT
     @Path("{instrumentId}/reference")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "replace the reference (external URL) of the Instrument specified by the 'instrumentId'")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -155,6 +162,7 @@ public class InstrumentResource extends ObjectResourceBase {
 
     @PUT
     @Path("{instrumentId}/kind")
+    @RolesAllowed("obs_administration")
     @Operation(summary = "replace the 'kind' of the Instrument specified by the 'instrumentId'; one-of CONTINUUM, SPECTROSCOPIC")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})

@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -22,6 +23,7 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Path("observatories/{observatoryId}/backends")
 @Tag(name = "observatory-backends" )
+@RolesAllowed({"tac_admin", "tac_member"}) //TODO: Should some of these endpoints be obs_administration only?
 public class BackendResource extends ObjectResourceBase{
 
     //BACKEND **************************************************************************************

@@ -42,6 +42,7 @@ import java.util.*;
 @Tag(name = "proposals")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
+//@RolesAllowed("default-roles-orppst")
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
     @Inject
@@ -109,7 +110,7 @@ public class ProposalResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Filters out submitted copies.")
-    @RolesAllowed("default-roles-orppst")
+    //@RolesAllowed("default-roles-orppst")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
 
         boolean noQuery = investigatorName == null && title == null;
