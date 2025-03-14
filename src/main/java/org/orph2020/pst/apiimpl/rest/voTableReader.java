@@ -1,9 +1,11 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Target;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
 import org.ivoa.dm.stc.coords.SpaceSys;
+import org.ivoa.vodml.stdtypes.Unit;
 import org.orph2020.pst.common.json.SimbadTargetResult;
 import uk.ac.starlink.table.*;
 import uk.ac.starlink.util.DataSource;
@@ -64,6 +66,13 @@ public class voTableReader {
                 String name = (String) starTable.getCell(i, idIndex);
                 double raDegrees =  (double) starTable.getCell(i, raIndex);
                 double decDegrees =  (double) starTable.getCell(i, decIndex);
+
+                EquatorialPoint equatorialPoint = new EquatorialPoint(
+                        new RealQuantity(raDegrees, new Unit("degrees")),
+                        new RealQuantity(decDegrees, new Unit("degrees")),
+                        new SpaceSys()
+                );
+
 
 
                 //EquatorialPoint sourceCoordinates, Epoch positionEpoch, RealQuantity pmRA, RealQuantity pmDec, RealQuantity parallax, RealQuantity sourceVelocity, String sourceName
