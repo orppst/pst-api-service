@@ -12,6 +12,7 @@ import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.Instrument;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * this test suite tests specific xmls that have exhibited issues in the past.
@@ -118,7 +119,7 @@ public class TestTelescopeConfigService {
      */
     @Test
     void testSaltFilterOptionsLength() {
-        ArrayList<String> options = xmlReaderService.getTelescopes().get(
+        List<String> options = xmlReaderService.getTelescopes().get(
             "SALT").getInstruments().get("Salticam").getElements().get(
                 "instrumentFilter").getValues();
         assert options.size() == 24;

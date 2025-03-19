@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.entities.opticalTelescopeService;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * container for a fields type and its options if it is a list.
@@ -53,7 +54,7 @@ public class Field {
      *
      * @return the list of values.
      */
-    public ArrayList<String> getValues() {
+    public List<String> getValues() {
         return values;
     }
 
