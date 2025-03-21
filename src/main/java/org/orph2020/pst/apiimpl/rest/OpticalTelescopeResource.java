@@ -24,7 +24,6 @@ import org.orph2020.pst.common.json.OpticalTelescopeDataLoad;
 import org.orph2020.pst.common.json.OpticalTelescopeDataSave;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Contains the calls to the optical telescope data.
@@ -77,11 +76,15 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     @Operation(summary = "saves the telescope specific data")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response saveOpticalTelescopeData(OpticalTelescopeDataSave choices) {
-        System.out.println(choices.getPrimaryKey());
-        System.out.println(choices.getTelescopeName());
-        System.out.println(choices.getChoices());
+        OpticalTelescopeDataSave oldSave = opticalEntityManager.find(
+            OpticalTelescopeDataSave.class, choices.getPrimaryKey());
 
-        opticalEntityManager.persist(choices);
+        // handle old and new saves
+        if(oldSave == null) {
+            opticalEntityManager.persist(choices);
+        } else {
+            opticalEntityManager.merge(choices);
+        }
         return responseWrapper(true, 201);
     }
 
