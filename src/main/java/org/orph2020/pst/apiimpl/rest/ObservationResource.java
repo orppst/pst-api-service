@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import java.util.List;
 @Path("proposals/{proposalCode}/observations")
 @Tag(name = "proposals-observations")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class ObservationResource extends ObjectResourceBase {
 
     private Observation findObservation(List<Observation> observations, Long id, Long proposalCode)
@@ -42,25 +44,55 @@ public class ObservationResource extends ObjectResourceBase {
                                                   @RestQuery ObsType type)
             throws WebApplicationException
     {
-        String select = "select o._id,cast(Type(o) as string),t.sourceName ";
+        String select = type == ObsType.CalibrationObservation ?
+                "select o._id,concat(cast(Type(o) as string), ':',o.intent),t.sourceName " :
+                "select o._id,cast(Type(o) as string),t.sourceName ";
         String from = "from ObservingProposal p ";
         String innerJoin = "inner join p.observations o inner join o.target t ";
         String where = "where p._id=" + proposalCode + " ";
         String orderBy = "order by t.sourceName";
 
         String typeQuery = type != null ?
-                "and Type(o) = :typeName" : "";
+                "and cast(Type(o) as string) like :typeName " : "";
         String srcLike = srcName != null ?
-                "and t.sourceName like :sourceName" : "";
+                "and t.sourceName like :sourceName " : "";
 
         String qlString = select + from + innerJoin + where +
                 typeQuery + srcLike + orderBy;
 
         Query query = em.createQuery(qlString);
-        if (type != null) query.setParameter("typeName", type.name());
+        if (type != null) query.setParameter("typeName", "%" + type.name() + "%");
         if (srcName != null) query.setParameter("sourceName", srcName);
 
-        return getObjectIdentifiersAlt(query);
+        List<ObjectIdentifier> result = getObjectIdentifiersAlt(query);
+
+        // edit the 'type' name i.e., the ObjectIdentifier.code member, to use as a display string
+        // general format: 'proposal:<Type>Observation'
+        // query ObsType='CalibrationObservation' format: 'proposal:CalibrationObservation:<INTENT>'
+        // we want '<Type>' in general, and 'Calibration (<intent>)' for the specified query
+
+        if (type == ObsType.CalibrationObservation) {
+            //specific query case
+            for (ObjectIdentifier oi : result) {
+                oi.code = "Calibration (" +
+                        oi.code
+                                .substring(oi.code.lastIndexOf(":") + 1)
+                                .toLowerCase()
+                        + ")";
+            }
+        } else {
+            //general case
+            for (ObjectIdentifier oi : result) {
+                if (oi.code.contains("TargetObservation")) {
+                    oi.code = "Target";
+                } else if (oi.code.contains("CalibrationObservation")) {
+                    oi.code = "Calibration";
+                }
+                //else nothing - 'code' remains as is from the query
+            }
+        }
+
+        return result;
     }
 
     @GET
@@ -74,7 +106,12 @@ public class ObservationResource extends ObjectResourceBase {
                 proposalCode, observationId);
     }
 
-
+    private void CheckTimingWindow(TimingWindow timingWindow) throws WebApplicationException
+    {
+        if(timingWindow.getStartTime().getTime() > timingWindow.getEndTime().getTime()) {
+            throw new WebApplicationException("Start time cannot be after end time");
+        }
+    }
 
     @POST
     @Operation(summary = "add a new Observation to the given ObservingProposal")
@@ -84,13 +121,18 @@ public class ObservationResource extends ObjectResourceBase {
     public Observation addNewObservation(@PathParam("proposalCode") Long proposalCode,
                                          Observation observation)
     {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
-        //note the use of copyme to  clone any input observation in case it has been cloned in the GUI and has any database Ids in it.
-        // also note that if Observation were not abstract then copy constructor would be the correct thing to do.
-        Observation ret = addNewChildObject(observingProposal, observation.copyMe(),
-              observingProposal::addToObservations);
+        for(ObservingConstraint constraint : observation.getConstraints()) {
+            if(constraint.getClass() == TimingWindow.class) {
+                CheckTimingWindow((TimingWindow) constraint);
+            }
+        }
 
-        return ret;
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        // Notice the use of 'copyMe' to clone any input observation in case it has been cloned
+        // in the GUI and has any database Ids in it. Also note that if Observation were not
+        // abstract then copy constructor would be the correct thing to do.
+        return addNewChildObject(observingProposal, observation.copyMe(),
+              observingProposal::addToObservations);
     }
 
 
@@ -226,9 +268,15 @@ public class ObservationResource extends ObjectResourceBase {
                                                 ObservingConstraint constraint)
             throws WebApplicationException
     {
+
+        if(constraint.getClass() == TimingWindow.class) {
+            CheckTimingWindow((TimingWindow) constraint);
+         }
+
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         Observation observation =
                 findObservation(observingProposal.getObservations(), id, proposalCode);
+
 
         return addNewChildObject(observation, constraint, observation::addToConstraints);
     }
@@ -270,6 +318,8 @@ public class ObservationResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
+        CheckTimingWindow(replacementWindow);
+
         Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
                 "observations", proposalCode, observationId);
 

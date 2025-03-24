@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -20,6 +21,7 @@ import java.util.List;
 @Tag(name = "proposals-investigators")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
+@RolesAllowed("default-roles-orppst")
 public class InvestigatorResource extends ObjectResourceBase {
 
     private Investigator findInvestigatorFromList(List<Investigator> investigators, long id) {

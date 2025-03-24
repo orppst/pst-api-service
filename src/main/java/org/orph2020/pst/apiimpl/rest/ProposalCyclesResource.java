@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 20/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -22,6 +23,7 @@ import java.util.*;
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("default-roles-orppst")
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -52,6 +54,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "create a proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed("tac_admin")
     public ProposalCycle createProposalCycle(ProposalCycle cycle) {
         return persistObject(cycle);
     }
@@ -73,6 +76,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the title of the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed("tac_admin")
     public Response replaceCycleTitle(
             @PathParam("cycleCode") Long cycleCode,
             String replacementTitle
@@ -105,6 +109,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/dates/deadline")
     @Operation(summary = "change the submission deadline of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleDeadline(
             @PathParam("cycleCode") Long cycleCode,
@@ -124,6 +129,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/dates/sessionStart")
     @Operation(summary = "change the observation session start of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleSessionStart(
             @PathParam("cycleCode") Long cycleCode,
@@ -142,6 +148,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/dates/sessionEnd")
     @Operation(summary = "change the observation session end of the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleSessionEnd(
             @PathParam("cycleCode") Long cycleCode,
@@ -181,6 +188,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades")
     @Operation(summary = "add a new possible allocation grade to the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade addCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                    AllocationGrade grade)
@@ -194,6 +202,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @DELETE
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "remove the specified possible grade from the given proposal cycle")
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                @PathParam("gradeId") Long gradeId)
@@ -211,6 +220,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/name")
     @Operation(summary = "change the name of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeName(
             @PathParam("cycleCode") Long cycleCode,
@@ -231,6 +241,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/description")
     @Operation(summary = "change the description of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeDescription(
             @PathParam("cycleCode") Long cycleCode,
@@ -263,6 +274,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/observatory")
     @Operation(summary = "change the observatory for the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("tac_admin")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleObservatory(
             @PathParam("cycleCode") Long cycleCode,

@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -16,6 +17,7 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/allocatedProposals/{allocatedId}/allocatedBlock")
 @Tag(name = "proposalCycles-allocated-proposal-allocated-block")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed({"tac_admin", "tac_member"})
 public class AllocatedBlockResource extends ObjectResourceBase{
 
     @GET

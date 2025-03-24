@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 16/03/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -22,6 +23,7 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Path("people")
 @Tag(name = "people")
+@RolesAllowed("default-roles-orppst")
 @ApplicationScoped
 public class PersonResource extends ObjectResourceBase {
 

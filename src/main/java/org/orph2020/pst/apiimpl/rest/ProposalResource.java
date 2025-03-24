@@ -42,6 +42,7 @@ import java.util.*;
 @Tag(name = "proposals")
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
+//@RolesAllowed("default-roles-orppst")
 public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
     @Inject
@@ -109,7 +110,7 @@ public class ProposalResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "get the synopsis for each Proposal in the database, optionally provide an investigator name and/or a proposal title to see specific proposals.  Filters out submitted copies.")
-    @RolesAllowed("default-roles-orppst")
+    //@RolesAllowed("default-roles-orppst")
     public List<ProposalSynopsis> getProposals(@RestQuery String investigatorName, @RestQuery String title) {
 
         boolean noQuery = investigatorName == null && title == null;
@@ -252,7 +253,7 @@ public class ProposalResource extends ObjectResourceBase {
     public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
-        String info = "Your proposal is ready for submission";
+        String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
         StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
         //Count the targets
@@ -541,6 +542,9 @@ public class ProposalResource extends ObjectResourceBase {
                         String.format(NON_ASSOCIATE_ID, "Field", fieldId, "ObservingProposal", proposalCode)
                 ));
         observingProposal.removeFromFields(field);
+
+        removeObject(Field.class, fieldId);
+
         return responseWrapper(observingProposal, 201);
     }
 

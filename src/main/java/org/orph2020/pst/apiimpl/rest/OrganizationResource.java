@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Organization;
@@ -16,6 +17,7 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Path("organizations")
 @Tag(name = "organizations")
+@RolesAllowed("default-roles-orppst")
 public class OrganizationResource extends ObjectResourceBase {
 
     @GET

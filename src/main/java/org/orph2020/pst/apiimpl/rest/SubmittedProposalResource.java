@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
@@ -27,27 +28,51 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
+//@RolesAllowed("default-roles-orppst")
 public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
 
     @GET
-    @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle")
+    @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
     public List<ObjectIdentifier> getSubmittedProposals(
             @PathParam("cycleCode") Long cycleCode,
             @RestQuery String title,
-            @RestQuery String investigatorName
+            @RestQuery String investigatorName,
+            @RestQuery Long sourceProposalId
     )
     {
-        String qlString = getQlString(cycleCode, title, investigatorName);
 
-        Query query = em.createQuery(qlString);
+        if (sourceProposalId != null) {
+            String qlString = getQlString(cycleCode);
+            Query query = em.createQuery(qlString);
+            query.setParameter("sourceProposalId", sourceProposalId);
+            return getObjectIdentifiersAlt(query);
 
-        if (investigatorName != null) query.setParameter("investigatorName", investigatorName);
-        if (title != null) query.setParameter("title", title);
+        } else {
 
-        return getObjectIdentifiersAlt(query);
+            String qlString = getQlString(cycleCode, title, investigatorName);
+            Query query = em.createQuery(qlString);
+            if (investigatorName != null) query.setParameter("investigatorName", investigatorName);
+            if (title != null) query.setParameter("title", title);
+            return getObjectIdentifiersAlt(query);
+
+        }
+
+    }
+
+    private String getQlString(Long cycleCode) {
+        String baseStr = "select distinct s._id,cast(s.submissionDate as string),s.title "
+                + "from ProposalCycle c "
+                + "inner join c.submittedProposals s "
+                + "inner join s.relatedProposals r "
+                + "where c._id=" + cycleCode + " "
+                + "and r.proposal._id = :sourceProposalId ";
+
+        String orderByStr = "order by s._id";
+
+        return baseStr + orderByStr;
     }
 
     private static String getQlString(Long cycleCode, String title, String investigatorName) {
@@ -79,6 +104,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @GET
     @Path("/notYetAllocated")
+    @RolesAllowed({"tac_admin", "tac_member"})
     @Operation(summary = "get the Submitted Proposal Ids that have yet to be Allocated in the given cycle")
     public List<ObjectIdentifier> getSubmittedNotYetAllocated(@PathParam("cycleCode") Long cycleCode)
         throws WebApplicationException
@@ -154,6 +180,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Path("/{submittedProposalId}/success")
     @Operation(summary = "update the 'successful' status of the given SubmittedProposal")
     @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"tac_admin", "tac_member"})
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateSubmittedProposalSuccess(@PathParam("cycleCode") Long cycleCode,
                                                   @PathParam("submittedProposalId") Long submittedProposalId,
@@ -185,6 +212,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @PUT
     @Path("/{submittedProposalId}/completeDate")
+    @RolesAllowed({"tac_admin", "tac_member"})
     @Operation(summary = "update the 'reviewsCompleteDate' of the given SubmittedProposal to today's date")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateReviewsCompleteDate(

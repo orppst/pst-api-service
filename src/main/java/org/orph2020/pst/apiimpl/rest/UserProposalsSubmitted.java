@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Path("proposalsSubmitted")
 @Tag(name="user-proposals-submitted")
-
+@RolesAllowed("default-roles-orppst")
 public class UserProposalsSubmitted extends ObjectResourceBase {
     @Inject
     SubjectMapResource subjectMapResource;
@@ -32,7 +32,6 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user optionally pass a cycle id, or include all cycles that have not passed")
-    @RolesAllowed("default-roles-orppst")
     public List<SubmittedProposalSynopsis> getProposalsSubmitted(@QueryParam("cycleId") long cycleId)
     {
         long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
@@ -82,7 +81,6 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     @DELETE
     @Operation(summary = "Withdraw a submitted proposal from an observing cycle")
     @Path("{submittedProposalId}/withdraw")
-    @RolesAllowed("default-roles-orppst")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
                                      @QueryParam("cycleId") long cycleCode)
