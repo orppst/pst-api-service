@@ -112,6 +112,7 @@ public class XmlReaderService {
          telescopes.putAll(this.processXML(xmlFile, schema));
       }
 
+
       // print out a copy of the telescope for debugging.
       LOGGER.log(INFO, "The populated telescopes are as follows:");
       for(Telescope t: telescopes.values()) {
@@ -159,6 +160,10 @@ public class XmlReaderService {
 
          // populate options states.
          this.populateOptions(document, telescope, instrumentConfigName);
+
+         // clean up any madness
+         this.cleanMadness(telescope);
+
       } catch (javax.xml.parsers.ParserConfigurationException e) {
          LOGGER.log(SEVERE, String.format(
              "received a ParserConfigurationException with content %s",
@@ -174,6 +179,35 @@ public class XmlReaderService {
              "received an exception with content %s", e.getMessage()));
       }
       return telescopes;
+   }
+
+   /**
+    * removes messy elements. So far these are drop-downs with no list elements.
+    *
+    * @param telescope: the telescope to remove broken elements from.
+    */
+   private void cleanMadness(Telescope telescope) {
+      for (Instrument instrument: telescope.getInstruments().values()) {
+
+         // find removals. store in new array due to incremental removal.
+         ArrayList<String> removals = new ArrayList<>();
+         for (String fieldKey: instrument.getElements().keySet()) {
+            Field field = instrument.getElements().get(fieldKey);
+            if (field.getType().equals(Field.TYPES.LIST) &&
+                  field.getValues().size() == 0) {
+               removals.add(fieldKey);
+            }
+         }
+
+         // remove all found removals.
+         for (String removalKey: removals) {
+            LOGGER.log(SEVERE, String.format(
+                "removing telescopes %s, instruments %s, %s as its got no" +
+                    " entries.",
+                telescope.getName(), instrument.getName(), removalKey));
+            instrument.getElements().remove(removalKey);
+         }
+      }
    }
 
    /**
