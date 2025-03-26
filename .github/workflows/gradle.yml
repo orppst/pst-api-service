@@ -23,64 +23,65 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout this  repo
-      uses: actions/checkout@v4
-      with:
+      - name: Checkout this  repo
+        uses: actions/checkout@v4
+        with:
           path: main
 
-    - name: Checkout common build repo
-      uses: actions/checkout@v4
-      with:
-        repository: orppst/build-logic
-        path: build-logic
+      - name: Checkout common build repo
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/build-logic
+          path: build-logic
+          ref: ${{ github.ref }}
 
-    - name: Checkout common lib
-      uses: actions/checkout@v4
-      with:
-        repository: orppst/pst-lib
-        path: pst-lib
+      - name: Checkout common lib
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/pst-lib
+          path: pst-lib
+          ref: ${{ github.ref }}
 
-    - name: Checkout telescope repo
-      uses: actions/checkout@v4
-      with:
-        repository: orppst/telescope-config-data
-        path: telescope-config-data
+      - name: Checkout telescope repo
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/telescope-config-data
+          path: telescope-config-data
+          ref: ${{ github.ref }}
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v3
-      with:
-        build-root-directory: main
-        cache-disabled: true
-        cache-overwrite-existing: true
-    - name: Run Gradle build
-      working-directory: ./main
-      run: ./gradlew -U build -x test -Dquarkus.container-image.builder=none
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          build-root-directory: main
+          cache-disabled: true
+          cache-overwrite-existing: true
+      - name: Run Gradle build
+        working-directory: ./main
+        run: ./gradlew -U build -x test -Dquarkus.container-image.builder=none
 
-    - name: Upload interface definition
-      uses: actions/upload-artifact@v4
-      with:
-        # Artifact name
-        name: openapi
-        # A file, directory or wildcard pattern that describes what to upload
-        path: ./main/build/generated/openapi/openapi.yaml
+      - name: Upload interface definition
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: openapi
+          # A file, directory or wildcard pattern that describes what to upload
+          path: ./main/build/generated/openapi/openapi.yaml
 
-    - name: Run Gradle test
-      working-directory: ./main
-      env:
-        POLARIS_TELESCOPE_CONFIG_LOCATION: /home/runner/work/pst-api-service/pst-api-service/telescope-config-data/
-      run: ./gradlew  --info test
+      - name: Run Gradle test
+        working-directory: ./main
+        env:
+          POLARIS_TELESCOPE_CONFIG_LOCATION: /home/runner/work/pst-api-service/pst-api-service/telescope-config-data/
+        run: ./gradlew  --info test
 
-    - name: Publish Test Results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        files: |
-          main/build/test-results/**/*.xml
-          
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            main/build/test-results/**/*.xml
