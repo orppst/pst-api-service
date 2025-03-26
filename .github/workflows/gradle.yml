@@ -79,7 +79,7 @@ jobs:
         with:
           repository: orppst/telescope-config-data
           path: telescope-config-data
-          ref: master
+          ref: main
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
