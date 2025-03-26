@@ -23,31 +23,76 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout this  repo
+      - name: Checkout this repo (main)
         uses: actions/checkout@v4
         with:
           path: main
 
-      - name: Checkout common build repo
+      - name: Checkout common build repo (build-logic)
         uses: actions/checkout@v4
         with:
           repository: orppst/build-logic
           path: build-logic
-          ref: ${{ github.ref }}
+          ref: ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 1
+        continue-on-error: true
 
-      - name: Checkout common lib
+      - name: Check if build-logic checkout succeeded
+        if: ${{ failure() && steps['Checkout common build repo (build-logic)'].outcome == 'failure' }}
+        run: |
+          echo "Failed to checkout branch ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }} in build-logic. Falling back to master."
+
+      - name: Checkout common build repo (build-logic master)
+        if: ${{ failure() && steps['Checkout common build repo (build-logic)'].outcome == 'failure' }}
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/build-logic
+          path: build-logic
+          ref: master
+
+      - name: Checkout common lib (pst-lib)
         uses: actions/checkout@v4
         with:
           repository: orppst/pst-lib
           path: pst-lib
-          ref: ${{ github.ref }}
+          ref: ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 1
+        continue-on-error: true
 
-      - name: Checkout telescope repo
+      - name: Check if pst-lib checkout succeeded
+        if: ${{ failure() && steps['Checkout common lib (pst-lib)'].outcome == 'failure' }}
+        run: |
+          echo "Failed to checkout branch ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }} in pst-lib. Falling back to master."
+
+      - name: Checkout common lib (pst-lib master)
+        if: ${{ failure() && steps['Checkout common lib (pst-lib)'].outcome == 'failure' }}
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/pst-lib
+          path: pst-lib
+          ref: master
+
+      - name: Checkout telescope repo (telescope-config-data)
         uses: actions/checkout@v4
         with:
           repository: orppst/telescope-config-data
           path: telescope-config-data
-          ref: ${{ github.ref }}
+          ref: ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 1
+        continue-on-error: true
+
+      - name: Check if telescope-config-data checkout succeeded
+        if: ${{ failure() && steps['Checkout telescope repo (telescope-config-data)'].outcome == 'failure' }}
+        run: |
+          echo "Failed to checkout branch ${{ github.event.pull_request && github.event.pull_request.head.ref || github.ref_name }} in telescope-config-data. Falling back to master."
+
+      - name: Checkout telescope repo (telescope-config-data master)
+        if: ${{ failure() && steps['Checkout telescope repo (telescope-config-data)'].outcome == 'failure' }}
+        uses: actions/checkout@v4
+        with:
+          repository: orppst/telescope-config-data
+          path: telescope-config-data
+          ref: master
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -61,6 +106,7 @@ jobs:
           build-root-directory: main
           cache-disabled: true
           cache-overwrite-existing: true
+
       - name: Run Gradle build
         working-directory: ./main
         run: ./gradlew -U build -x test -Dquarkus.container-image.builder=none
@@ -77,7 +123,7 @@ jobs:
         working-directory: ./main
         env:
           POLARIS_TELESCOPE_CONFIG_LOCATION: /home/runner/work/pst-api-service/pst-api-service/telescope-config-data/
-        run: ./gradlew  --info test
+        run: ./gradlew --info test
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
