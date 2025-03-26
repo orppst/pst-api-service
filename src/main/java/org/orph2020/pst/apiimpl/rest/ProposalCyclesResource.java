@@ -33,12 +33,22 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
 
     @GET
-    @Operation(summary = "list the proposal cycles")
-    public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed) {
-        if(includeClosed)
-            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o ORDER BY o.title");
-        else
-            return super.getObjectIdentifiers("SELECT o._id,o.title FROM ProposalCycle o WHERE o.submissionDeadline > CURRENT_TIMESTAMP() ORDER BY o.title");
+    @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
+    public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
+        String select = "SELECT o._id,o.title FROM ProposalCycle o ";
+        String where = "";
+        String order = "ORDER BY o.submissionDeadline";
+
+        if(!includeClosed) {
+            where = "WHERE o.submissionDeadline > CURRENT_TIMESTAMP() ";
+            if (observatoryId > 0)
+                where += "AND o.observatory._id = "+observatoryId+" ";
+        } else {
+            if (observatoryId > 0)
+                where = "WHERE o.observatory._id = "+observatoryId+" ";
+        }
+
+        return super.getObjectIdentifiers(select + where + order);
     }
 
 
