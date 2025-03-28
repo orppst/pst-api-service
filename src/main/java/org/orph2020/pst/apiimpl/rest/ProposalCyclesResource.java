@@ -4,6 +4,7 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -171,7 +172,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the possible grades of the given proposal cycle")
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") Long cycleCode)
     {
-        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name");
+        Query query = em.createQuery(
+                "Select o._id,o.description,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name"
+        );
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
