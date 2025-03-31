@@ -64,7 +64,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "create a proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     public ProposalCycle createProposalCycle(ProposalCycle cycle) {
         return persistObject(cycle);
     }
