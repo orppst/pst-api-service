@@ -87,7 +87,11 @@ public class AvailableResourcesResource extends ObjectResourceBase {
 
         List<ObjectIdentifier> result = new ArrayList<>();
         for (Resource r : resources) {
-            result.add(new ObjectIdentifier(r.getType().getId(), r.getType().getName()));
+            result.add(new ObjectIdentifier(
+                    r.getType().getId(),
+                    r.getType().getUnit(),
+                    r.getType().getName()
+            ));
         }
 
         return result;

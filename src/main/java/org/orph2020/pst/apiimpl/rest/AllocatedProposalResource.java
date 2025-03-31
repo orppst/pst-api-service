@@ -54,9 +54,6 @@ public class AllocatedProposalResource extends ObjectResourceBase{
                                                     Long submittedId)
             throws WebApplicationException
     {
-
-
-
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
         SubmittedProposal submittedProposal = findChildByQuery(
@@ -67,8 +64,16 @@ public class AllocatedProposalResource extends ObjectResourceBase{
                 submittedId
         );
 
-        List<ObjectIdentifier> resourceTypes =
-                getObjectIdentifiers("select r._id,r.name from ResourceType r");
+        // there is likely a query to get the resource types defined for the _given cycle_, but it
+        // escapes me at the moment.
+        List<ObjectIdentifier> resourceTypes = new ArrayList<>();
+        List<Resource> resources = proposalCycle.getAvailableResources().getResources();
+        for (Resource r : resources) {
+            resourceTypes.add(new ObjectIdentifier(
+                    r.getType().getId(),
+                    r.getType().getName()
+            ));
+        }
 
         List<AllocatedBlock> allocatedBlocks = new ArrayList<>();
 
