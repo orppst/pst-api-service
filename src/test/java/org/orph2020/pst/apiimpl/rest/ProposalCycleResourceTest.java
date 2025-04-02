@@ -26,7 +26,7 @@ import static org.hamcrest.Matchers.*;
 import static io.restassured.http.ContentType.JSON;
 
 @QuarkusTest
-@TestSecurity(user="tacchair", roles = {"default-roles-orppst", "tac_admin"})
+@TestSecurity(user="tacchair", roles = {"default-roles-orppst", "tac_admin", "obs_administration"})
 @OidcSecurity(claims = {
         @Claim(key = "email", value = "tacchair@unreal.not.email")
         ,@Claim(key = "sub", value = "b0f7b98e-ec1e-4cf9-844c-e9f192c97745")
