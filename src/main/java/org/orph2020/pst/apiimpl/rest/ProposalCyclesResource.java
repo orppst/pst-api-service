@@ -4,6 +4,7 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -12,6 +13,7 @@ import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.management.Observatory;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.orph2020.pst.common.json.CycleObservingTimeTotal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalCycleDates;
 
@@ -181,7 +183,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "List the possible grades of the given proposal cycle")
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") Long cycleCode)
     {
-        return getObjectIdentifiers("Select o._id,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name");
+        Query query = em.createQuery(
+                "Select o._id,o.description,o.name from ProposalCycle p inner join p.possibleGrades o where p._id = "+cycleCode+" Order by o.name"
+        );
+
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
@@ -299,6 +305,49 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.setObservatory(replacementObservatory);
 
         return responseWrapper(cycle.getObservatory(), 200);
+    }
+
+    /// ***** Observing Time total for the entire cycle ***** ///
+
+    @GET
+    @Path("{cycleCode}/observingTimeTotals")
+    @Operation(summary = "get total time allocated in the cycle broken down by observing mode and allocation grade")
+    public List<CycleObservingTimeTotal>
+    getCycleObservingTimeTotals(@PathParam("cycleCode") Long cycleCode)
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
+
+        HashMap<String, Double> modeGradeTotals = new HashMap<>();
+
+        for (AllocatedProposal allocatedProposal : allocatedProposals) {
+            List<AllocatedBlock> allocatedBlocks = allocatedProposal.getAllocation();
+            for (AllocatedBlock allocatedBlock : allocatedBlocks) {
+                String modeName = allocatedBlock.getMode().getName();
+                String gradeName = allocatedBlock.getGrade().getName();
+
+                String key = modeName + "$" + gradeName;
+
+                Double currentValue = modeGradeTotals.get(key) == null ?  0. : modeGradeTotals.get(key);
+
+                modeGradeTotals.put(
+                        key,
+                        currentValue + allocatedBlock.getResource().getAmount()
+                );
+            }
+        }
+
+        List<CycleObservingTimeTotal> result = new ArrayList<>();
+
+        for (String key : modeGradeTotals.keySet()) {
+            String modeName = key.substring(0, key.indexOf("$"));
+            String gradeName = key.substring(key.indexOf("$") + 1);
+
+            result.add(new CycleObservingTimeTotal(modeName, gradeName, modeGradeTotals.get(key)));
+        }
+
+        return result;
     }
 
 }

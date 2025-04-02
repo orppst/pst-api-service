@@ -7,9 +7,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.management.AllocatedProposal;
-import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.ivoa.dm.proposal.management.*;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -56,15 +54,50 @@ public class AllocatedProposalResource extends ObjectResourceBase{
                                                     Long submittedId)
             throws WebApplicationException
     {
+        ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+        SubmittedProposal submittedProposal = findChildByQuery(
+                ProposalCycle.class,
+                SubmittedProposal.class,
+                "submittedProposals",
+                cycleCode,
+                submittedId
+        );
+
+        // there is likely a query to get the resource types defined for the _given cycle_, but it
+        // escapes me at the moment.
+        List<ObjectIdentifier> resourceTypes = new ArrayList<>();
+        List<Resource> resources = proposalCycle.getAvailableResources().getResources();
+        for (Resource r : resources) {
+            resourceTypes.add(new ObjectIdentifier(
+                    r.getType().getId(),
+                    r.getType().getName()
+            ));
+        }
+
+        List<AllocatedBlock> allocatedBlocks = new ArrayList<>();
+
+        // add initial allocation blocks with zero resource amount
+        // number of blocks determined by combination of (distinct)
+        // observing modes, grades, and resource types
+
+        //!!!!! NOTICE: here we assume grades are equally applicable to all resource types defined !!!!!
+        submittedProposal.getConfig().forEach(
+                c -> proposalCycle.getPossibleGrades().forEach(
+                        g -> resourceTypes.forEach(r -> {
+
+                            ResourceType rt = findObject(ResourceType.class, r.dbid);
+
+                            allocatedBlocks.add(
+                                    new AllocatedBlock(g, c.getMode(), new Resource(rt, 0.))
+                            );
+                        })
+                )
+        );
+
         AllocatedProposal allocatedProposal = new AllocatedProposal(
-                findChildByQuery(
-                        ProposalCycle.class,
-                        SubmittedProposal.class,
-                        "submittedProposals",
-                        cycleCode,
-                        submittedId
-                ),
-                new ArrayList<>() //empty allocations list to be added to later
+                submittedProposal,
+                allocatedBlocks
         );
 
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
@@ -79,7 +112,6 @@ public class AllocatedProposalResource extends ObjectResourceBase{
         return new ProposalSynopsis(allocatedProposal.getSubmitted());
     }
 
-    //TODO: make this callable by a 'TAC Chair' user only
     @RolesAllowed("tac_admin")
     @DELETE
     @Path("{allocatedId}")
