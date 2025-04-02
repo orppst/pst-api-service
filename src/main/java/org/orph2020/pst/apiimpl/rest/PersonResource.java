@@ -23,7 +23,6 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @Path("people")
 @Tag(name = "people")
-@RolesAllowed("default-roles-orppst")
 @ApplicationScoped
 public class PersonResource extends ObjectResourceBase {
 
@@ -69,6 +68,7 @@ public class PersonResource extends ObjectResourceBase {
 
    @DELETE
    @Path("{id}")
+   @RolesAllowed("default-roles-orppst")
    @Operation(summary = "delete the Person specified by the 'id' from the database")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response deletePerson(@PathParam("id") Long id)
@@ -81,6 +81,7 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "update a Person's full name")
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/fullName")
+   @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response updateFullName(@PathParam("id") long personId, String replacementFullName)
       throws WebApplicationException
@@ -96,6 +97,7 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "update a Person's email address")
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/eMail")
+   @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response updateEMail(@PathParam("id") long personId, String replacementEMail)
            throws WebApplicationException
@@ -111,6 +113,7 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "update a Person's orcid ID")
    @Consumes(MediaType.TEXT_PLAIN)
    @Path("{id}/orcidId")
+   @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response updateOrcidId(@PathParam("id") long personId, String replacementOrcidId)
            throws WebApplicationException
