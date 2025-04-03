@@ -24,6 +24,7 @@ import org.orph2020.pst.common.json.OpticalTelescopeDataLoad;
 import org.orph2020.pst.common.json.OpticalTelescopeDataSave;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Contains the calls to the optical telescope data.
@@ -127,6 +128,71 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
             return Response.ok(
                 new ObjectMapper().writeValueAsString(dataFormat)).build();
         } catch (JsonProcessingException e) {
+            return responseWrapper(e.getMessage(), 500);
+        }
+    }
+
+    @POST
+    @Path("deleteObs")
+    @Operation(summary = "delete the optical telescope data for a given " +
+            "observation")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteObservationOpticalTelescopeData(
+            OpticalTelescopeDataLoad data) {
+        OpticalTelescopeDataId id = new OpticalTelescopeDataId(
+                data.getProposalID(), data.getObservationID());
+        try {
+            OpticalTelescopeDataSave entity = opticalEntityManager.find(
+                    OpticalTelescopeDataSave.class, id);
+
+            // try to successfully delete
+            if (entity != null) {
+                opticalEntityManager.remove(entity);
+                return responseWrapper(true, 201);
+            } else {
+                // Record not found
+                return responseWrapper("Record not found", 404);
+            }
+        } catch (Exception e) {
+            // Internal server error
+            return responseWrapper(e.getMessage(), 500);
+        }
+    }
+
+    @POST
+    @Path("deleteProposalFiles")
+    @Operation(summary = "delete all files associated with a given proposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteProposalFiles(OpticalTelescopeDataLoad data) {
+        String proposalID = data.getProposalID();
+        try {
+            // delete the entries. utilise cascading to delete the rest.
+            opticalEntityManager.createQuery(
+                "DELETE FROM OpticalTelescopeDataSave o WHERE " +
+                    "o.primaryKey.proposalID = :proposalId")
+                .setParameter("proposalId", proposalID)
+                .executeUpdate();
+            return responseWrapper(true, 201);
+        } catch (Exception e) {
+            // Internal server error
+            return responseWrapper(e.getMessage(), 500);
+        }
+    }
+
+    @POST
+    @Path("hasEntry")
+    @Operation(summary = "check if an entry exists for the optical database" +
+            " for a given observation and proposal.")
+    public Response hasEntry(OpticalTelescopeDataLoad data) {
+        OpticalTelescopeDataId id = new OpticalTelescopeDataId(
+                data.getProposalID(), data.getObservationID());
+        try {
+            // locate entry if exists
+            OpticalTelescopeDataSave entity = opticalEntityManager.find(
+                    OpticalTelescopeDataSave.class, id);
+            return responseWrapper(entity != null, 201);
+        } catch (Exception e) {
+            // Internal server error
             return responseWrapper(e.getMessage(), 500);
         }
     }
