@@ -24,7 +24,6 @@ import org.orph2020.pst.common.json.OpticalTelescopeDataLoad;
 import org.orph2020.pst.common.json.OpticalTelescopeDataSave;
 
 import java.util.HashMap;
-import java.util.List;
 
 /**
  * Contains the calls to the optical telescope data.
@@ -160,10 +159,11 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     }
 
     @POST
-    @Path("deleteProposalFiles")
-    @Operation(summary = "delete all files associated with a given proposal")
+    @Path("deleteProposal")
+    @Operation(summary = "delete all telescope data associated with a given" +
+            " proposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response deleteProposalFiles(OpticalTelescopeDataLoad data) {
+    public Response deleteProposal(OpticalTelescopeDataLoad data) {
         String proposalID = data.getProposalID();
         try {
             // delete the entries. utilise cascading to delete the rest.
