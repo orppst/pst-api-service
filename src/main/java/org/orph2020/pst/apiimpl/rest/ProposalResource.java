@@ -542,6 +542,9 @@ public class ProposalResource extends ObjectResourceBase {
                         String.format(NON_ASSOCIATE_ID, "Field", fieldId, "ObservingProposal", proposalCode)
                 ));
         observingProposal.removeFromFields(field);
+
+        removeObject(Field.class, fieldId);
+
         return responseWrapper(observingProposal, 201);
     }
 
