@@ -21,9 +21,11 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.common.json.OpticalTelescopeDataId;
 import org.orph2020.pst.common.json.OpticalTelescopeDataLoad;
+import org.orph2020.pst.common.json.OpticalTelescopeDataProposal;
 import org.orph2020.pst.common.json.OpticalTelescopeDataSave;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Contains the calls to the optical telescope data.
@@ -163,7 +165,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     @Operation(summary = "delete all telescope data associated with a given" +
             " proposal")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response deleteProposal(OpticalTelescopeDataLoad data) {
+    public Response deleteProposal(OpticalTelescopeDataProposal data) {
         String proposalID = data.getProposalID();
         try {
             // delete the entries. utilise cascading to delete the rest.
@@ -194,6 +196,42 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         } catch (Exception e) {
             // Internal server error
             return responseWrapper(e.getMessage(), 500);
+        }
+    }
+
+    @POST
+    @Path("/verifyProposal")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Retrieves all observation IDs for a given proposal")
+    public Response getObservationIdsByProposal(
+            OpticalTelescopeDataProposal request) {
+        String proposalId = request.getProposalID();
+
+        // verify proposal id.
+        if (proposalId == null || proposalId.isEmpty()) {
+            return Response.status(
+                Response.Status.BAD_REQUEST)
+                .entity("Proposal ID cannot be empty.")
+                .build();
+        }
+        try {
+            // extract records.
+            List<Long> results =
+                opticalEntityManager.createQuery(
+                    "SELECT o.primaryKey.observationID " +
+                        "FROM OpticalTelescopeDataSave o WHERE " +
+                        "o.primaryKey.proposalID = :proposalId",
+                    Long.class)
+                .setParameter("proposalId", proposalId)
+                .getResultList();
+
+            // return them.
+            return Response.ok(results).build();
+
+        } catch (Exception e) {
+            return Response.serverError().entity(
+                "Error retrieving observation IDs: " + e.getMessage()).build();
         }
     }
 }
