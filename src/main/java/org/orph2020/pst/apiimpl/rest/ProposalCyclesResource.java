@@ -4,9 +4,11 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
@@ -21,18 +23,77 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("default-roles-orppst")
+//@RolesAllowed("default-roles-orppst")
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
+
+    @Inject
+    SubjectMapResource subjectMapResource;
+    @Inject
+    JsonWebToken userInfo;
 
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
     }
 
+    @GET
+    @Path("MyTACCycles")
+    @Operation(summary = "get all the proposal cycles I am a TAC member of")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"tac_member", "tac_admin"})
+    public List<ObjectIdentifier> getMyTACMemberProposalCycles() {
+        // Get the logged in user details.
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        List<ObjectIdentifier> matchedCycles = new ArrayList<>();
+
+        // Find list of Proposal Cycles and therefore TACs
+        String query = "select p._id,p.title,tac from ProposalCycle p";
+
+        List<Object[]> cycles = em.createQuery(query).getResultList();
+        // Filter these TACs for those that include our user
+
+        for (Object[] cycle : cycles) {
+            TAC cycleTac = (TAC) cycle[2];
+            cycleTac.getMembers().forEach(member -> {
+                if(member.getId().equals(personId)) {
+                    matchedCycles.add(new ObjectIdentifier(cycle[0].toString(), cycle[1].toString()));
+                }
+            });
+        }
+
+        return matchedCycles;
+    }
+
+    @GET
+    @Path("AmIonTheTAC")
+    @Operation(summary = "Am I am a TAC member of the given cycle id")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Boolean amIOnTheTAC(@RestQuery Long cycleId) {
+        // Get the logged in user details.
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        List<ObjectIdentifier> matchedCycles = new ArrayList<>();
+        AtomicReference<Boolean> amIonTheTAC = new AtomicReference<>(false);
+
+        String query = "select p._id,p.title,tac from ProposalCycle p WHERE p._id = " + cycleId;
+
+        List<Object[]> cycles = em.createQuery(query).getResultList();
+
+        for (Object[] cycle : cycles) {
+            TAC cycleTac = (TAC) cycle[2];
+            cycleTac.getMembers().forEach(member -> {
+                if(member.getId().equals(personId)) {
+                    amIonTheTAC.set(true);
+                }
+            });
+        }
+
+        return amIonTheTAC.get();
+    }
 
     @GET
     @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
