@@ -51,12 +51,12 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<ObjectIdentifier> matchedCycles = new ArrayList<>();
 
-        // Find list of Proposal Cycles and therefore TACs
+        // Find list of Proposal Cycles and their TACs
         String query = "select p._id,p.title,tac from ProposalCycle p";
 
         List<Object[]> cycles = em.createQuery(query).getResultList();
-        // Filter these TACs for those that include our user
 
+        // Filter these TACs for those that include this user
         for (Object[] cycle : cycles) {
             TAC cycleTac = (TAC) cycle[2];
             cycleTac.getMembers().forEach(member -> {
@@ -70,29 +70,29 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path("AmIonTheTAC")
+    @Path("AmIOnTheTAC/{cycleCode}")
     @Operation(summary = "Am I am a TAC member of the given cycle id")
     @Produces(MediaType.APPLICATION_JSON)
-    public Boolean amIOnTheTAC(@RestQuery Long cycleId) {
+    public Boolean amIOnTheTAC(@PathParam("cycleCode") long cycleCode) {
         // Get the logged in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
-        List<ObjectIdentifier> matchedCycles = new ArrayList<>();
-        AtomicReference<Boolean> amIonTheTAC = new AtomicReference<>(false);
+        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
 
-        String query = "select p._id,p.title,tac from ProposalCycle p WHERE p._id = " + cycleId;
+        // Get the TAC for this cycle
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        List<Object[]> cycles = em.createQuery(query).getResultList();
+        // See if user is in the TAC
+        cycle.getTac().getMembers().forEach(member -> {
+            if(member.getId().equals(personId)) {
+                amIOnTheTAC.set(true);
+                System.out.println("Foudn me and set amIOnTheTAC.get() = " + amIOnTheTAC.get());
+            }
+            else {
+                System.out.println("This person " + member.getId() + " is not this person "+personId);
+            }
+        });
 
-        for (Object[] cycle : cycles) {
-            TAC cycleTac = (TAC) cycle[2];
-            cycleTac.getMembers().forEach(member -> {
-                if(member.getId().equals(personId)) {
-                    amIonTheTAC.set(true);
-                }
-            });
-        }
-
-        return amIonTheTAC.get();
+        return amIOnTheTAC.get();
     }
 
     @GET
@@ -149,14 +149,35 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the title of the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("default_roles_orppst")
     public Response replaceCycleTitle(
             @PathParam("cycleCode") Long cycleCode,
             String replacementTitle
     )
             throws WebApplicationException
     {
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+
+        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
+
+        // Get the TAC for this cycle
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is in the TAC
+        cycle.getTac().getMembers().forEach(member -> {
+            if(member.getId().equals(personId)) {
+                amIOnTheTAC.set(true);
+                System.out.println("Foudn me and set amIOnTheTAC.get() = " + amIOnTheTAC.get());
+            }
+            else {
+                System.out.println("This person " + member.getId() + " is not this person "+personId);
+            }
+        });
+
+
+        if(amIOnTheTAC.get() == false)
+                throw new ForbiddenException("Go away!");
+
 
         cycle.setTitle(replacementTitle);
 
