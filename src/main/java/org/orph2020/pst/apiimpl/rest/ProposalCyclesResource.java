@@ -149,7 +149,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the title of the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed("default_roles_orppst")
+    @RolesAllowed({"tac_admin"})
     public Response replaceCycleTitle(
             @PathParam("cycleCode") Long cycleCode,
             String replacementTitle
@@ -167,17 +167,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         cycle.getTac().getMembers().forEach(member -> {
             if(member.getId().equals(personId)) {
                 amIOnTheTAC.set(true);
-                System.out.println("Foudn me and set amIOnTheTAC.get() = " + amIOnTheTAC.get());
-            }
-            else {
-                System.out.println("This person " + member.getId() + " is not this person "+personId);
             }
         });
 
-
         if(amIOnTheTAC.get() == false)
-                throw new ForbiddenException("Go away!");
-
+                throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
 
         cycle.setTitle(replacementTitle);
 
