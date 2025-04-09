@@ -41,11 +41,16 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         this.logger = logger;
     }
 
-    private void checkUserOnTAC(ProposalCycle cycle)
+    public void checkUserOnTAC(ProposalCycle cycle)
             throws WebApplicationException
     {
         // Get the logged in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+
+        // An observatory administrator can do _anything_
+        if(userInfo.getClaim("realm_access").toString().contains("\"obs_administration\""))
+            return;
+
         AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
 
         // See if user is member of the TAC
