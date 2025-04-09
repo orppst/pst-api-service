@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -20,8 +21,11 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/TAC")
 @Tag(name="proposalCycles-time-allocation-committee")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"tac_admin", "tac_member"})
+@RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
 public class TACResource extends ObjectResourceBase {
+
+    @Inject
+    ProposalCyclesResource proposalCyclesResource;
 
     @GET
     @Operation(summary = "get the TAC object for the given proposal cycle")
@@ -80,11 +84,14 @@ public class TACResource extends ObjectResourceBase {
     @Operation(summary = "Add a new CommitteeMember to the TAC")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
     public CommitteeMember addCommitteeMember(@PathParam("cycleCode") Long cycleCode,
                                               CommitteeMember committeeMember)
         throws WebApplicationException
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+        proposalCyclesResource.checkUserOnTAC(proposalCycle);
 
         TAC tac = proposalCycle.getTac();
         //CommitteeMember contains a reference to a Reviewer, which in turn contains a reference to a Person
@@ -95,11 +102,14 @@ public class TACResource extends ObjectResourceBase {
     @Path("/members/{memberId}")
     @Operation(summary = "Remove the CommitteeMember specified by 'memberId' from the TAC")
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
     public Response removeCommitteeMember(@PathParam("cycleCode") Long cycleCode,
                                           @PathParam("memberId") Long memberId)
         throws WebApplicationException
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+        proposalCyclesResource.checkUserOnTAC(proposalCycle);
 
         TAC tac = proposalCycle.getTac();
 
@@ -119,12 +129,15 @@ public class TACResource extends ObjectResourceBase {
     @Operation(summary = "Edit the role of the CommitteeMember specified by 'memberId'")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
     public CommitteeMember replaceRole(@PathParam("cycleCode") Long cycleCode,
                                        @PathParam("memberId") Long memberId,
                                        TacRole replacementRole)
         throws WebApplicationException
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+        proposalCyclesResource.checkUserOnTAC(proposalCycle);
 
         TAC tac = proposalCycle.getTac();
 

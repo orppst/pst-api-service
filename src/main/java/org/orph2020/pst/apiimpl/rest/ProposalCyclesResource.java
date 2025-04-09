@@ -4,9 +4,11 @@ package org.orph2020.pst.apiimpl.rest;
  */
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
@@ -21,18 +23,81 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("default-roles-orppst")
+@RolesAllowed({"default-roles-orppst"})
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
+
+    @Inject
+    SubjectMapResource subjectMapResource;
+    @Inject
+    JsonWebToken userInfo;
 
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
     }
 
+    public void checkUserOnTAC(ProposalCycle cycle)
+            throws WebApplicationException
+    {
+        // Get the logged in user details.
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+
+        // An observatory administrator can do _anything_
+        if(userInfo.getClaim("realm_access") != null) {
+            String roleList = userInfo.getClaim("realm_access").toString();
+
+            if(roleList != null && roleList.contains("\"obs_administration\"")) {
+                return;
+            }
+        }
+
+        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
+
+        // See if user is member of the TAC
+        cycle.getTac().getMembers().forEach(member -> {
+            if(member.getId().equals(personId)) {
+                amIOnTheTAC.set(true);
+            }
+        });
+
+        if(amIOnTheTAC.get())
+            return;
+
+        throw new WebApplicationException("You are not on the TAC of this proposal cycle", 403);
+    }
+
+    @GET
+    @Path("MyTACCycles")
+    @Operation(summary = "get all the proposal cycles where I am a on the TAC")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"tac_member", "tac_admin"})
+    public List<ObjectIdentifier> getMyTACMemberProposalCycles() {
+        // Get the logged in user details.
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        List<ObjectIdentifier> matchedCycles = new ArrayList<>();
+
+        // Find list of Proposal Cycles and their TACs
+        String query = "select p._id,p.title,tac from ProposalCycle p";
+
+        List<Object[]> cycles = em.createQuery(query).getResultList();
+
+        // Filter these TACs for those that include this user
+        for (Object[] cycle : cycles) {
+            TAC cycleTac = (TAC) cycle[2];
+            cycleTac.getMembers().forEach(member -> {
+                if(member.getId().equals(personId)) {
+                    matchedCycles.add(new ObjectIdentifier(cycle[0].toString(), cycle[1].toString()));
+                }
+            });
+        }
+
+        return matchedCycles;
+    }
 
     @GET
     @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
@@ -57,6 +122,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}")
     @Operation(summary = "get the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin", "obs_administration"})
     public ProposalCycle getProposalCycle(@PathParam("cycleCode") long cycleId) {
         return findObject(ProposalCycle.class,cycleId);
     }
@@ -88,14 +154,18 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "change the title of the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed("tac_admin")
+    @RolesAllowed({"tac_admin"})
     public Response replaceCycleTitle(
             @PathParam("cycleCode") Long cycleCode,
             String replacementTitle
     )
             throws WebApplicationException
     {
+        // Get the TAC for this cycle
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is on the TAC
+        checkUserOnTAC(cycle);
 
         cycle.setTitle(replacementTitle);
 
@@ -131,6 +201,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        checkUserOnTAC(cycle);
+
         cycle.setSubmissionDeadline(replacementDeadline);
 
         return responseWrapper(cycle.getSubmissionDeadline(), 200);
@@ -151,6 +223,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        checkUserOnTAC(cycle);
+
         cycle.setObservationSessionStart(replacementStart);
 
         return responseWrapper(cycle.getObservationSessionStart(), 200);
@@ -170,6 +244,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        checkUserOnTAC(cycle);
+
         cycle.setObservationSessionEnd(replacementEnd);
 
         return responseWrapper(cycle.getObservationSessionEnd(), 200);
@@ -181,6 +257,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/grades")
     @Operation(summary = "List the possible grades of the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") Long cycleCode)
     {
         Query query = em.createQuery(
@@ -193,6 +270,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "get the specific grade associated with the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public AllocationGrade getCycleAllocatedGrade(@PathParam("cycleCode") Long cycleCode,
                                                   @PathParam("gradeId") Long gradeId)
     {
@@ -204,7 +282,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades")
     @Operation(summary = "add a new possible allocation grade to the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade addCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                    AllocationGrade grade)
@@ -218,7 +296,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @DELETE
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "remove the specified possible grade from the given proposal cycle")
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                @PathParam("gradeId") Long gradeId)
@@ -236,7 +314,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/name")
     @Operation(summary = "change the name of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeName(
             @PathParam("cycleCode") Long cycleCode,
@@ -257,7 +335,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/description")
     @Operation(summary = "change the description of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeDescription(
             @PathParam("cycleCode") Long cycleCode,
@@ -290,7 +368,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/observatory")
     @Operation(summary = "change the observatory for the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleObservatory(
             @PathParam("cycleCode") Long cycleCode,
@@ -312,10 +390,13 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/observingTimeTotals")
     @Operation(summary = "get total time allocated in the cycle broken down by observing mode and allocation grade")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public List<CycleObservingTimeTotal>
     getCycleObservingTimeTotals(@PathParam("cycleCode") Long cycleCode)
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        checkUserOnTAC(cycle);
 
         List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
 
