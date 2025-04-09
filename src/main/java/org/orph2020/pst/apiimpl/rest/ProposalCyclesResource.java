@@ -60,7 +60,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
         // See if user is member of the TAC
         cycle.getTac().getMembers().forEach(member -> {
-            if(member.getId().equals(personId)) {
+            if(member.getMember().getId().equals(personId)) {
                 amIOnTheTAC.set(true);
             }
         });
@@ -90,8 +90,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         for (Object[] cycle : cycles) {
             TAC cycleTac = (TAC) cycle[2];
             cycleTac.getMembers().forEach(member -> {
-                if(member.getId().equals(personId)) {
-                    matchedCycles.add(new ObjectIdentifier(cycle[0].toString(), cycle[1].toString()));
+                if(member.getMember().getId().equals(personId)) {
+                    matchedCycles.add(new ObjectIdentifier((long)cycle[0], cycle[1].toString()));
                 }
             });
         }
