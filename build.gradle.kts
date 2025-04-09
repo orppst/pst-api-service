@@ -1,7 +1,7 @@
 plugins {
     id("org.orph2020.pst.common-plugin")
 }
-version = "0.5"
+version = "0.6"
 
 dependencies {
 
