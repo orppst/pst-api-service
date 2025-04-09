@@ -150,25 +150,14 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         OpticalTelescopeDataSave savedData =
             opticalEntityManager.find(OpticalTelescopeDataSave.class, id);
 
+        try {
         // if no stored data. return a empty response.
         if (savedData == null) {
-            return responseWrapper(new HashMap<>(), 201);
+            return responseWrapper(
+                new ObjectMapper().writeValueAsString(
+                    new OpticalTelescopeDataSave()), 201);
         }
-
-        // build the response.
-        try {
-            // given the mess of ui code. better to fix it here into the format
-            // the ui expects now.
-            HashMap<String, HashMap<String, HashMap<String, String>>> dataFormat =
-                new HashMap<>();
-            dataFormat.put(savedData.getTelescopeName(), new HashMap<>());
-            dataFormat.get(savedData.getTelescopeName()).put(
-                savedData.getInstrumentName(), new HashMap<>());
-            dataFormat.get(savedData.getTelescopeName()).get(
-                savedData.getInstrumentName()).putAll(savedData.getChoices());
-
-            return Response.ok(
-                new ObjectMapper().writeValueAsString(dataFormat)).build();
+            return Response.ok(savedData).build();
         } catch (JsonProcessingException e) {
             return responseWrapper(e.getMessage(), 500);
         }
