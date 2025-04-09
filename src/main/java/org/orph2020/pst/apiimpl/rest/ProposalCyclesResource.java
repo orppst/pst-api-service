@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
-//@RolesAllowed("default-roles-orppst")
+@RolesAllowed({"default-roles-orppst"})
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -69,26 +69,15 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return matchedCycles;
     }
 
-    @GET
-    @Path("AmIOnTheTAC/{cycleCode}")
-    @Operation(summary = "Am I am a TAC member of the given cycle id")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Boolean amIOnTheTAC(@PathParam("cycleCode") long cycleCode) {
+    private Boolean amIOnTheTAC(ProposalCycle cycle) {
         // Get the logged in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
-
-        // Get the TAC for this cycle
-        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
         // See if user is in the TAC
         cycle.getTac().getMembers().forEach(member -> {
             if(member.getId().equals(personId)) {
                 amIOnTheTAC.set(true);
-                System.out.println("Foudn me and set amIOnTheTAC.get() = " + amIOnTheTAC.get());
-            }
-            else {
-                System.out.println("This person " + member.getId() + " is not this person "+personId);
             }
         });
 
@@ -156,21 +145,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     )
             throws WebApplicationException
     {
-        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
-
-        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
-
         // Get the TAC for this cycle
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
         // See if user is in the TAC
-        cycle.getTac().getMembers().forEach(member -> {
-            if(member.getId().equals(personId)) {
-                amIOnTheTAC.set(true);
-            }
-        });
-
-        if(amIOnTheTAC.get() == false)
+        if(!amIOnTheTAC(cycle))
                 throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
 
         cycle.setTitle(replacementTitle);
@@ -207,6 +186,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+
         cycle.setSubmissionDeadline(replacementDeadline);
 
         return responseWrapper(cycle.getSubmissionDeadline(), 200);
@@ -227,6 +210,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+
         cycle.setObservationSessionStart(replacementStart);
 
         return responseWrapper(cycle.getObservationSessionStart(), 200);
@@ -245,6 +232,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
 
         cycle.setObservationSessionEnd(replacementEnd);
 
@@ -288,6 +279,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+
         return addNewChildObject(cycle, grade, cycle::addToPossibleGrades);
     }
 
@@ -301,6 +296,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
 
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
@@ -375,6 +374,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is in the TAC
+        if(!amIOnTheTAC(cycle))
+            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
 
         Observatory replacementObservatory = findObject(Observatory.class, replacementObservatoryCode);
 
