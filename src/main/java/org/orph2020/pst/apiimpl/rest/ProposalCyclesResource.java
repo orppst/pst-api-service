@@ -48,8 +48,13 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
 
         // An observatory administrator can do _anything_
-        if(userInfo.getClaim("realm_access").toString().contains("\"obs_administration\""))
-            return;
+        if(userInfo.getClaim("realm_access") != null) {
+            String roleList = userInfo.getClaim("realm_access").toString();
+
+            if(roleList != null && roleList.contains("\"obs_administration\"")) {
+                return;
+            }
+        }
 
         AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
 
