@@ -41,9 +41,29 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         this.logger = logger;
     }
 
+    private void checkUserOnTAC(ProposalCycle cycle)
+            throws WebApplicationException
+    {
+        // Get the logged in user details.
+        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
+        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
+
+        // See if user is member of the TAC
+        cycle.getTac().getMembers().forEach(member -> {
+            if(member.getId().equals(personId)) {
+                amIOnTheTAC.set(true);
+            }
+        });
+
+        if(amIOnTheTAC.get())
+            return;
+
+        throw new WebApplicationException("You are not on the TAC of this proposal cycle", 403);
+    }
+
     @GET
     @Path("MyTACCycles")
-    @Operation(summary = "get all the proposal cycles I am a TAC member of")
+    @Operation(summary = "get all the proposal cycles where I am a on the TAC")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_member", "tac_admin"})
     public List<ObjectIdentifier> getMyTACMemberProposalCycles() {
@@ -69,21 +89,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return matchedCycles;
     }
 
-    private Boolean amIOnTheTAC(ProposalCycle cycle) {
-        // Get the logged in user details.
-        Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
-        AtomicReference<Boolean> amIOnTheTAC = new AtomicReference<>(false);
-
-        // See if user is in the TAC
-        cycle.getTac().getMembers().forEach(member -> {
-            if(member.getId().equals(personId)) {
-                amIOnTheTAC.set(true);
-            }
-        });
-
-        return amIOnTheTAC.get();
-    }
-
     @GET
     @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
     public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
@@ -107,6 +112,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}")
     @Operation(summary = "get the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin", "obs_administration"})
     public ProposalCycle getProposalCycle(@PathParam("cycleCode") long cycleId) {
         return findObject(ProposalCycle.class,cycleId);
     }
@@ -148,9 +154,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         // Get the TAC for this cycle
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-                throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        // See if user is on the TAC
+        checkUserOnTAC(cycle);
 
         cycle.setTitle(replacementTitle);
 
@@ -186,9 +191,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         cycle.setSubmissionDeadline(replacementDeadline);
 
@@ -210,9 +213,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         cycle.setObservationSessionStart(replacementStart);
 
@@ -233,9 +234,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         cycle.setObservationSessionEnd(replacementEnd);
 
@@ -248,6 +247,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/grades")
     @Operation(summary = "List the possible grades of the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public List<ObjectIdentifier> getCycleAllocationGrades(@PathParam("cycleCode") Long cycleCode)
     {
         Query query = em.createQuery(
@@ -260,6 +260,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "get the specific grade associated with the given proposal cycle")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public AllocationGrade getCycleAllocatedGrade(@PathParam("cycleCode") Long cycleCode,
                                                   @PathParam("gradeId") Long gradeId)
     {
@@ -279,9 +280,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         return addNewChildObject(cycle, grade, cycle::addToPossibleGrades);
     }
@@ -297,9 +296,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
@@ -320,6 +317,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
+        checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
+
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
 
@@ -341,6 +340,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     )
             throws WebApplicationException
     {
+        checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
+
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
 
@@ -375,9 +376,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        // See if user is in the TAC
-        if(!amIOnTheTAC(cycle))
-            throw new WebApplicationException("You are not in the TAC for this proposal cycle", 403);
+        checkUserOnTAC(cycle);
 
         Observatory replacementObservatory = findObject(Observatory.class, replacementObservatoryCode);
 
@@ -391,10 +390,13 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/observingTimeTotals")
     @Operation(summary = "get total time allocated in the cycle broken down by observing mode and allocation grade")
+    @RolesAllowed({"tac_member", "tac_admin"})
     public List<CycleObservingTimeTotal>
     getCycleObservingTimeTotals(@PathParam("cycleCode") Long cycleCode)
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        checkUserOnTAC(cycle);
 
         List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
 
