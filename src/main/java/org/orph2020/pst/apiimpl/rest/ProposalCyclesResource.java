@@ -272,7 +272,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades")
     @Operation(summary = "add a new possible allocation grade to the given proposal cycle")
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade addCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                    AllocationGrade grade)
@@ -280,23 +280,19 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        checkUserOnTAC(cycle);
-
         return addNewChildObject(cycle, grade, cycle::addToPossibleGrades);
     }
 
     @DELETE
     @Path("{cycleCode}/grades/{gradeId}")
     @Operation(summary = "remove the specified possible grade from the given proposal cycle")
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeCycleAllocationGrade(@PathParam("cycleCode") Long cycleCode,
                                                @PathParam("gradeId") Long gradeId)
         throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
-
-        checkUserOnTAC(cycle);
 
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
@@ -308,7 +304,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/name")
     @Operation(summary = "change the name of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeName(
             @PathParam("cycleCode") Long cycleCode,
@@ -317,8 +313,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
-        checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
 
@@ -331,7 +325,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/grades/{gradeId}/description")
     @Operation(summary = "change the description of the given allocation grade")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public AllocationGrade replaceCycleAllocationGradeDescription(
             @PathParam("cycleCode") Long cycleCode,
@@ -340,8 +334,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     )
             throws WebApplicationException
     {
-        checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         AllocationGrade grade = findChildByQuery(ProposalCycle.class, AllocationGrade.class,
                 "possibleGrades", cycleCode, gradeId);
 
@@ -366,7 +358,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Path("{cycleCode}/observatory")
     @Operation(summary = "change the observatory for the given proposal cycle")
     @Consumes(MediaType.TEXT_PLAIN)
-    @RolesAllowed("tac_admin")
+    @RolesAllowed("obs_administration")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleObservatory(
             @PathParam("cycleCode") Long cycleCode,
@@ -375,8 +367,6 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
-
-        checkUserOnTAC(cycle);
 
         Observatory replacementObservatory = findObject(Observatory.class, replacementObservatoryCode);
 
