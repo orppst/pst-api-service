@@ -3,29 +3,27 @@ package org.orph2020.pst.apiimpl.rest;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Target;
+import org.ivoa.dm.stc.coords.Epoch;
 import org.ivoa.dm.stc.coords.EquatorialPoint;
 import org.ivoa.dm.stc.coords.SpaceSys;
 import org.ivoa.vodml.stdtypes.Unit;
-import org.orph2020.pst.common.json.SimbadTargetResult;
 import uk.ac.starlink.table.*;
-import uk.ac.starlink.util.DataSource;
-import uk.ac.starlink.votable.*;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 public class voTableReader {
 
 
-    public static List<Target> convertToListOfTargets(String resource) throws Exception {
+    public static List<Target> convertToListOfTargets(String resource, SpaceSys spaceSys)
+            throws Exception {
         List<Target> targets = new ArrayList<>();
 
-        //Assumes "resource" points to a VOTable obtained from a SIMBAD query
+        //Assumes "resource" points to a VOTable obtained from, for example, a SIMBAD query
 
         try (StarTable starTable = loadStarTable(resource)) {
+
             int nCol = starTable.getColumnCount();
 
             if (nCol == 0) {
@@ -46,7 +44,8 @@ public class voTableReader {
             }
 
             //printStarTable(starTable);
-            //need to extract RA,DEC from the starTable
+            //need to extract the following from the starTable:
+            // COOSYS (epoch, eq, system), RA_d, Dec_d, [PMRA, PMDEC, PLX, RV]
 
             // find the indices of the columns representing RA/DEC, use on the row data
 
@@ -62,21 +61,22 @@ public class voTableReader {
             //target name either found in column "TYPED_ID" meaning the SIMBAD query input or --
             // found in column "MAIN_ID" which is the name as stored in the database.
 
-            for (int i = 1; i <= nRow; i++) {
+            for (int i = 0; i < nRow; i++) {
                 String name = (String) starTable.getCell(i, idIndex);
                 double raDegrees =  (double) starTable.getCell(i, raIndex);
                 double decDegrees =  (double) starTable.getCell(i, decIndex);
 
-                EquatorialPoint equatorialPoint = new EquatorialPoint(
-                        new RealQuantity(raDegrees, new Unit("degrees")),
-                        new RealQuantity(decDegrees, new Unit("degrees")),
-                        new SpaceSys()
-                );
-
-
-
                 //EquatorialPoint sourceCoordinates, Epoch positionEpoch, RealQuantity pmRA, RealQuantity pmDec, RealQuantity parallax, RealQuantity sourceVelocity, String sourceName
-                targets.add(new CelestialTarget());
+                targets.add(CelestialTarget.createCelestialTarget(c -> {
+                            c.sourceName = name;
+                            c.sourceCoordinates = new EquatorialPoint(
+                                    new RealQuantity(raDegrees, new Unit("degrees")),
+                                    new RealQuantity(decDegrees, new Unit("degrees")),
+                                    spaceSys
+                            );
+                            c.positionEpoch = new Epoch("J2000.0");
+                        })
+                );
             }
 
         }
@@ -88,11 +88,6 @@ public class voTableReader {
     private static StarTable loadStarTable( String resourceLocation ) throws IOException {
         return new StarTableFactory().makeStarTable( resourceLocation);
     }
-
-    private static TableSequence loadTableSequence( String resourceLocation ) throws IOException {
-        return new StarTableFactory().makeStarTables(DataSource.makeDataSource( resourceLocation ));
-    }
-
 
     //attempt to find an identifying name column index
     private static int findNameColumnIndex(StarTable starTable) {

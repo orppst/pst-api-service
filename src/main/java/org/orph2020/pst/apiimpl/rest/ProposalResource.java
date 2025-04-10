@@ -6,15 +6,25 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
+import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.prop.*;
+import org.ivoa.dm.stc.coords.Epoch;
+import org.ivoa.dm.stc.coords.EquatorialPoint;
+import org.ivoa.dm.stc.coords.SpaceSys;
+import org.ivoa.vodml.stdtypes.Unit;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.ResponseStatus;
+import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalCycleDates;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -28,6 +38,8 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 
@@ -439,6 +451,127 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         return addNewChildObject(observingProposal,target, observingProposal::addToTargets);
+    }
+
+
+    @Schema(type = SchemaType.STRING, format = "binary")
+    public static class UploadTargetList {}
+
+    @POST
+    @Path(targetsRoot+"/uploadList")
+    @Operation(summary = "upload a list of targets contained in a file to this Proposal")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response uploadTargetList(@PathParam("proposalCode") Long proposalCode,
+                                     @RestForm("document") @Schema(implementation = UploadTargetList.class)
+                                     FileUpload fileUpload)
+        throws WebApplicationException
+    {
+        if (fileUpload == null) {
+            throw new WebApplicationException("No file uploaded");
+        }
+
+        String contentType = fileUpload.contentType();
+        if (contentType == null) {
+            throw new WebApplicationException("No content type information");
+        }
+
+        System.out.println(contentType);
+
+        String extension = FilenameUtils.getExtension(fileUpload.fileName());
+        if (extension == null || extension.isEmpty()) {
+            throw new WebApplicationException("No extension provided");
+        }
+
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+
+        //find the 'ICRS' SpaceSys
+        String queryStr = "select s from SpaceSys s where s.frame.spaceRefFrame='ICRS'";
+        TypedQuery<SpaceSys> query = em.createQuery(queryStr, SpaceSys.class);
+        SpaceSys spaceSys = query.getResultList().get(0);
+
+
+        if (extension.equals("xml") && contentType.equals("text/xml")) {
+            //assume VoTable upload
+            try {
+                List<Target> targetList =
+                        voTableReader.convertToListOfTargets(
+                                fileUpload.uploadedFile().toString(),
+                                spaceSys
+                        );
+
+                for (Target target : targetList) {
+                    addNewChildObject(observingProposal, target, observingProposal::addToTargets);
+                }
+
+            } catch (Exception e) {
+                throw new WebApplicationException(e);
+            }
+        } else {
+
+
+            //open file to read and extract its contents into a List of Targets
+            File theFile = fileUpload.uploadedFile().toFile();
+            try {
+                Scanner theScanner = new Scanner(theFile);
+
+                //name, ra, dec, [pmra, pmdec, plx, rv]
+
+                while (theScanner.hasNextLine()) {
+                    String[] tokens = theScanner.nextLine().split(",");
+
+                    if (tokens.length < 3) {
+                        throw new WebApplicationException(
+                                String.format("need at least 'name,ra,dec' in target list file %s", theFile.getName())
+                        );
+                    }
+
+                    if (tokens.length == 4) {
+                        throw new WebApplicationException(
+                                String.format("missing data (proper motion value?) in target lists file %s", theFile.getName())
+                        );
+                    }
+
+                    String targetName = tokens[0];
+                    Double targetRA = Double.valueOf(tokens[1]);
+                    Double targetDEC = Double.valueOf(tokens[2]);
+
+                    CelestialTarget target = CelestialTarget.createCelestialTarget(c -> {
+                        c.sourceName = targetName;
+                        c.sourceCoordinates = new EquatorialPoint(
+                                new RealQuantity(targetRA, new Unit("degrees")),
+                                new RealQuantity(targetDEC, new Unit("degrees")),
+                                spaceSys
+                        );
+                        c.positionEpoch = new Epoch("J2000.0");
+
+                        if (tokens.length > 3) {
+                            c.pmRA = Objects.equals(tokens[3], "") ? null :
+                                    new RealQuantity(Double.valueOf(tokens[3]), new Unit("mas.yr-1"));
+                            c.pmDec = Objects.equals(tokens[4], "") ? null :
+                                    new RealQuantity(Double.valueOf(tokens[4]), new Unit("mas.yr-1"));
+                        }
+
+                        if (tokens.length > 5) {
+                            c.parallax = Objects.equals(tokens[5], "") ? null :
+                                    new RealQuantity(Double.valueOf(tokens[5]), new Unit("mas"));
+
+                            if (tokens.length == 7) {
+                                c.sourceVelocity = Objects.equals(tokens[6], "") ? null :
+                                        new RealQuantity(Double.valueOf(tokens[6]), new Unit("km.s-1"));
+                            }
+                        }
+                    });
+
+                    addNewChildObject(observingProposal, target, observingProposal::addToTargets);
+                }
+
+            } catch (FileNotFoundException e) {
+                throw new WebApplicationException(e);
+            }
+        }
+
+        return responseWrapper(observingProposal.getTargets(), 200);
     }
 
 
