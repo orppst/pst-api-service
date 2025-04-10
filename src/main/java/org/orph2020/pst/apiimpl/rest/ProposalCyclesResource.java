@@ -76,13 +76,16 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Operation(summary = "get all the proposal cycles where I am a on the TAC")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_member", "tac_admin"})
-    public List<ObjectIdentifier> getMyTACMemberProposalCycles() {
+    public List<ObjectIdentifier> getMyTACMemberProposalCycles(@RestQuery boolean includeClosed) {
         // Get the logged in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<ObjectIdentifier> matchedCycles = new ArrayList<>();
 
         // Find list of Proposal Cycles and their TACs
         String query = "select p._id,p.title,tac from ProposalCycle p";
+
+        if(!includeClosed)
+            query += " WHERE p.submissionDeadline > CURRENT_TIMESTAMP() ";
 
         List<Object[]> cycles = em.createQuery(query).getResultList();
 
