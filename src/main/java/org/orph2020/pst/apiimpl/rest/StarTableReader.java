@@ -20,7 +20,8 @@ public class StarTableReader {
     public static List<Target> convertToListOfTargets(
             String resource,
             SpaceSys spaceSys,
-            List<String> existingNames
+            List<String> existingNames,
+            Integer maxNumOfTargets
     )
             throws WebApplicationException {
         List<Target> targets = new ArrayList<>();
@@ -46,8 +47,13 @@ public class StarTableReader {
                 throw new WebApplicationException("table has zero rows (no data)", 400);
             }
 
-            if (nRow > 100) {
-                throw new WebApplicationException("Target list is restricted to 100 rows", 400);
+            if (nRow > maxNumOfTargets - existingNames.size()) {
+                throw new WebApplicationException(
+                        "Number of Targets limited to " + maxNumOfTargets
+                                + " per Proposal. You currently have "
+                                + existingNames.size() + " targets, and are attempting to add"
+                                + nRow + " targets.", 400
+                );
             }
 
             // NAME, RA_d, Dec_d, [PMRA, PMDEC, PLX, RV]
@@ -95,14 +101,19 @@ public class StarTableReader {
 
             HashMap<Integer, String> nonUniqueNames = new HashMap<>();
 
+            List<String> tableTargetNames = new ArrayList<>();
+
             for (int i = 0; i < nRow; i++) {
                 String name = (String) starTable.getCell(i, idIndex);
 
-                if (existingNames.contains(name)) {
+                //check for uniqueness in both the existing names and the names in the table
+                if (existingNames.contains(name) || tableTargetNames.contains(name)) {
                     //the name is not unique, collect the offending name and row count to feed back to user
                     int row = i + 1;
                     nonUniqueNames.put(row, name);
                 }
+
+                tableTargetNames.add(name);
 
                 double raValue =  (double) starTable.getCell(i, raIndex);
                 double decValue =  (double) starTable.getCell(i, decIndex);

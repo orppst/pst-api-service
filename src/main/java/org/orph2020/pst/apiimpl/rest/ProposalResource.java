@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
 import org.apache.commons.io.FilenameUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
@@ -85,6 +86,9 @@ public class ProposalResource extends ObjectResourceBase {
     //needed for import.
     @Inject
     SupportingDocumentResource supportingDocumentResource;
+
+    @ConfigProperty(name = "proposal.targets.maximum")
+    Integer proposalTargetsMaximum;
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -495,9 +499,18 @@ public class ProposalResource extends ObjectResourceBase {
             List<String> currentNames
     ) throws WebApplicationException {
         return switch (fileType) {
-            case PLAIN_TEXT -> TargetListFileReader.readTargetListFile(filePath.toFile(), spaceSys);
-            case STAR_TABLE_FMT -> StarTableReader.convertToListOfTargets(filePath.toString(), spaceSys,
-                    currentNames);
+            case PLAIN_TEXT -> TargetListFileReader.readTargetListFile(
+                    filePath.toFile(),
+                    spaceSys,
+                    currentNames,
+                    proposalTargetsMaximum
+            );
+            case STAR_TABLE_FMT -> StarTableReader.convertToListOfTargets(
+                    filePath.toString(),
+                    spaceSys,
+                    currentNames,
+                    proposalTargetsMaximum
+            );
         };
     }
 
