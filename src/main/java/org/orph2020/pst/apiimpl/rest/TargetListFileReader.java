@@ -19,34 +19,36 @@ public class TargetListFileReader {
         HashMap<String, Integer> headerIndices = new HashMap<>();
         String[] headers = headerLine.substring(1).split(",");
 
-        String[] headerNames = new String[] {"NAME", "RA", "DEC", "PMRA", "PMDEC", "PLX", "RV"};
+        String[] headerNames = new String[] {"name", "ra", "dec", "pmra", "pmdec", "plx", "rv"};
 
         List<String> headerList = new ArrayList<>(Arrays.asList(headerNames));
 
         for (String header : headers) {
-            if (List.of(headerNames).contains(header)) {
-                headerIndices.put(header, headerIndices.size());
-                headerList.remove(header);
+            if (List.of(headerNames).contains(header.toLowerCase())) {
+                headerIndices.put(header.toLowerCase(), headerIndices.size());
+                headerList.remove(header.toLowerCase());
             } else {
                 throw new WebApplicationException("Unrecognised header name: " + header, 400);
             }
         }
 
-        if (headerList.contains("NAME")) {
-            throw new WebApplicationException("Target 'NAME' is required as a column header", 400);
+        StringBuilder formatErrors = new StringBuilder();
+
+        if (headerList.contains("name")) {
+            formatErrors.append("Target 'name' is required as a column header.\n");
         }
 
-        if (headerList.contains("RA") || headerList.contains("DEC")) {
-            throw new WebApplicationException("Both 'RA' and 'DEC' coordinates are required as column headers", 400);
+        if (headerList.contains("ra") || headerList.contains("dec")) {
+            formatErrors.append("Both 'ra' and 'dec' coordinates are required as column headers.\n");
         }
 
-        if (!headerList.contains("PMRA") && headerList.contains("PMDEC") ||
-                headerList.contains("PMRA") && !headerList.contains("PMDEC")) {
-            throw new WebApplicationException(
-                    "If you specify a Proper Motion in one coordinate you must also specify it in the other " +
-                    "i.e., provide both 'PMRA' and 'PMDEC' as column headers",
-                    400
-            );
+        if (!headerList.contains("pmra") && headerList.contains("pmdec") ||
+                headerList.contains("pmra") && !headerList.contains("pmdec")) {
+            formatErrors.append("Please provide both 'pmra' and 'pmdec' as column headers, not just one.\n");
+        }
+
+        if (!formatErrors.isEmpty()) {
+            throw new WebApplicationException("You have file formatting errors:\n" + formatErrors, 400);
         }
 
         return headerIndices;
@@ -56,10 +58,8 @@ public class TargetListFileReader {
     public static List<Target> readTargetListFile(
             File theFile,
             SpaceSys spaceSys,
-            List<String> existingNames,
-            Integer maxNumOfTargets
-    )
-            throws WebApplicationException
+            List<String> existingNames
+    ) throws WebApplicationException
     {
 
         List<Target> result = new ArrayList<>();
@@ -79,17 +79,18 @@ public class TargetListFileReader {
 
                     int rowCount = 0;
 
-                    while (theScanner.hasNextLine() && rowCount < maxNumOfTargets) {
+                    while (theScanner.hasNextLine()) {
                         String[] tokens = theScanner.nextLine().split(",");
 
                         if (tokens.length != headerIndices.size()) {
+                            int row = rowCount + 1;
                             throw new WebApplicationException(
                                     "Expected " + headerIndices.size() + " columns but got "
-                                            + tokens.length + " at row count " + rowCount, 400
+                                            + tokens.length + " at row " + row, 400
                             );
                         }
 
-                        String targetName = tokens[headerIndices.get("NAME")];
+                        String targetName = tokens[headerIndices.get("name")];
 
                         if (existingNames.contains(targetName) || tableTargetNames.contains(targetName)) {
                             //the name is not unique, collect the offending name and row count to feed back to user
@@ -99,8 +100,8 @@ public class TargetListFileReader {
 
                         tableTargetNames.add(targetName);
 
-                        Double targetRA = Double.valueOf(tokens[headerIndices.get("RA")]);
-                        Double targetDEC = Double.valueOf(tokens[headerIndices.get("DEC")]);
+                        Double targetRA = Double.valueOf(tokens[headerIndices.get("ra")]);
+                        Double targetDEC = Double.valueOf(tokens[headerIndices.get("dec")]);
 
                         CelestialTarget target = CelestialTarget.createCelestialTarget(c -> {
                             c.sourceName = targetName;
@@ -114,34 +115,34 @@ public class TargetListFileReader {
                             //optionals
                             //notice that although the column may exist, the data entry may be null (represented
                             //by an empty string)
-                            if (headerIndices.containsKey("PMRA")) {
-                                c.pmRA = Objects.equals(tokens[headerIndices.get("PMRA")], "") ? null :
+                            if (headerIndices.containsKey("pmra")) {
+                                c.pmRA = Objects.equals(tokens[headerIndices.get("pmra")], "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("PMRA")]),
+                                                Double.valueOf(tokens[headerIndices.get("pmra")]),
                                                 new Unit("mas.yr-1")
                                         );
                             }
 
-                            if (headerIndices.containsKey("PMDEC")) {
-                                c.pmDec = Objects.equals(tokens[headerIndices.get("PMDEC")], "") ? null :
+                            if (headerIndices.containsKey("pmdec")) {
+                                c.pmDec = Objects.equals(tokens[headerIndices.get("pmdec")], "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("PMDEC")]),
+                                                Double.valueOf(tokens[headerIndices.get("pmdec")]),
                                                 new Unit("mas.yr-1")
                                         );
                             }
 
-                            if (headerIndices.containsKey("PLX")) {
-                                c.parallax = Objects.equals(tokens[headerIndices.get("PLX")], "") ? null :
+                            if (headerIndices.containsKey("plx")) {
+                                c.parallax = Objects.equals(tokens[headerIndices.get("plx")], "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("PLX")]),
+                                                Double.valueOf(tokens[headerIndices.get("plx")]),
                                                 new Unit("mas")
                                         );
                             }
 
-                            if (headerIndices.containsKey("RV")) {
-                                c.sourceVelocity = Objects.equals(tokens[headerIndices.get("RV")], "") ? null :
+                            if (headerIndices.containsKey("rv")) {
+                                c.sourceVelocity = Objects.equals(tokens[headerIndices.get("rv")], "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("RV")]),
+                                                Double.valueOf(tokens[headerIndices.get("rv")]),
                                                 new Unit("km.s-1")
                                         );
                             }
@@ -152,10 +153,7 @@ public class TargetListFileReader {
                     }
 
                     if (rowCount == 0) {
-                        throw new WebApplicationException(
-                                "It's not that I'm questioning your intelligence but you just sent me a file with no data, so yeah ...",
-                                400
-                        );
+                        throw new WebApplicationException("No data rows in uploaded file", 400);
                     }
 
                     if (!nonUniqueNames.isEmpty()) {
@@ -170,15 +168,6 @@ public class TargetListFileReader {
                         }
 
                         throw new WebApplicationException(nonUniqueNamesBuilder.toString(), 400);
-                    }
-
-                    if (rowCount > maxNumOfTargets - existingNames.size()) {
-                        throw new WebApplicationException(
-                                "Number of Targets limited to " + maxNumOfTargets
-                                        + " per Proposal. You currently have "
-                                        + existingNames.size() + " targets, and are attempting to add"
-                                        + rowCount + " targets.", 400
-                        );
                     }
 
                 } else {

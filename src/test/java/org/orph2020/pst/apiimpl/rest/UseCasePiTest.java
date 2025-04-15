@@ -325,9 +325,28 @@ public class UseCasePiTest {
               .statusCode(201)
               ;
 
+        //add a list of Targets to the Proposal from a plain text file
+
+        final File targetsPlainText = new File("src/test/data/targetListTest.txt");
+
+        given()
+                .multiPart("document", targetsPlainText)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"gamma\","));
+
+        // here we are only testing a VOTable, other STILTS compatible formats include ECSV, FITS, ...
+        final File targetsVOTableXml = new File("src/test/data/targetListTest.xml");
+
+        given()
+                .multiPart("document", targetsVOTableXml)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"UCAC4 025-003178\","));
 
        // add Observations
-
         CelestialTarget target = CelestialTarget.createCelestialTarget((c) -> {
             c.sourceName = "imaginativeSourceName";
             c.sourceCoordinates = new EquatorialPoint(

@@ -20,8 +20,7 @@ public class StarTableReader {
     public static List<Target> convertToListOfTargets(
             String resource,
             SpaceSys spaceSys,
-            List<String> existingNames,
-            Integer maxNumOfTargets
+            List<String> existingNames
     )
             throws WebApplicationException {
         List<Target> targets = new ArrayList<>();
@@ -47,18 +46,7 @@ public class StarTableReader {
                 throw new WebApplicationException("table has zero rows (no data)", 400);
             }
 
-            if (nRow > maxNumOfTargets - existingNames.size()) {
-                throw new WebApplicationException(
-                        "Number of Targets limited to " + maxNumOfTargets
-                                + " per Proposal. You currently have "
-                                + existingNames.size() + " targets, and are attempting to add"
-                                + nRow + " targets.", 400
-                );
-            }
-
             // NAME, RA_d, Dec_d, [PMRA, PMDEC, PLX, RV]
-
-            // find the indices of the columns representing RA/DEC, use on the row data
 
             int idIndex = findNameColumnIndex(starTable);
             int raIndex = findColumnIndex(starTable, "^RA");
