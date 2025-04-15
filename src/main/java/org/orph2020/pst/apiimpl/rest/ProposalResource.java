@@ -471,7 +471,8 @@ public class ProposalResource extends ObjectResourceBase {
                 if (
                         !extension.equals("xml") &&
                         !extension.equals("txt") &&
-                        !extension.equals("csv")
+                        !extension.equals("csv") &&
+                        !extension.equals("ecsv")
                 ) {
                     throw new WebApplicationException("Invalid file extension");
                 }
