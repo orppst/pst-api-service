@@ -336,7 +336,7 @@ public class UseCasePiTest {
                 .then()
                 .body(containsString("\"sourceName\":\"gamma\","));
 
-        // here we are only testing a VOTable, other STILTS compatible formats include ECSV, FITS, ...
+        // add a list of targets from an VOTable xml file
         final File targetsVOTableXml = new File("src/test/data/targetListTest.xml");
 
         given()
@@ -345,6 +345,17 @@ public class UseCasePiTest {
                 .post("proposals/" + proposalid + "/targets/uploadList")
                 .then()
                 .body(containsString("\"sourceName\":\"UCAC4 025-003178\","));
+
+        //add a list of targets from an ecsv file
+        final File targetsECSV = new File("src/test/data/targetListTest.ecsv");
+
+        given()
+                .multiPart("document", targetsECSV)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"zeta\","));
+
 
        // add Observations
         CelestialTarget target = CelestialTarget.createCelestialTarget((c) -> {
