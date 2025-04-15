@@ -24,9 +24,9 @@ public class TargetListFileReader {
         List<String> headerList = new ArrayList<>(Arrays.asList(headerNames));
 
         for (String header : headers) {
-            if (List.of(headerNames).contains(header.toLowerCase())) {
-                headerIndices.put(header.toLowerCase(), headerIndices.size());
-                headerList.remove(header.toLowerCase());
+            if (List.of(headerNames).contains(header.trim().toLowerCase())) {
+                headerIndices.put(header.trim().toLowerCase(), headerIndices.size());
+                headerList.remove(header.trim().toLowerCase());
             } else {
                 throw new WebApplicationException("Unrecognised header name: " + header, 400);
             }
@@ -90,7 +90,7 @@ public class TargetListFileReader {
                             );
                         }
 
-                        String targetName = tokens[headerIndices.get("name")];
+                        String targetName = tokens[headerIndices.get("name")].trim();
 
                         if (existingNames.contains(targetName) || tableTargetNames.contains(targetName)) {
                             //the name is not unique, collect the offending name and row count to feed back to user
@@ -100,8 +100,8 @@ public class TargetListFileReader {
 
                         tableTargetNames.add(targetName);
 
-                        Double targetRA = Double.valueOf(tokens[headerIndices.get("ra")]);
-                        Double targetDEC = Double.valueOf(tokens[headerIndices.get("dec")]);
+                        Double targetRA = Double.valueOf(tokens[headerIndices.get("ra")].trim());
+                        Double targetDEC = Double.valueOf(tokens[headerIndices.get("dec")].trim());
 
                         CelestialTarget target = CelestialTarget.createCelestialTarget(c -> {
                             c.sourceName = targetName;
@@ -116,33 +116,33 @@ public class TargetListFileReader {
                             //notice that although the column may exist, the data entry may be null (represented
                             //by an empty string)
                             if (headerIndices.containsKey("pmra")) {
-                                c.pmRA = Objects.equals(tokens[headerIndices.get("pmra")], "") ? null :
+                                c.pmRA = Objects.equals(tokens[headerIndices.get("pmra")].trim(), "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("pmra")]),
+                                                Double.valueOf(tokens[headerIndices.get("pmra")].trim()),
                                                 new Unit("mas.yr-1")
                                         );
                             }
 
                             if (headerIndices.containsKey("pmdec")) {
-                                c.pmDec = Objects.equals(tokens[headerIndices.get("pmdec")], "") ? null :
+                                c.pmDec = Objects.equals(tokens[headerIndices.get("pmdec")].trim(), "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("pmdec")]),
+                                                Double.valueOf(tokens[headerIndices.get("pmdec")].trim()),
                                                 new Unit("mas.yr-1")
                                         );
                             }
 
                             if (headerIndices.containsKey("plx")) {
-                                c.parallax = Objects.equals(tokens[headerIndices.get("plx")], "") ? null :
+                                c.parallax = Objects.equals(tokens[headerIndices.get("plx")].trim(), "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("plx")]),
+                                                Double.valueOf(tokens[headerIndices.get("plx")].trim()),
                                                 new Unit("mas")
                                         );
                             }
 
                             if (headerIndices.containsKey("rv")) {
-                                c.sourceVelocity = Objects.equals(tokens[headerIndices.get("rv")], "") ? null :
+                                c.sourceVelocity = Objects.equals(tokens[headerIndices.get("rv")].trim(), "") ? null :
                                         new RealQuantity(
-                                                Double.valueOf(tokens[headerIndices.get("rv")]),
+                                                Double.valueOf(tokens[headerIndices.get("rv")].trim()),
                                                 new Unit("km.s-1")
                                         );
                             }
