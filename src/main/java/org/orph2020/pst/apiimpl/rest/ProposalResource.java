@@ -6,15 +6,21 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.TypedQuery;
+import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.prop.*;
+import org.ivoa.dm.stc.coords.SpaceSys;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.ResponseStatus;
+import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalCycleDates;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -439,6 +445,112 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
         return addNewChildObject(observingProposal,target, observingProposal::addToTargets);
+    }
+
+    private String checkTargetListUpload(FileUpload fileUpload)
+            throws WebApplicationException {
+        if (fileUpload == null) {
+            throw new WebApplicationException("No file uploaded");
+        }
+
+        String contentType = fileUpload.contentType();
+        if (contentType == null) {
+            throw new WebApplicationException("No content type information available");
+        }
+
+        String extension = FilenameUtils.getExtension(fileUpload.fileName());
+        if (extension == null || extension.isEmpty()) {
+            throw new WebApplicationException("Uploads require the correct file extension");
+        }
+
+        switch (contentType) {
+            case "application/octet-stream": //cover-all
+            case "text/plain":
+            case "text/csv":
+            case "text/xml":
+                if (
+                        !extension.equals("xml") &&
+                        !extension.equals("txt") &&
+                        !extension.equals("csv") &&
+                        !extension.equals("ecsv")
+                ) {
+                    throw new WebApplicationException("Invalid file extension");
+                }
+                break;
+            default:
+                throw new WebApplicationException(
+                    String.format("content-type: %s is not supported", contentType));
+        }
+
+        return extension;
+    }
+
+    enum FileType {
+        PLAIN_TEXT,
+        STAR_TABLE_FMT
+    }
+
+    private List<Target> getTargetListFromFile(
+            java.nio.file.Path filePath,
+            FileType fileType,
+            SpaceSys spaceSys,
+            List<String> currentNames
+    ) throws WebApplicationException {
+        return switch (fileType) {
+            case PLAIN_TEXT -> TargetListFileReader.readTargetListFile(
+                    filePath.toFile(),
+                    spaceSys,
+                    currentNames
+            );
+            case STAR_TABLE_FMT -> StarTableReader.convertToListOfTargets(
+                    filePath.toString(),
+                    spaceSys,
+                    currentNames
+            );
+        };
+    }
+
+
+    @Schema(type = SchemaType.STRING, format = "binary")
+    public static class UploadTargetList {}
+
+    @POST
+    @Path(targetsRoot+"/uploadList")
+    @Operation(summary = "upload a list of targets contained in a file to this Proposal")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response uploadTargetList(@PathParam("proposalCode") Long proposalCode,
+                                     @RestForm("document") @Schema(implementation = UploadTargetList.class)
+                                     FileUpload fileUpload)
+        throws WebApplicationException
+    {
+        String extension = checkTargetListUpload(fileUpload);
+
+        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+
+        List<Target> currentTargets = observingProposal.getTargets();
+
+        List<String> currentNames = new ArrayList<>();
+        for (Target target : currentTargets) {
+            currentNames.add(target.getSourceName());
+        }
+
+        //find the 'ICRS' SpaceSys
+        String queryStr = "select s from SpaceSys s where s.frame.spaceRefFrame='ICRS'";
+        TypedQuery<SpaceSys> query = em.createQuery(queryStr, SpaceSys.class);
+        SpaceSys spaceSys = query.getResultList().get(0);
+
+        // assume anything not '.txt' is STILTS compatible (STILTS will throw useful error message if not)
+        FileType fileType = extension.equals("txt") ? FileType.PLAIN_TEXT : FileType.STAR_TABLE_FMT;
+
+        List<Target> targetList = getTargetListFromFile(fileUpload.uploadedFile(), fileType,
+                spaceSys, currentNames);
+
+        for (Target target : targetList) {
+            addNewChildObject(observingProposal, target, observingProposal::addToTargets);
+        }
+
+        return responseWrapper(observingProposal.getTargets(), 200);
     }
 
 
