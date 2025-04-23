@@ -73,7 +73,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @POST
     @Operation(summary = "create a new Telescope and add it to the given Observatory")
     @Consumes(MediaType.APPLICATION_JSON)
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Telescope createAndAddTelescopeToObservatory(@PathParam("observatoryId") Long observatoryId,
                                                        Telescope telescope)
@@ -94,7 +94,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @DELETE
     @Path("{telescopeId}")
     @Operation(summary = "remove the Telescope specified by the 'telescopeId' from the given Observatory, also removes Telescope entity from the database")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response removeTelescopeFromObservatory(@PathParam("observatoryId") Long observatoryId,
                                     @PathParam("telescopeId") Long telescopeId)
@@ -119,7 +119,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/name")
     @Operation(summary = "update the name of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeName(@PathParam("observatoryId") Long observatoryId,
@@ -137,7 +137,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/wikiId")
     @Operation(summary = "update the wikiId of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeWikiId(@PathParam("observatoryId") Long observatoryId,
@@ -155,7 +155,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location")
     @Operation(summary = "update the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocation(@PathParam("observatoryId") Long observatoryId,
@@ -173,7 +173,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location/xyz")
     @Operation(summary = "update the x,y and z coordinates of the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocationXYZ(@PathParam("observatoryId") Long observatoryId,
@@ -193,7 +193,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location/x")
     @Operation(summary = "update the x coordinate of the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocationX(@PathParam("observatoryId") Long observatoryId,
@@ -211,7 +211,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location/y")
     @Operation(summary = "update the y coordinate of the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocationY(@PathParam("observatoryId") Long observatoryId,
@@ -229,7 +229,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location/z")
     @Operation(summary = "update the z coordinate of the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocationZ(@PathParam("observatoryId") Long observatoryId,
@@ -247,7 +247,7 @@ public class TelescopeResource extends ObjectResourceBase{
     @PUT
     @Path("{telescopeId}/location/coordinateSystem")
     @Operation(summary = "update the coordinate system of the location of the Telescope specified by 'telescopeId'")
-    //@RolesAllowed("obs_administration")
+    @RolesAllowed({"obs_administration"})
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response updateTelescopeLocationCoordinateSystem(@PathParam("observatoryId")Long observatoryId,
