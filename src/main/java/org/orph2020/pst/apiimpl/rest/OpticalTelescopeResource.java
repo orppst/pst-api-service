@@ -95,7 +95,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     @ResponseStatus(value = 201)
     @Path("opticalTableData")
     @Operation(summary = "the data needed for the optical table.")
-    public Response extractOpticalData(OpticalTelescopeDataLoad data) {
+    public Response extractOpticalData(OpticalTelescopeDataProposal data) {
         String proposalId = data.getProposalID();
 
         // verify proposal id.
@@ -122,6 +122,57 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
                     new OpticalTelescopeDataTableReturn(
                         result.getTelescopeName(),
                         result.getInstrumentName()
+                    ));
+            }
+
+            // return them.
+            return Response.ok(results).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(
+                "Error retrieving observation IDs: " + e.getMessage()).build();
+        }
+    }
+
+    /**
+     * returns the data to be presented in the optical table.
+     * @param data: the proposal, and observation id to extract the loaded
+     *              data for.
+     */
+    @POST
+    @ResponseStatus(value = 201)
+    @Path("opticalOverviewTableData")
+    @Operation(summary = "the data needed for the optical overview table.")
+    public Response extractOpticalOverviewData(
+            OpticalTelescopeDataProposal data) {
+        String proposalId = data.getProposalID();
+
+        // verify proposal id.
+        if (proposalId == null || proposalId.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Proposal ID cannot be empty.")
+                    .build();
+        }
+        try {
+            // extract records.
+            List<OpticalTelescopeDataSave> resultsRaw =
+                    opticalEntityManager.createQuery(
+                        "SELECT o FROM OpticalTelescopeDataSave o WHERE " +
+                        "o.primaryKey.proposalID = :proposalId",
+                        OpticalTelescopeDataSave.class)
+                        .setParameter("proposalId", proposalId)
+                        .getResultList();
+
+            // extract the data needed.
+            HashMap<String, OpticalTelescopeDataOverviewTableReturn> results =
+                    new HashMap<>();
+            for (OpticalTelescopeDataSave result :resultsRaw) {
+                results.put(result.getPrimaryKey().getObservationID(),
+                    new OpticalTelescopeDataOverviewTableReturn(
+                        result.getTelescopeName(),
+                        result.getInstrumentName(),
+                        result.getTelescopeTimeValue(),
+                        result.getTelescopeTimeUnit(),
+                        result.getCondition()
                     ));
             }
 

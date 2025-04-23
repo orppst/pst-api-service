@@ -1,0 +1,17 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: NAME, datatype: string}
+# - {name: RA, unit: degrees, datatype: float64}
+# - {name: DEC, unit: degrees, datatype: float64}
+# - {name: PMRA, unit: mas.yr-1, datatype: float64}
+# - {name: PMDEC, unit: mas.yr-1, datatype: float64}
+# - {name: PLX, unit: mas, datatype: float64}
+# - {name: RV, unit: km.yr-1, datatype: float64} 
+# schema: astropy-2.0
+NAME RA DEC PMRA PMDEC PLX RV
+delta 12.987 34 42 69 "" 99
+epsilon 56 78 11 13 33 112
+zeta 90 -12 38 -34 -1 -86
+
+

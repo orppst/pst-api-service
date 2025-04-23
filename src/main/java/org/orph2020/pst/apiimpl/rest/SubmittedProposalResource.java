@@ -28,7 +28,7 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
-//@RolesAllowed("default-roles-orppst")
+@RolesAllowed({"default-roles-orppst"})
 public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
@@ -95,6 +95,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @GET
     @Path("/{submittedProposalId}")
     @Operation(summary = "get the SubmittedProposal specified by 'submittedProposalId'")
+    @RolesAllowed({"tac_admin", "tac_member"})
     public SubmittedProposal getSubmittedProposal(@PathParam("cycleCode") Long cycleCode,
                                                 @PathParam("submittedProposalId") Long submittedProposalId)
     {

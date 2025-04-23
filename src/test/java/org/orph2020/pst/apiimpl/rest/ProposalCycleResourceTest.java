@@ -11,9 +11,7 @@ import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
-import org.ivoa.dm.proposal.management.ProposalCycle;
-import org.ivoa.dm.proposal.management.Observatory;
-import org.ivoa.dm.proposal.management.TAC;
+import org.ivoa.dm.proposal.management.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +73,7 @@ public class ProposalCycleResourceTest {
       newCycle.setSubmissionDeadline(new Date());
       newCycle.setObservationSessionStart(new Date());
       newCycle.setObservationSessionEnd(new Date());
+      newCycle.setTac(new TAC());
 
       String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(newCycle);
       //System.out.println("New proposal cycle looks like this: " + body);
@@ -89,7 +88,6 @@ public class ProposalCycleResourceTest {
               .log().all();
 
    }
-
 
    @Test
    void testGetCycles() {

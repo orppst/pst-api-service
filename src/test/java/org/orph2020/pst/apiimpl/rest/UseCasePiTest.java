@@ -325,9 +325,39 @@ public class UseCasePiTest {
               .statusCode(201)
               ;
 
+        //add a list of Targets to the Proposal from a plain text file
+
+        final File targetsPlainText = new File("src/test/data/targetListTest.txt");
+
+        given()
+                .multiPart("document", targetsPlainText)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"gamma\","));
+
+        // add a list of targets from an VOTable xml file
+        final File targetsVOTableXml = new File("src/test/data/targetListTest.xml");
+
+        given()
+                .multiPart("document", targetsVOTableXml)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"UCAC4 025-003178\","));
+
+        //add a list of targets from an ecsv file
+        final File targetsECSV = new File("src/test/data/targetListTest.ecsv");
+
+        given()
+                .multiPart("document", targetsECSV)
+                .when()
+                .post("proposals/" + proposalid + "/targets/uploadList")
+                .then()
+                .body(containsString("\"sourceName\":\"zeta\","));
+
 
        // add Observations
-
         CelestialTarget target = CelestialTarget.createCelestialTarget((c) -> {
             c.sourceName = "imaginativeSourceName";
             c.sourceCoordinates = new EquatorialPoint(
