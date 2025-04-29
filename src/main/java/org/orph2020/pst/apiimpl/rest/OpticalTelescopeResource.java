@@ -282,6 +282,25 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         }
     }
 
+    /**
+     * accessor for the list of observations with optical data for a given
+     * proposal id.
+     * @param proposalID: the proposal id to find the optical obs ids for.
+     * @param opticalEntityManager: the optical database.
+     * @return the list of observation ids.
+     */
+    public static List<Long> listOfObservationIdsByProposal(
+            String proposalID,
+            EntityManager opticalEntityManager) {
+        return opticalEntityManager.createQuery(
+                "SELECT o.primaryKey.observationID " +
+                        "FROM OpticalTelescopeDataSave o WHERE " +
+                        "o.primaryKey.proposalID = :proposalId",
+                Long.class)
+        .setParameter("proposalId", proposalID)
+        .getResultList();
+    }
+
     @POST
     @Path("/verifyProposal")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -300,14 +319,8 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         }
         try {
             // extract records.
-            List<Long> results =
-                opticalEntityManager.createQuery(
-                    "SELECT o.primaryKey.observationID " +
-                        "FROM OpticalTelescopeDataSave o WHERE " +
-                        "o.primaryKey.proposalID = :proposalId",
-                    Long.class)
-                .setParameter("proposalId", proposalId)
-                .getResultList();
+            List<Long> results = listOfObservationIdsByProposal(
+                    proposalId, opticalEntityManager);
 
             // return them.
             return Response.ok(results).build();

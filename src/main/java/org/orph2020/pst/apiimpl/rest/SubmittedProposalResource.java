@@ -128,7 +128,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "submit a proposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
+    public ProposalSynopsis submitProposal(
+            @PathParam("cycleCode") long cycleId,
+            SubmissionConfiguration submissionConfiguration)
     {
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
@@ -139,7 +141,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         for (SubmissionConfiguration.ObservationConfigMapping cm: submissionConfiguration.config)
         {
             ObservingMode mode = findObject(ObservingMode.class, cm.modeId);
-            TypedQuery<Observation> obsquery = em.createQuery("select o from Observation o where o._id in :ids ", Observation.class);
+            TypedQuery<Observation> obsquery = em.createQuery(
+                    "select o from Observation o where o._id in :ids ", Observation.class);
             obsquery.setParameter("ids", cm.observationIds);
             List<Observation> observations = obsquery.getResultList();
             configMappings.add(new ObservationConfiguration(observations,mode));
@@ -151,7 +154,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         //FIXME need to gather the config
 
         // TODO Double check all references are updated correctly
-        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, configMappings, new Date(), false, new Date(0L), null );
+        SubmittedProposal submittedProposal = new SubmittedProposal(
+                proposal, configMappings, new Date(), false, new Date(0L), null);
         submittedProposal.updateClonedReferences();
         em.persist(submittedProposal);
         submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
