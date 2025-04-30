@@ -19,7 +19,7 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalSynopsis;
+import org.orph2020.pst.common.json.submittedProposalResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,9 +34,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
-
-    @Inject
-    OpticalTelescopeResource opticalTelescopeResource;
 
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
@@ -134,7 +131,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "submit a proposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalSynopsis submitProposal(
+    public submittedProposalResponse submitProposal(
             @PathParam("cycleCode") long cycleId,
             SubmissionConfiguration submissionConfiguration)
     {
@@ -179,22 +176,14 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             throw new WebApplicationException(e);
         }
 
-        //**** clone the telescope store of the original proposal ****
-        //in essence creates a snapshot of the telescope data at the point of
-        // submission
-        try {
-            opticalTelescopeResource.copyProposal(proposal, submittedProposal);
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage());
-            throw new WebApplicationException(e);
-        }
-
         //************************************************************
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
 
-        return new ProposalSynopsis(proposal);
+        return new submittedProposalResponse(
+                submittedProposal.getObservations(),
+                submittedProposal.getId().toString());
     }
 
     @PUT

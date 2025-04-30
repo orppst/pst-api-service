@@ -2,7 +2,6 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -19,13 +18,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.proposal.prop.AbstractProposal;
-import org.ivoa.dm.proposal.prop.Observation;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.common.json.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -67,31 +63,31 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
      * are in same order, as there's issues if they are not due to no unique
      * identity.
      *
-     * @param proposal: the old proposal
-     * @param clone: the cloned proposal
      */
+    @POST
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public void copyProposal(
-            AbstractProposal proposal, AbstractProposal clone)
+    @ResponseStatus(value = 201)
+    @Path("copyProposal")
+    @Operation(summary = "copies the telescope data from 1 proposal to another.")
+    public Response copyProposal(OpticalTelescopeClone data)
             throws Exception {
-        Iterator<Observation> original = proposal.getObservations().iterator();
-        Iterator<Observation> cloned = clone.getObservations().iterator();
+        Iterator<Long> original = data.getObsIds().iterator();
+        Iterator<Long> cloned = data.getCloneObsIDs().iterator();
 
         // collect the obs ids that have optical data.
         List<Long> opticalObsIds = listOfObservationIdsByProposal(
-            proposal.getId().toString());
+                data.getProposalID());
 
         while (original.hasNext() && cloned.hasNext()) {
             // collect the related obs.
-            Observation originalObs = original.next();
-            Observation clonedObs = cloned.next();
+            Long originalObID = original.next();
+            Long clonedObID = cloned.next();
 
             // verify it should have optical data.
-            if (opticalObsIds.contains(originalObs.getId())) {
+            if (opticalObsIds.contains(originalObID)) {
                 // get old data.
                 OpticalTelescopeDataId key = new OpticalTelescopeDataId(
-                        proposal.getId().toString(),
-                        originalObs.getId().toString());
+                        data.getProposalID(), originalObID.toString());
                 OpticalTelescopeDataSave oldSave = opticalEntityManager.find(
                         OpticalTelescopeDataSave.class, key);
 
@@ -99,20 +95,20 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
                 if (oldSave == null) {
                     throw new Exception(
                         "The database doesnt hold an entry for proposal id " +
-                        proposal.getId() + " and observation id " +
-                        originalObs.getId() + ". But it should");
+                            data.getProposalID() + " and observation id " +
+                        originalObID + ". But it should");
                 } else {
                     // update key to reflect new proposal and observation.
-                    oldSave.getPrimaryKey().setProposalID(
-                            String.valueOf(clone.getId()));
+                    oldSave.getPrimaryKey().setProposalID(data.getCloneID());
                     oldSave.getPrimaryKey().setObservationID(
-                            String.valueOf(clonedObs.getId()));
+                            String.valueOf(clonedObID));
 
                     // save new data.
                     opticalEntityManager.persist(oldSave);
                 }
             }
         }
+        return responseWrapper(true, 201);
     }
 
     /**

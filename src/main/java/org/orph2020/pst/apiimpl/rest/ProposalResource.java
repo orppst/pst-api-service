@@ -247,11 +247,11 @@ public class ProposalResource extends ObjectResourceBase {
         //**** clone the telescope store of the original proposal ****
         //in essence creates a snapshot of the telescope data at the point of
         // cloning
-        try {
-            opticalTelescopeResource.copyProposal(prop, clonedProp);
-        } catch (Exception e) {
-            throw new WebApplicationException(e);
-        }
+        //try {
+        //    opticalTelescopeResource.copyProposal(prop, clonedProp);
+        //} catch (Exception e) {
+        //    throw new WebApplicationException(e);
+        // }
 
         //add '(clone)' to the end of the title string
         clonedProp.setTitle(modifyProposalTitle(prop.getTitle(), " (clone)"));
