@@ -15,6 +15,7 @@ import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -33,6 +34,11 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    @Inject
+    OpticalTelescopeResource opticalTelescopeResource;
+
+    private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
@@ -172,8 +178,18 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             // if we can't copy the store then we need to rollback
             throw new WebApplicationException(e);
         }
-        //************************************************************
 
+        //**** clone the telescope store of the original proposal ****
+        //in essence creates a snapshot of the telescope data at the point of
+        // submission
+        try {
+            opticalTelescopeResource.copyProposal(proposal, submittedProposal);
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage());
+            throw new WebApplicationException(e);
+        }
+
+        //************************************************************
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 

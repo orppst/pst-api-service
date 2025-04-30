@@ -2,6 +2,8 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceUnit;
@@ -17,15 +19,21 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.prop.AbstractProposal;
+import org.ivoa.dm.proposal.prop.Observation;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.orph2020.pst.apiimpl.entities.opticalTelescopeService.XmlReaderService;
 import org.orph2020.pst.common.json.*;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 /**
  * Contains the calls to the optical telescope data.
  */
+@RequestScoped
 @Path("opticalTelescopes")
 @Tag(name = "proposalCycles-opticalTelescopes")
 @Produces(MediaType.APPLICATION_JSON)
@@ -36,6 +44,76 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
 
     @PersistenceUnit(unitName = "optical")
     EntityManager opticalEntityManager;
+
+    /**
+     * accessor for the list of observations with optical data for a given
+     * proposal id.
+     * @param proposalID: the proposal id to find the optical obs ids for.
+     * @return the list of observation ids.
+     */
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public List<Long> listOfObservationIdsByProposal(String proposalID) {
+        return opticalEntityManager.createQuery(
+            "SELECT o.primaryKey.observationID " +
+                "FROM OpticalTelescopeDataSave o WHERE " +
+                "o.primaryKey.proposalID = :proposalId",
+            Long.class)
+        .setParameter("proposalId", proposalID)
+        .getResultList();
+    }
+
+    /**
+     * clones two proposals telescope data. It assumes the arrays and items
+     * are in same order, as there's issues if they are not due to no unique
+     * identity.
+     *
+     * @param proposal: the old proposal
+     * @param clone: the cloned proposal
+     */
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public void copyProposal(
+            AbstractProposal proposal, AbstractProposal clone)
+            throws Exception {
+        Iterator<Observation> original = proposal.getObservations().iterator();
+        Iterator<Observation> cloned = clone.getObservations().iterator();
+
+        // collect the obs ids that have optical data.
+        List<Long> opticalObsIds = listOfObservationIdsByProposal(
+            proposal.getId().toString());
+
+        while (original.hasNext() && cloned.hasNext()) {
+            // collect the related obs.
+            Observation originalObs = original.next();
+            Observation clonedObs = cloned.next();
+
+            // verify it should have optical data.
+            if (opticalObsIds.contains(originalObs.getId())) {
+                // get old data.
+                OpticalTelescopeDataId key = new OpticalTelescopeDataId(
+                        proposal.getId().toString(),
+                        originalObs.getId().toString());
+                OpticalTelescopeDataSave oldSave = opticalEntityManager.find(
+                        OpticalTelescopeDataSave.class, key);
+
+                // handles the state of radio or both mode mix.
+                if (oldSave == null) {
+                    throw new Exception(
+                        "The database doesnt hold an entry for proposal id " +
+                        proposal.getId() + " and observation id " +
+                        originalObs.getId() + ". But it should");
+                } else {
+                    // update key to reflect new proposal and observation.
+                    oldSave.getPrimaryKey().setProposalID(
+                            String.valueOf(clone.getId()));
+                    oldSave.getPrimaryKey().setObservationID(
+                            String.valueOf(clonedObs.getId()));
+
+                    // save new data.
+                    opticalEntityManager.persist(oldSave);
+                }
+            }
+        }
+    }
 
     /**
      * return the list of names for the available telescopes.
@@ -282,25 +360,6 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         }
     }
 
-    /**
-     * accessor for the list of observations with optical data for a given
-     * proposal id.
-     * @param proposalID: the proposal id to find the optical obs ids for.
-     * @param opticalEntityManager: the optical database.
-     * @return the list of observation ids.
-     */
-    public static List<Long> listOfObservationIdsByProposal(
-            String proposalID,
-            EntityManager opticalEntityManager) {
-        return opticalEntityManager.createQuery(
-                "SELECT o.primaryKey.observationID " +
-                        "FROM OpticalTelescopeDataSave o WHERE " +
-                        "o.primaryKey.proposalID = :proposalId",
-                Long.class)
-        .setParameter("proposalId", proposalID)
-        .getResultList();
-    }
-
     @POST
     @Path("/verifyProposal")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -319,8 +378,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         }
         try {
             // extract records.
-            List<Long> results = listOfObservationIdsByProposal(
-                    proposalId, opticalEntityManager);
+            List<Long> results = listOfObservationIdsByProposal(proposalId);
 
             // return them.
             return Response.ok(results).build();

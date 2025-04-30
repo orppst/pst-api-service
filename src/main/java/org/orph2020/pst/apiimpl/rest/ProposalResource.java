@@ -92,6 +92,9 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     SupportingDocumentResource supportingDocumentResource;
 
+    @Inject
+    OpticalTelescopeResource opticalTelescopeResource;
+
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
         Query query = em.createQuery(queryStr);
@@ -241,6 +244,15 @@ public class ProposalResource extends ObjectResourceBase {
             throw new WebApplicationException(e);
         }
 
+        //**** clone the telescope store of the original proposal ****
+        //in essence creates a snapshot of the telescope data at the point of
+        // cloning
+        try {
+            opticalTelescopeResource.copyProposal(prop, clonedProp);
+        } catch (Exception e) {
+            throw new WebApplicationException(e);
+        }
+
         //add '(clone)' to the end of the title string
         clonedProp.setTitle(modifyProposalTitle(prop.getTitle(), " (clone)"));
 
@@ -346,10 +358,26 @@ public class ProposalResource extends ObjectResourceBase {
         }
 
         List<Long> opticalObservationIds =
-            OpticalTelescopeResource.listOfObservationIdsByProposal(
-                proposalCode.toString(), opticalEntityManager);
+            opticalTelescopeResource.listOfObservationIdsByProposal(
+                proposalCode.toString());
         List<ObjectIdentifier> observations =
             observationResource.getObservations(proposalCode, null, null);
+
+        // handle combination proposals vs mode.
+        if (mode == MODES.OPTICAL &&
+                opticalObservationIds.size() != observations.size()) {
+            valid = false;
+            error.append(
+                "There are observations in this proposal which are not " +
+                "optical.");
+        }
+        if (mode == MODES.RADIO && opticalObservationIds.size() != 0) {
+            valid = false;
+            error.append(
+                "There are observations in this proposal which are optical.");
+        }
+
+
         if(observations.isEmpty()) {
             valid = false;
             error.append("No observations defined.  ");
