@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import org.jboss.logging.Logger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.RequestScoped;
@@ -25,6 +26,7 @@ import org.orph2020.pst.common.json.*;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Contains the calls to the optical telescope data.
@@ -35,11 +37,16 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 public class OpticalTelescopeResource extends ObjectResourceBase {
 
+    private final Logger logger;
     @Inject
     XmlReaderService xmlReader;
 
     @PersistenceUnit(unitName = "optical")
     EntityManager opticalEntityManager;
+
+    public OpticalTelescopeResource(Logger logger) {
+        this.logger = logger;
+    }
 
     /**
      * accessor for the list of observations with optical data for a given
@@ -65,12 +72,15 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
      *
      */
     @POST
-    @Transactional(rollbackOn = {WebApplicationException.class})
     @ResponseStatus(value = 201)
     @Path("copyProposal")
     @Operation(summary = "copies the telescope data from 1 proposal to another.")
+    @Transactional(rollbackOn = {WebApplicationException.class})
     public Response copyProposal(OpticalTelescopeClone data)
             throws Exception {
+        logger.info("starting");
+        logger.info(data);
+
         Iterator<Long> original = data.getObsIds().iterator();
         Iterator<Long> cloned = data.getCloneObsIDs().iterator();
 
@@ -78,12 +88,15 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         List<Long> opticalObsIds = listOfObservationIdsByProposal(
                 data.getProposalID());
 
+        logger.info(opticalObsIds);
+
         while (original.hasNext() && cloned.hasNext()) {
             // collect the related obs.
             Long originalObID = original.next();
             Long clonedObID = cloned.next();
 
-            // verify it should have optical data.
+            // verify we have data. both proposals can have mixed obs so
+            // it's not a given.
             if (opticalObsIds.contains(originalObID)) {
                 // get old data.
                 OpticalTelescopeDataId key = new OpticalTelescopeDataId(
@@ -97,17 +110,30 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
                         "The database doesnt hold an entry for proposal id " +
                             data.getProposalID() + " and observation id " +
                         originalObID + ". But it should");
-                } else {
-                    // update key to reflect new proposal and observation.
-                    oldSave.getPrimaryKey().setProposalID(data.getCloneID());
-                    oldSave.getPrimaryKey().setObservationID(
-                            String.valueOf(clonedObID));
-
-                    // save new data.
-                    opticalEntityManager.persist(oldSave);
                 }
+
+                // make a new map to force the la
+                Map<String, String> oldChoices = oldSave.getChoices();
+                HashMap<String, String> newChoices =
+                    new HashMap<>(oldChoices);
+
+                //build new save completely clean object.
+                OpticalTelescopeDataSave newSave =
+                    new OpticalTelescopeDataSave(
+                        data.getCloneID(), String.valueOf(clonedObID),
+                        oldSave.getTelescopeName(),
+                        oldSave.getInstrumentName(),
+                        oldSave.getTelescopeTimeValue(),
+                        oldSave.getTelescopeTimeUnit(),
+                        oldSave.getUserType(),
+                        oldSave.getCondition(), newChoices
+                );
+
+                // save new data.
+                opticalEntityManager.persist(newSave);
             }
         }
+        opticalEntityManager.flush();
         return responseWrapper(true, 201);
     }
 
@@ -157,6 +183,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
         } else {
             opticalEntityManager.merge(choices);
         }
+        opticalEntityManager.flush();
         return responseWrapper(true, 201);
     }
 
@@ -306,6 +333,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
             // try to successfully delete
             if (entity != null) {
                 opticalEntityManager.remove(entity);
+                opticalEntityManager.flush();
                 return responseWrapper(true, 201);
             } else {
                 // Record not found
