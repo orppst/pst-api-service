@@ -716,8 +716,7 @@ public class ProposalResource extends ObjectResourceBase {
             if(existingPeopleMap.containsKey(person.getOrcidId().toString())) {
                 i.setPerson(existingPeopleMap.get(person.getOrcidId().toString()));
             } else {
-                logger.info("Adding person " + person.getFullName());
-                //If organisation doesn't exist, add it
+                //If organisation exists, use that record, else add it
                 Organization organization = person.getHomeInstitute();
                 if(existingOrganizationsMap.containsKey(organization.getName())) {
                     person.setHomeInstitute(existingOrganizationsMap.get(organization.getName()));
