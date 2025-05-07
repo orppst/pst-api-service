@@ -73,7 +73,7 @@ public class AppLifecycleBean {
     XmlReaderService xmlReader;
 
     // store for the polaris mode
-    int polarisMode;
+    MODES polarisMode;
 
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
@@ -87,7 +87,7 @@ public class AppLifecycleBean {
     // produces the holder for the polaris mode.
     @Singleton
     @Produces
-    int mode() { return this.polarisMode; }
+    MODES mode() { return this.polarisMode; }
 
 
     @Transactional
@@ -106,7 +106,7 @@ public class AppLifecycleBean {
 
         // handle when no environment variable is set.
         if(environmentMode == null) {
-            this.polarisMode = MODES.RADIO.number;
+            this.polarisMode = MODES.RADIO;
             LOGGER.log(
                 Logger.Level.WARN,
                 "no environment variable was set for" +
@@ -114,12 +114,12 @@ public class AppLifecycleBean {
         }
 
         switch (MODES.valueOf(environmentMode)) {
-            case RADIO -> this.polarisMode = MODES.RADIO.number;
-            case OPTICAL -> this.polarisMode = MODES.OPTICAL.number;
-            case BOTH -> this.polarisMode = MODES.BOTH.number;
+            case RADIO -> this.polarisMode = MODES.RADIO;
+            case OPTICAL -> this.polarisMode = MODES.OPTICAL;
+            case BOTH -> this.polarisMode = MODES.BOTH;
             default -> {
                 LOGGER.error("NO valid mode was detected. setting to radio.");
-                this.polarisMode = MODES.RADIO.number;
+                this.polarisMode = MODES.RADIO;
             }
         }
     }

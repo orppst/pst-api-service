@@ -20,7 +20,7 @@ public class PolarisModeResource extends ObjectResourceBase {
 
     // get the mode from the application level.
     @Inject
-    int mode;
+    MODES mode;
 
     /**
      * getter rest api for the mode.
@@ -30,7 +30,7 @@ public class PolarisModeResource extends ObjectResourceBase {
     @Operation(summary = "get Polaris mode")
     @ResponseStatus(value = 201)
     public Response getMode() {
-        return responseWrapper(mode, 201);
+        return responseWrapper(mode.getValue(), 201);
     }
 
     /**
@@ -38,7 +38,7 @@ public class PolarisModeResource extends ObjectResourceBase {
      * mainly for debug purposes. maybe we need a password thing here?)
      *
      * @param mode: the new mode.
-     * @return the response echoing what occured.
+     * @return the response echoing what occurred.
      */
     @POST
     @Operation(summary = "set polaris mode")
@@ -59,21 +59,21 @@ public class PolarisModeResource extends ObjectResourceBase {
         // handle enum detection failure.
         if(selectedMode == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Invalid mode value.").build();
+                .entity("Invalid mode value.").build();
         }
 
         // execute switch.
         switch (selectedMode) {
             case OPTICAL -> {
-                this.mode = MODES.OPTICAL.getValue();
+                this.mode = MODES.OPTICAL;
                 return Response.ok("Mode set to OPTICAL").build();
             }
             case RADIO -> {
-                this.mode = MODES.RADIO.getValue();
+                this.mode = MODES.RADIO;
                 return Response.ok("Mode set to RADIO").build();
             }
             case BOTH -> {
-                this.mode = MODES.BOTH.getValue();
+                this.mode = MODES.BOTH;
                 return Response.ok("Mode set to BOTH").build();
             }
             default -> {
