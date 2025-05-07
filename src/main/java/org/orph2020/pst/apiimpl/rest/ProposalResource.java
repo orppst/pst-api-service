@@ -296,30 +296,43 @@ public class ProposalResource extends ObjectResourceBase {
      * checks the radio timing windows.
      *
      * @param timingWindows: the timing windows for a given observation.
-     * @param warn: the warning message
-     * @param error: the error message
+     * @param warn the warning message.
+     * @param error the error message.
+     * @param name the observation name.
      * @param theCycleDates: the cycle dates.
      */
     private boolean checkRadioWindows(
             List<ObservingConstraint> timingWindows, StringBuilder warn,
-            StringBuilder error, ProposalCycleDates theCycleDates) {
+            StringBuilder error, ProposalCycleDates theCycleDates,
+            String name) {
         if (timingWindows.isEmpty()) {
-            error.append("No timing windows defined.  ");
+            error.append("No timing windows defined.<br/>");
             return false;
         } else {
             for (ObservingConstraint timingWindow : timingWindows) {
                 TimingWindow theWindow = (TimingWindow) timingWindow;
                 if (theWindow.getIsAvoidConstraint()) {
-                    if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                            && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                        warn.append("A timing window excludes this entire observation session.  ");
+                    if (theCycleDates.observationSessionStart.after(
+                                theWindow.getStartTime())
+                            && theCycleDates.observationSessionEnd.before(
+                                theWindow.getEndTime())) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name + "' excludes this entire session.<br/>");
                     }
                 } else {
-                    if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                        warn.append("A timing window ends before this observation session begins.  ");
+                    if (theWindow.getEndTime().before(
+                            theCycleDates.observationSessionStart)) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name + "' ends before this session begins.<br/>");
                     }
-                    if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                        warn.append("A timing window begins after this observation session has ended. ");
+                    if (theWindow.getStartTime().after(
+                            theCycleDates.observationSessionEnd)) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name +
+                            "' begins after this session has ended.<br/>");
                     }
                 }
             }
@@ -345,7 +358,7 @@ public class ProposalResource extends ObjectResourceBase {
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
         if(targets.isEmpty()) {
             valid = false;
-            error.append("No targets defined.  ");
+            error.append("No targets defined.<br/>");
         }
 
         if (mode == MODES.RADIO) {
@@ -353,7 +366,7 @@ public class ProposalResource extends ObjectResourceBase {
                 technicalGoalResource.getTechnicalGoals(proposalCode);
             if(technicalGoals.isEmpty()) {
                 valid = false;
-                error.append("No technical goals defined.  ");
+                error.append("No technical goals defined.<br/>");
             }
         }
 
@@ -380,7 +393,7 @@ public class ProposalResource extends ObjectResourceBase {
 
         if(observations.isEmpty()) {
             valid = false;
-            error.append("No observations defined.  ");
+            error.append("No observations defined.<br/>");
         } else if(cycleId != 0) {
             //Compare timing windows with cycle dates and times.
             ProposalCycleDates theCycleDates =
@@ -390,7 +403,7 @@ public class ProposalResource extends ObjectResourceBase {
             Date now = new Date();
             if(now.after(theCycleDates.submissionDeadline)) {
                 valid = false;
-                error.append("The submission deadline has passed.");
+                error.append("The submission deadline has passed.<br/>");
             } else {
                 for (ObjectIdentifier observation : observations) {
                     List<ObservingConstraint> timingWindows =
@@ -399,7 +412,8 @@ public class ProposalResource extends ObjectResourceBase {
                     switch (mode) {
                         case RADIO:
                             valid &= this.checkRadioWindows(
-                                timingWindows, warn, error, theCycleDates);
+                                timingWindows, warn, error, theCycleDates,
+                                observation.name);
                             break;
                         case OPTICAL:
                             valid &= this.checkOpticalTelescopes(
@@ -412,7 +426,8 @@ public class ProposalResource extends ObjectResourceBase {
                                     observation.dbid, proposalCode, error);
                             } else {
                                 valid &= this.checkRadioWindows(
-                                    timingWindows, warn, error, theCycleDates);
+                                    timingWindows, warn, error, theCycleDates,
+                                    observation.name);
                             }
                             break;
                         default:
