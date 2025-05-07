@@ -112,7 +112,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
                         originalObID + ". But it should");
                 }
 
-                // make a new map to force the la
+                // make a new map to force the lazy generation of the choices.
                 Map<String, String> oldChoices = oldSave.getChoices();
                 HashMap<String, String> newChoices =
                     new HashMap<>(oldChoices);
