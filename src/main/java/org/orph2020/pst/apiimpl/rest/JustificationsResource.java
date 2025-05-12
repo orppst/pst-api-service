@@ -82,7 +82,7 @@ public class JustificationsResource extends ObjectResourceBase {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
     public Justification updateJustification(
-            @PathParam("proposalCode") long proposalCode,
+            @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
             Justification incoming )
             throws WebApplicationException
@@ -111,7 +111,7 @@ public class JustificationsResource extends ObjectResourceBase {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
     public Justification addJustification(
-            @PathParam("proposalCode") long proposalCode,
+            @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
             Justification incoming )
             throws WebApplicationException
