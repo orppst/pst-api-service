@@ -138,6 +138,21 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
     }
 
     /**
+     * returns the list of telescopes and hours to nights relationship.
+     * @return the map of the available telescope names to hour to night value.
+     */
+    @GET
+    @Path("nightRelationships")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "get a list of the optical telescopes night to " +
+            "hour relationships.")
+    public Response getOpticalTelescopeNightRelationships() {
+        return responseWrapper(
+                xmlReader.getNightRelationship().keySet().stream().toList(),
+                201);
+    }
+
+    /**
      * return the list of names for the available telescopes.
      * @return the list of the available telescopes.
      */
