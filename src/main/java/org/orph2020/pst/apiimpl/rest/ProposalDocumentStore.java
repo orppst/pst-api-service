@@ -1,6 +1,5 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -12,7 +11,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -140,15 +138,15 @@ public class ProposalDocumentStore {
      * @return Set of strings containing the files found
      * @throws IOException thrown by Files.list()
      */
-    public Set<String> listFilesIn(String filePath, String[] fileExtensions) throws IOException {
+    public Set<String> listFilesIn(String filePath, List<String> fileExtensions) throws IOException {
         try (Stream<Path> stream = Files.list(Paths.get(proposalStoreRoot, filePath))) {
             return stream
                     .filter(file -> !Files.isDirectory(file))
                     .map(java.nio.file.Path::getFileName)
                     .map(java.nio.file.Path::toString)
                     .filter(f -> {
-                        if (fileExtensions != null && fileExtensions.length > 0) {
-                            return Arrays.stream(fileExtensions).anyMatch(f::endsWith);
+                        if (fileExtensions != null && !fileExtensions.isEmpty()) {
+                            return fileExtensions.stream().anyMatch(f::endsWith);
                         } else {
                             return true;
                         }

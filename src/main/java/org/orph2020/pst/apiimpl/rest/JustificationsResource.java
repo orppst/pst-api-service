@@ -150,7 +150,15 @@ public class JustificationsResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         try {
-            String[] extensions = {".bib", ".jpg", "jpeg", ".png", ".eps"};
+            Justification justification = getWhichJustification(proposalCode, which);
+            List<String> extensions = new ArrayList<>();
+            extensions.add(".jpg");
+            extensions.add(".png");
+            extensions.add(".eps");
+            extensions.add(".jpeg");
+            if (justification.getFormat() == TextFormats.LATEX) {
+                extensions.add(".bib");
+            }
             return proposalDocumentStore.listFilesIn(justificationsStorePath(proposalCode, which), extensions);
         } catch (IOException e) {
             throw new WebApplicationException(e.getMessage());
@@ -275,7 +283,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
 
-    @GET
+    @POST
     @Path("{which}/latexPdf")
     @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
     @Produces(MediaType.APPLICATION_JSON)
