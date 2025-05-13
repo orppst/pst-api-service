@@ -268,6 +268,25 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     @GET
+    @Path ("{which}/checkForMain")
+    @Operation(summary = "checks for the existence of a 'main' file, either .tex or .rst")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response checkForMainFile(@PathParam("proposalCode") Long proposalCode,
+                                     @PathParam("which") String which)
+        throws WebApplicationException
+    {
+        Justification justification = getWhichJustification(proposalCode, which);
+        String filename = justification.getFormat() == TextFormats.LATEX ? texFileName : rstFileName;
+
+
+        return responseWrapper(
+                proposalDocumentStore
+                        .fetchFile(justificationsStorePath(proposalCode, which) + "/" + filename)
+                        .exists(), 200
+        );
+    }
+
+    @GET
     @Path ("{which}/checkForPdf")
     @Operation(summary = "checks for the existence of a latex PDF output file")
     @Produces(MediaType.APPLICATION_JSON)
@@ -279,7 +298,8 @@ public class JustificationsResource extends ObjectResourceBase {
         return responseWrapper(
                 proposalDocumentStore
                         .fetchFile(justificationsStorePath(proposalCode, which) + "/out/" + which + "-justification.pdf")
-                        .exists(), 200);
+                        .exists(), 200
+        );
     }
 
 
