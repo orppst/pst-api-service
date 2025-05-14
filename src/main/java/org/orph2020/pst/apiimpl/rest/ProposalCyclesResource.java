@@ -73,10 +73,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Path("MyTACCycles")
-    @Operation(summary = "get all the proposal cycles where I am a on the TAC")
+    @Operation(summary = "get all the proposal cycles where I am a on the TAC, include closed boolean flag and optional observatory id filter")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_member", "tac_admin"})
-    public List<ObjectIdentifier> getMyTACMemberProposalCycles(@RestQuery boolean includeClosed) {
+    public List<ObjectIdentifier> getMyTACMemberProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
         // Get the logged in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<ObjectIdentifier> matchedCycles = new ArrayList<>();
@@ -85,7 +85,13 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         String query = "select p._id,p.title,tac from ProposalCycle p";
 
         if(!includeClosed)
-            query += " WHERE p.submissionDeadline > CURRENT_TIMESTAMP() ";
+            if(observatoryId == 0)
+                query += " WHERE p.submissionDeadline > CURRENT_TIMESTAMP() ";
+            else
+                query += " WHERE p.submissionDeadline > CURRENT_TIMESTAMP() AND p.observatory._id = "+observatoryId;
+        else //include closed
+            if(observatoryId > 0)
+                query += " WHERE p.observatory._id = "+observatoryId;
 
         List<Object[]> cycles = em.createQuery(query).getResultList();
 
