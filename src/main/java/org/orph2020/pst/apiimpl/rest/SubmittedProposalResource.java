@@ -15,10 +15,11 @@ import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalSynopsis;
+import org.orph2020.pst.common.json.submittedProposalResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,11 +29,13 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
-//@RolesAllowed("default-roles-orppst")
+@RolesAllowed({"default-roles-orppst"})
 public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
@@ -95,6 +98,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @GET
     @Path("/{submittedProposalId}")
     @Operation(summary = "get the SubmittedProposal specified by 'submittedProposalId'")
+    @RolesAllowed({"tac_admin", "tac_member"})
     public SubmittedProposal getSubmittedProposal(@PathParam("cycleCode") Long cycleCode,
                                                 @PathParam("submittedProposalId") Long submittedProposalId)
     {
@@ -127,7 +131,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "submit a proposal")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
+    public submittedProposalResponse submitProposal(
+            @PathParam("cycleCode") long cycleId,
+            SubmissionConfiguration submissionConfiguration)
     {
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
@@ -138,7 +144,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         for (SubmissionConfiguration.ObservationConfigMapping cm: submissionConfiguration.config)
         {
             ObservingMode mode = findObject(ObservingMode.class, cm.modeId);
-            TypedQuery<Observation> obsquery = em.createQuery("select o from Observation o where o._id in :ids ", Observation.class);
+            TypedQuery<Observation> obsquery = em.createQuery(
+                    "select o from Observation o where o._id in :ids ", Observation.class);
             obsquery.setParameter("ids", cm.observationIds);
             List<Observation> observations = obsquery.getResultList();
             configMappings.add(new ObservationConfiguration(observations,mode));
@@ -150,7 +157,8 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         //FIXME need to gather the config
 
         // TODO Double check all references are updated correctly
-        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, configMappings, new Date(), false, new Date(0L), null );
+        SubmittedProposal submittedProposal = new SubmittedProposal(
+                proposal, configMappings, new Date(), false, new Date(0L), null);
         submittedProposal.updateClonedReferences();
         em.persist(submittedProposal);
         submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
@@ -167,13 +175,15 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             // if we can't copy the store then we need to rollback
             throw new WebApplicationException(e);
         }
-        //************************************************************
 
+        //************************************************************
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
 
-        return new ProposalSynopsis(proposal);
+        return new submittedProposalResponse(
+                submittedProposal.getObservations(),
+                submittedProposal.getId().toString());
     }
 
     @PUT
