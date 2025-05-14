@@ -55,11 +55,24 @@ public class XmlReaderService {
    // option for boolean field.
    private static final String BOOLEAN_TEXT = "boolean";
 
+   // option for the name flag.
+   private static final String NAME_ATTR = "name";
+
+   // the value element.
+   private static final String VALUE_ELEMENT = "value";
+
+   // element name for the timing.
+   private static final String TIME_OPTION_NAME = "TIME";
+
    // top level point where the telescope config lives.
    private static final String TELESCOPE_CONFIG = "telescopeConfigurations";
-   
+
+   private static final double DEFAULT_TIMING = 8.0;
    // store of telescopes.
    private HashMap<String, Telescope> telescopes;
+
+   // store for the night to hour relationship.
+   private HashMap<String, Double> nightRelationship;
 
    /**
     * default public interface, forces to utilise the environment variable for
@@ -108,8 +121,10 @@ public class XmlReaderService {
 
       // iterate over each xml and read in the values.
       telescopes = new HashMap<>();
+      nightRelationship = new HashMap<>();
       for(File xmlFile: xmlFiles) {
-         telescopes.putAll(this.processXML(xmlFile, schema));
+         telescopes.putAll(this.processXML(
+                 xmlFile, schema, nightRelationship));
       }
 
 
@@ -121,12 +136,66 @@ public class XmlReaderService {
    }
 
    /**
+    * Reads the XML and extracts the night relationship from the "TIME" option.
+    * @param document The parsed XML document.
+    * @param telescopeName The name of the telescope.
+    * @return The double value for the relationship between night and hour.
+    */
+   private Double getNightRelationshipValue(
+           Document document, String telescopeName) {
+      NodeList optionsList = document.getElementsByTagName(OPTIONS_CONFIG);
+      for (int i = 0; i < optionsList.getLength(); i++) {
+         Element optionsElement = (Element) optionsList.item(i);
+         if (optionsElement.getAttribute(NAME_ATTR).equals(TELESCOPE_CONFIG)) {
+            NodeList optionList =
+                 optionsElement.getElementsByTagName(OPTION_CONFIG);
+            for (int j = 0; j < optionList.getLength(); j++) {
+               Element optionElement = (Element) optionList.item(j);
+               if (optionElement.getAttribute(NAME_ATTR).equals(
+                       TIME_OPTION_NAME)) {
+                  NodeList valueNodes =
+                       optionElement.getElementsByTagName(VALUE_ELEMENT);
+                  if (valueNodes.getLength() > 0) {
+                     String value = valueNodes.item(0).getTextContent();
+                     try {
+                        return Double.parseDouble(value);
+                     } catch (NumberFormatException e) {
+                        LOGGER.log(
+                            WARNING,
+                            "Telescope '" + telescopeName +
+                            "': Invalid number format for 'TIME' option " +
+                            "value: " + value + ". Using default 8.0.");
+                        return DEFAULT_TIMING;
+                     }
+                  } else {
+                     LOGGER.log(
+                         WARNING,
+                         "Telescope '" + telescopeName +
+                         "': 'TIME' option found but has no 'value' element." +
+                         " Using default 8.0.");
+                     return DEFAULT_TIMING;
+                  }
+               }
+            }
+         }
+      }
+      LOGGER.log(
+          INFO,
+          "Telescope '" + telescopeName + "': 'TIME' option not found." +
+          " Using default 8.0.");
+      return DEFAULT_TIMING;
+   }
+
+   /**
     * reads in the xml and traverses it. building java objects for grouping.
     *
-    * @param xml: the xml file.
-    * @return the list of telescopes contained within the xml file.
+    * @param xml the xml file.
+    * @param schema the xml schema.
+    * @param nightRelationship the relationship holder for night to hours.
+    * @return the map of telescopes contained within the xml file.
     */
-   private HashMap<String, Telescope> processXML(File xml, Schema schema) {
+   private HashMap<String, Telescope> processXML(
+           File xml, Schema schema, HashMap<String, Double> nightRelationship) {
       HashMap<String, Telescope> telescopes = new HashMap<>();
 
       // Create a DocumentBuilderFactory instance
@@ -149,6 +218,10 @@ public class XmlReaderService {
          Attr telescopeNameAttr = root.getAttributeNode(TELESCOPE_ATTR);
          Telescope telescope = new Telescope(telescopeNameAttr.getValue());
          telescopes.put(telescope.getName(), telescope);
+         nightRelationship.put(
+             telescope.getName(),
+             this.getNightRelationshipValue(
+                 document, telescope.getName()));
 
          // try getting the telescope configurations and the tag for
          // instrument config.
@@ -423,8 +496,14 @@ public class XmlReaderService {
       }
       return name.substring(lastIndexOf);
    }
-   
+
+   // getter for the telescopes.
    public HashMap<String, Telescope> getTelescopes() {
       return this.telescopes;
+   }
+
+   // getter for the night relationship.
+   public HashMap<String, Double> getNightRelationship() {
+      return nightRelationship;
    }
 }

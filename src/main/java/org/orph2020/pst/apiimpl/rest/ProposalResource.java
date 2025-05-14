@@ -820,7 +820,13 @@ public class ProposalResource extends ObjectResourceBase {
         HashMap<String, Person> existingPeopleMap = new HashMap<>();
         for (ObjectIdentifier pid: peopleIds) {
             Person personToAdd = personResource.getPerson(pid.dbid);
-            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+            if (personToAdd.getOrcidId() == null) {
+                existingPeopleMap.put(
+                        personToAdd.getFullName(), personToAdd);
+            } else {
+                existingPeopleMap.put(
+                    personToAdd.getOrcidId().toString(), personToAdd);
+            }
         }
 
         //Compare people and organisations to what's in the database
@@ -839,11 +845,17 @@ public class ProposalResource extends ObjectResourceBase {
             }
 
             //If person does not exist, add them
-            if(!existingPeopleMap.containsKey(person.getOrcidId().toString())) {
+            String key = person.getFullName();
+            if (person.getOrcidId() != null) {
+                key = person.getOrcidId().toString();
+            }
+
+
+            if(!existingPeopleMap.containsKey(key)) {
                 logger.info("Adding person " + person.getFullName());
                 person.setXmlId("0");
                 i.setPerson(personResource.createPerson(person));
-                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+                existingPeopleMap.put(key, i.getPerson());
             }
         }
 
