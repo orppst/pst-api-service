@@ -5,6 +5,8 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceUnit;
 import jakarta.persistence.TypedQuery;
 import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.jwt.JsonWebToken;
@@ -21,9 +23,8 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalCycleDates;
-import org.orph2020.pst.common.json.ProposalSynopsis;
+import org.orph2020.pst.AppLifecycleBean.MODES;
+import org.orph2020.pst.common.json.*;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
@@ -31,8 +32,6 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.io.IOException;
 import java.util.*;
@@ -53,6 +52,13 @@ public class ProposalResource extends ObjectResourceBase {
     private final Logger logger;
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    @PersistenceUnit(unitName = "optical")
+    EntityManager opticalEntityManager;
+
+    // get the mode from the application level.
+    @Inject
+    MODES mode;
 
     public ProposalResource(Logger logger) {
         this.logger = logger;
@@ -85,6 +91,9 @@ public class ProposalResource extends ObjectResourceBase {
     //needed for import.
     @Inject
     SupportingDocumentResource supportingDocumentResource;
+
+    @Inject
+    OpticalTelescopeResource opticalTelescopeResource;
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -252,65 +261,170 @@ public class ProposalResource extends ObjectResourceBase {
         return responseWrapper(proposal.getTitle(), 200);
     }
 
+    /**
+     * checks the optical observation for telescope data.
+     *
+     * @param observationID: the observation id.
+     * @param proposalID: the proposal id.
+     * @param error: the error string.
+     */
+    private boolean checkOpticalTelescopes(
+            long observationID, long proposalID, StringBuilder error) {
+        OpticalTelescopeDataId id = new OpticalTelescopeDataId(
+                String.valueOf(proposalID), String.valueOf(observationID));
+        OpticalTelescopeDataSave savedData =
+                opticalEntityManager.find(OpticalTelescopeDataSave.class, id);
+
+        // if no data, then declare a failure.
+        if (savedData == null) {
+            error.append("No Telescope data defined.   ");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * checks the radio timing windows.
+     *
+     * @param timingWindows: the timing windows for a given observation.
+     * @param warn the warning message.
+     * @param error the error message.
+     * @param name the observation name.
+     * @param theCycleDates: the cycle dates.
+     */
+    private boolean checkRadioWindows(
+            List<ObservingConstraint> timingWindows, StringBuilder warn,
+            StringBuilder error, ProposalCycleDates theCycleDates,
+            String name) {
+        if (timingWindows.isEmpty()) {
+            error.append("No timing windows defined.<br/>");
+            return false;
+        } else {
+            for (ObservingConstraint timingWindow : timingWindows) {
+                TimingWindow theWindow = (TimingWindow) timingWindow;
+                if (theWindow.getIsAvoidConstraint()) {
+                    if (theCycleDates.observationSessionStart.after(
+                                theWindow.getStartTime())
+                            && theCycleDates.observationSessionEnd.before(
+                                theWindow.getEndTime())) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name + "' excludes this entire session.<br/>");
+                    }
+                } else {
+                    if (theWindow.getEndTime().before(
+                            theCycleDates.observationSessionStart)) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name + "' ends before this session begins.<br/>");
+                    }
+                    if (theWindow.getStartTime().after(
+                            theCycleDates.observationSessionEnd)) {
+                        warn.append(
+                            "A timing window for the observation of '" +
+                            name +
+                            "' begins after this session has ended.<br/>");
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
     //TODO - add more checks, consider where to put observatory / instrument specific validation.
     @GET
     @Path(proposalRoot + "/validate")
-    @Operation(summary = "validate the proposal, get summary strings of it's state.  Optionally pass a cycle to compare dates with.")
-    public ProposalValidation validateObservingProposal(@PathParam("proposalCode") Long proposalCode, @RestQuery long cycleId) {
+    @Operation(summary = "validate the proposal, get summary strings of" +
+            " it's state.  Optionally pass a cycle to compare dates with.")
+    public ProposalValidation validateObservingProposal(
+            @PathParam("proposalCode") Long proposalCode,
+            @RestQuery long cycleId) {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
-        String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
+        String info = "Your proposal has passed preliminary checks," +
+                " please now select modes for your observations.";
         StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
         //Count the targets
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
         if(targets.isEmpty()) {
             valid = false;
-            error.append("No targets defined.  ");
+            error.append("No targets defined.<br/>");
         }
 
-        List<ObjectIdentifier> technicalGoals = technicalGoalResource.getTechnicalGoals(proposalCode);
-        if(technicalGoals.isEmpty()) {
+        if (mode == MODES.RADIO) {
+            List<ObjectIdentifier> technicalGoals =
+                technicalGoalResource.getTechnicalGoals(proposalCode);
+            if(technicalGoals.isEmpty()) {
+                valid = false;
+                error.append("No technical goals defined.<br/>");
+            }
+        }
+
+        List<Long> opticalObservationIds =
+            opticalTelescopeResource.listOfObservationIdsByProposal(
+                proposalCode.toString());
+        List<ObjectIdentifier> observations =
+            observationResource.getObservations(proposalCode, null, null);
+
+        // handle combination proposals vs mode.
+        if (mode == MODES.OPTICAL &&
+                opticalObservationIds.size() != observations.size()) {
             valid = false;
-            error.append("No technical goals defined.  ");
+            error.append(
+                "There are observations in this proposal which are not " +
+                "optical.");
+        }
+        if (mode == MODES.RADIO && opticalObservationIds.size() != 0) {
+            valid = false;
+            error.append(
+                "There are observations in this proposal which are optical.");
         }
 
-        List<ObjectIdentifier> observations = observationResource.getObservations(proposalCode, null, null);
+
         if(observations.isEmpty()) {
             valid = false;
-            error.append("No observations defined.  ");
+            error.append("No observations defined.<br/>");
         } else if(cycleId != 0) {
             //Compare timing windows with cycle dates and times.
-            ProposalCycleDates theCycleDates = proposalCyclesResource.getProposalCycleDates(cycleId);
+            ProposalCycleDates theCycleDates =
+                    proposalCyclesResource.getProposalCycleDates(cycleId);
 
             //Has proposal cycle submission deadline passed?
             Date now = new Date();
             if(now.after(theCycleDates.submissionDeadline)) {
                 valid = false;
-                error.append("The submission deadline has passed.");
+                error.append("The submission deadline has passed.<br/>");
             } else {
                 for (ObjectIdentifier observation : observations) {
-                    List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
-                    if (timingWindows.isEmpty()) {
-                        valid = false;
-                        error.append("No timing windows defined.  ");
-                    } else {
-                        for (ObservingConstraint timingWindow : timingWindows) {
-                            TimingWindow theWindow = (TimingWindow) timingWindow;
-                            if (theWindow.getIsAvoidConstraint()) {
-                                if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                                        && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                                    warn.append("A timing window excludes this entire observation session.  ");
-                                }
+                    List<ObservingConstraint> timingWindows =
+                        observationResource.getConstraints(
+                            proposalCode, observation.dbid);
+                    switch (mode) {
+                        case RADIO:
+                            valid &= this.checkRadioWindows(
+                                timingWindows, warn, error, theCycleDates,
+                                observation.name);
+                            break;
+                        case OPTICAL:
+                            valid &= this.checkOpticalTelescopes(
+                                observation.dbid, proposalCode, error);
+                            break;
+                        case BOTH:
+                            if (opticalObservationIds.contains(
+                                    observation.dbid)) {
+                                valid &= this.checkOpticalTelescopes(
+                                    observation.dbid, proposalCode, error);
                             } else {
-                                if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                                    warn.append("A timing window ends before this observation session begins.  ");
-                                }
-                                if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                                    warn.append("A timing window begins after this observation session has ended. ");
-                                }
+                                valid &= this.checkRadioWindows(
+                                    timingWindows, warn, error, theCycleDates,
+                                    observation.name);
                             }
-                        }
+                            break;
+                        default:
+                            error.append(
+                                "Dont recognise mode. therefore not valid.");
+                            break;
                     }
                 }
             }
@@ -319,7 +433,9 @@ public class ProposalResource extends ObjectResourceBase {
         if(!valid) {
             info = "Your proposal is not ready for submission";
         }
-        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn.toString(), error.toString()));
+        return (new ProposalValidation(
+                proposalCode, proposal.getTitle(), valid, info, warn.toString(),
+                error.toString()));
     }
 
     @PUT
@@ -704,7 +820,13 @@ public class ProposalResource extends ObjectResourceBase {
         HashMap<String, Person> existingPeopleMap = new HashMap<>();
         for (ObjectIdentifier pid: peopleIds) {
             Person personToAdd = personResource.getPerson(pid.dbid);
-            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+            if (personToAdd.getOrcidId() == null) {
+                existingPeopleMap.put(
+                        personToAdd.getFullName(), personToAdd);
+            } else {
+                existingPeopleMap.put(
+                    personToAdd.getOrcidId().toString(), personToAdd);
+            }
         }
 
         //Compare people and organisations to what's in the database
@@ -723,11 +845,17 @@ public class ProposalResource extends ObjectResourceBase {
             }
 
             //If person does not exist, add them
-            if(!existingPeopleMap.containsKey(person.getOrcidId().toString())) {
+            String key = person.getFullName();
+            if (person.getOrcidId() != null) {
+                key = person.getOrcidId().toString();
+            }
+
+
+            if(!existingPeopleMap.containsKey(key)) {
                 logger.info("Adding person " + person.getFullName());
                 person.setXmlId("0");
                 i.setPerson(personResource.createPerson(person));
-                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+                existingPeopleMap.put(key, i.getPerson());
             }
         }
 
