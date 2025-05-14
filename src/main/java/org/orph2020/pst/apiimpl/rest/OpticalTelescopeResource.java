@@ -148,7 +148,7 @@ public class OpticalTelescopeResource extends ObjectResourceBase {
             "hour relationships.")
     public Response getOpticalTelescopeNightRelationships() {
         return responseWrapper(
-                xmlReader.getNightRelationship().keySet().stream().toList(),
+                xmlReader.getNightRelationship(),
                 201);
     }
 
