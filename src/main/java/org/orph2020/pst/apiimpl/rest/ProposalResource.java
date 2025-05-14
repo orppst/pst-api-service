@@ -829,20 +829,10 @@ public class ProposalResource extends ObjectResourceBase {
             }
         }
 
-        //Compare people and organisations to what's in the database
+        //Compare people and organisations to what's in the database only add new org is adding a new person
         List<Investigator> investigators = newProposal.getInvestigators();
         for (Investigator i : investigators) {
             Person person = i.getPerson();
-            Organization organization = person.getHomeInstitute();
-
-            //If organisation doesn't exist, add it
-            if(!existingOrganizationsMap.containsKey(organization.getName())) {
-                logger.info("Adding organisation " + organization.getName());
-                organization.setXmlId("0");
-                Organization newOrganization = organizationResource.createOrganization(organization);
-                person.setHomeInstitute(newOrganization);
-                existingOrganizationsMap.put(organization.getName(), person.getHomeInstitute());
-            }
 
             //If person does not exist, add them
             String key = person.getFullName();
@@ -850,9 +840,21 @@ public class ProposalResource extends ObjectResourceBase {
                 key = person.getOrcidId().toString();
             }
 
-
-            if(!existingPeopleMap.containsKey(key)) {
-                logger.info("Adding person " + person.getFullName());
+            //If this person exists, use that record, else add them
+            if(existingPeopleMap.containsKey(key)) {
+                i.setPerson(existingPeopleMap.get(key));
+            } else {
+                //If organisation exists, use that record, else add it
+                Organization organization = person.getHomeInstitute();
+                if(existingOrganizationsMap.containsKey(organization.getName())) {
+                    person.setHomeInstitute(existingOrganizationsMap.get(organization.getName()));
+                } else {
+                    logger.info("Adding organisation " + organization.getName());
+                    organization.setXmlId("0");
+                    Organization newOrganization = organizationResource.createOrganization(organization);
+                    person.setHomeInstitute(newOrganization);
+                    existingOrganizationsMap.put(organization.getName(), newOrganization);
+                }
                 person.setXmlId("0");
                 i.setPerson(personResource.createPerson(person));
                 existingPeopleMap.put(key, i.getPerson());
