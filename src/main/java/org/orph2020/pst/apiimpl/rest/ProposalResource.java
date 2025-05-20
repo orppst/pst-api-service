@@ -780,10 +780,17 @@ public class ProposalResource extends ObjectResourceBase {
     @GET
     @Operation(summary="export a proposal as a file")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @Path(proposalRoot+"/export")
-    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
+    @Path(proposalRoot+"/{investigatorsIncluded}"+"/export")
+    public Response exportProposal(
+                @PathParam("proposalCode")Long proposalCode,
+                @PathParam("investigatorsIncluded")Boolean investigatorsIncluded)
             throws WebApplicationException {
         ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+
+        // wipe the investigators if not asked for.
+        if(!investigatorsIncluded) {
+            proposalForExport.setInvestigators(new ArrayList<Investigator>());
+        }
 
         return Response
                 .status(Response.Status.OK)
