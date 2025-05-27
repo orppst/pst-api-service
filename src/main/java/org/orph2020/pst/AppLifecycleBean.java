@@ -34,32 +34,6 @@ import java.util.List;
 
 @ApplicationScoped
 public class AppLifecycleBean {
-
-    // constant environmental value for where telescope data is located.
-    private static final String POLARIS_MODE_ENV_NAME =
-        "POLARIS_TELESCOPE_MODE";
-
-    // makes a string based enum with text. to help iterate.
-    public enum MODES {
-        OPTICAL("OPTICAL", 0),
-        RADIO("RADIO", 1),
-        BOTH("BOTH", 2);
-
-        private final String text;
-        private final int number;
-
-        MODES(String text, int number) {
-            this.text = text;
-            this.number = number;
-        }
-
-        public String getText() {
-            return text;
-        }
-        public int getValue() { return number; }
-    }
-
-    // exists for the application lifetime no need to close
     @PersistenceContext
     protected EntityManager em;
 
@@ -72,9 +46,6 @@ public class AppLifecycleBean {
     // reader for xml files
     XmlReaderService xmlReader;
 
-    // store for the polaris mode
-    MODES polarisMode;
-
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
     // produces the array of telescopes.
@@ -84,44 +55,11 @@ public class AppLifecycleBean {
         return this.xmlReader;
     }
 
-    // produces the holder for the polaris mode.
-    @Singleton
-    @Produces
-    MODES mode() { return this.polarisMode; }
-
-
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         LOGGER.info("The application is starting...");
         this.initialiseDatabase();
         this.initialiseOpticalTelescopeDatabase();
-        this.initialisePolarisMode();
-    }
-
-    /**
-     * processes the environment variable for the polaris mode.
-     */
-    private void initialisePolarisMode() {
-        String environmentMode = System.getenv(POLARIS_MODE_ENV_NAME);
-
-        // handle when no environment variable is set.
-        if(environmentMode == null) {
-            this.polarisMode = MODES.RADIO;
-            LOGGER.log(
-                Logger.Level.WARN,
-                "no environment variable was set for" +
-                POLARIS_MODE_ENV_NAME + ", so defaulting to RADIO setting.");
-        }
-
-        switch (MODES.valueOf(environmentMode)) {
-            case RADIO -> this.polarisMode = MODES.RADIO;
-            case OPTICAL -> this.polarisMode = MODES.OPTICAL;
-            case BOTH -> this.polarisMode = MODES.BOTH;
-            default -> {
-                LOGGER.error("NO valid mode was detected. setting to radio.");
-                this.polarisMode = MODES.RADIO;
-            }
-        }
     }
 
     /**

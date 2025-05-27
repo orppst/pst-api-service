@@ -2,25 +2,28 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.ResponseStatus;
-
-import static org.orph2020.pst.AppLifecycleBean.MODES;
+import org.orph2020.pst.apiimpl.entities.MODES;
+import org.orph2020.pst.apiimpl.entities.polarisModeService.PolarisModeService;
 
 @Produces(MediaType.APPLICATION_JSON)
 @Path("polarisMode")
 @Tag(name = "polarisMode")
 @ApplicationScoped
-public class PolarisModeResource extends ObjectResourceBase {
+public class PolarisModeResource {
 
-    // get the mode from the application level.
+    private final PolarisModeService polarisModeService;
+
     @Inject
-    MODES mode;
+    public PolarisModeResource(PolarisModeService polarisModeService) {
+        this.polarisModeService = polarisModeService;
+    }
 
     /**
      * getter rest api for the mode.
@@ -30,7 +33,7 @@ public class PolarisModeResource extends ObjectResourceBase {
     @Operation(summary = "get Polaris mode")
     @ResponseStatus(value = 201)
     public Response getMode() {
-        return responseWrapper(mode.getValue(), 201);
+        return Response.ok(polarisModeService.getPolarisMode().getValue()).build();
     }
 
     /**
@@ -45,41 +48,17 @@ public class PolarisModeResource extends ObjectResourceBase {
     @ResponseStatus(value = 201)
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response setMode(int mode)
-    {
-        // locate correct enum
-        MODES selectedMode = null;
-        for (MODES m : MODES.values()) {
-            if (m.getValue() == mode) {
-                selectedMode = m;
-                break;
-            }
-        }
-
-        // handle enum detection failure.
-        if(selectedMode == null) {
+    public Response setMode(int mode) {
+        MODES selectedMode;
+        try {
+            selectedMode = MODES.fromValue(mode);
+        } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                .entity("Invalid mode value.").build();
+                    .entity("Invalid mode value: " + e.getMessage()).build();
         }
 
-        // execute switch.
-        switch (selectedMode) {
-            case OPTICAL -> {
-                this.mode = MODES.OPTICAL;
-                return Response.ok("Mode set to OPTICAL").build();
-            }
-            case RADIO -> {
-                this.mode = MODES.RADIO;
-                return Response.ok("Mode set to RADIO").build();
-            }
-            case BOTH -> {
-                this.mode = MODES.BOTH;
-                return Response.ok("Mode set to BOTH").build();
-            }
-            default -> {
-                return Response.status(Response.Status.BAD_REQUEST).entity(
-                        "Invalid mode value.").build();
-            }
-        }
+        // Use the centralized service to set the mode
+        polarisModeService.setPolarisMode(selectedMode);
+        return Response.ok("Mode set to " + selectedMode.getText()).build();
     }
 }
