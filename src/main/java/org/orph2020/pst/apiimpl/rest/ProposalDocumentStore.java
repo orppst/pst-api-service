@@ -51,6 +51,12 @@ public class ProposalDocumentStore {
                 proposalCode.toString(),
                 "justifications/technical"
         ));
+
+        //copy LaTex template for Justifications to the proposal store
+        Files.copy(
+                Paths.get("src/main/data/mainTemplate.tex"),
+                Paths.get(proposalStoreRoot, proposalCode.toString(), "justifications/main.tex")
+        );
     }
 
     /**
