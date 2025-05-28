@@ -23,7 +23,8 @@ import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.orph2020.pst.AppLifecycleBean.MODES;
+import org.orph2020.pst.apiimpl.entities.MODES;
+import org.orph2020.pst.apiimpl.entities.polarisModeService.PolarisModeService;
 import org.orph2020.pst.common.json.*;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -56,14 +57,12 @@ public class ProposalResource extends ObjectResourceBase {
     @PersistenceUnit(unitName = "optical")
     EntityManager opticalEntityManager;
 
-    // get the mode from the application level.
-    @Inject
-    MODES mode;
-
     public ProposalResource(Logger logger) {
         this.logger = logger;
     }
 
+    @Inject
+    PolarisModeService polarisModeService;
     @Inject
     ObservationResource observationResource;
     @Inject
@@ -152,15 +151,43 @@ public class ProposalResource extends ObjectResourceBase {
         }
     }
 
-    private ObservingProposal singleObservingProposal(Long proposalCode)
+    /**
+     * code to query for a given proposal.
+     *
+     * @param proposalCode proposal id
+     * @param doInvestigatorsCheck boolean check for if we should lock it
+     *                             down to just investigators of said proposals.
+     * @return the only proposal with that id, or null if the investigator
+     * check was done adn failed, or if the proposal id wasn't used.
+     */
+    private ObservingProposal singleObservingProposal(
+            Long proposalCode, Boolean doInvestigatorsCheck)
     {
+        // create base query
+        String baseQuery =
+            "Select o From ObservingProposal o, Investigator i where " +
+                "o._id = :pid";
+
+        // add investigator check if needed.
+        if (doInvestigatorsCheck) {
+            baseQuery = baseQuery + " and i member of o.investigators and " +
+                "i.person._id = :uid";
+        }
+
+        // create query.
         TypedQuery<ObservingProposal> q = em.createQuery(
-                "Select o From ObservingProposal o, Investigator i where i member of o.investigators "
-                        + "and o._id = :pid and i.person._id = :uid",
-                ObservingProposal.class
-        );
+                baseQuery, ObservingProposal.class);
         q.setParameter("pid", proposalCode);
-        q.setParameter("uid", subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId());
+
+        // set user parameter if using investigator check.
+        if (doInvestigatorsCheck) {
+            q.setParameter(
+                "uid",
+                subjectMapResource.subjectMap(
+                    userInfo.getSubject()).getPerson().getId());
+        }
+
+        // return result, if any.
         return q.getSingleResult();
     }
 
@@ -170,12 +197,14 @@ public class ProposalResource extends ObjectResourceBase {
             responseCode = "200",
             description = "get a single Proposal specified by the code"
     )
-    @Path(proposalRoot)
+    @Path(proposalRoot + "/{doInvestigatorCheck}")
     @RolesAllowed("default-roles-orppst")
-    public ObservingProposal getObservingProposal(@PathParam("proposalCode") Long proposalCode)
+    public ObservingProposal getObservingProposal(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("doInvestigatorCheck") Boolean doInvestigatorCheck)
             throws WebApplicationException
     {
-        return singleObservingProposal(proposalCode);
+        return singleObservingProposal(proposalCode, doInvestigatorCheck);
     }
 
     @POST
@@ -254,10 +283,13 @@ public class ProposalResource extends ObjectResourceBase {
     //********************** TITLE ***************************
 
     @GET
-    @Path(proposalRoot + "/title")
+    @Path(proposalRoot + "/{doInvestigatorCheck}" + "/title")
     @Operation(summary = "get the title of the ObservingProposal specified by 'proposalCode'")
-    public Response getObservingProposalTitle(@PathParam("proposalCode") Long proposalCode) {
-        ObservingProposal proposal = singleObservingProposal(proposalCode);
+    public Response getObservingProposalTitle(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("doInvestigatorCheck") Boolean doInvestigatorCheck) {
+        ObservingProposal proposal = singleObservingProposal(
+                proposalCode, doInvestigatorCheck);
         return responseWrapper(proposal.getTitle(), 200);
     }
 
@@ -333,13 +365,15 @@ public class ProposalResource extends ObjectResourceBase {
 
     //TODO - add more checks, consider where to put observatory / instrument specific validation.
     @GET
-    @Path(proposalRoot + "/validate")
+    @Path(proposalRoot + "/{doInvestigatorCheck}" + "/validate")
     @Operation(summary = "validate the proposal, get summary strings of" +
             " it's state.  Optionally pass a cycle to compare dates with.")
     public ProposalValidation validateObservingProposal(
             @PathParam("proposalCode") Long proposalCode,
+            @PathParam("doInvestigatorCheck") Boolean doInvestigatorCheck,
             @RestQuery long cycleId) {
-        ObservingProposal proposal = singleObservingProposal(proposalCode);
+        ObservingProposal proposal = singleObservingProposal(
+            proposalCode, doInvestigatorCheck);
         boolean valid = true;
         String info = "Your proposal has passed preliminary checks," +
                 " please now select modes for your observations.";
@@ -352,6 +386,7 @@ public class ProposalResource extends ObjectResourceBase {
             error.append("No targets defined.<br/>");
         }
 
+        MODES mode = polarisModeService.getPolarisMode();
         if (mode == MODES.RADIO) {
             List<ObjectIdentifier> technicalGoals =
                 technicalGoalResource.getTechnicalGoals(proposalCode);
@@ -473,10 +508,15 @@ public class ProposalResource extends ObjectResourceBase {
     //********************** KIND ***************************
 
     @GET
-    @Path(proposalRoot + "/kind")
-    @Operation(summary = "get the 'kind' of ObservingProposal specified by the 'proposalCode")
-    public ProposalKind getObservingProposalKind(@PathParam("proposalCode") Long proposalCode) {
-        ObservingProposal proposal = getObservingProposal(proposalCode);
+    @Path(proposalRoot + "/{doInvestigatorCheck}" + "/kind")
+    @Operation(
+        summary =
+        "get the 'kind' of ObservingProposal specified by the 'proposalCode")
+    public ProposalKind getObservingProposalKind(
+            @PathParam("proposalCode") Long proposalCode,
+            @PathParam("doInvestigatorCheck") Boolean doInvestigatorCheck) {
+        ObservingProposal proposal = getObservingProposal(
+            proposalCode, doInvestigatorCheck);
         return proposal.getKind();
     }
 
@@ -780,10 +820,17 @@ public class ProposalResource extends ObjectResourceBase {
     @GET
     @Operation(summary="export a proposal as a file")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @Path(proposalRoot+"/export")
-    public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
+    @Path(proposalRoot+"/{investigatorsIncluded}"+"/export")
+    public Response exportProposal(
+                @PathParam("proposalCode")Long proposalCode,
+                @PathParam("investigatorsIncluded")Boolean investigatorsIncluded)
             throws WebApplicationException {
         ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+
+        // wipe the investigators if not asked for.
+        if(!investigatorsIncluded) {
+            proposalForExport.setInvestigators(new ArrayList<Investigator>());
+        }
 
         return Response
                 .status(Response.Status.OK)
