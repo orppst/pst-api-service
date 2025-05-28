@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
+import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
@@ -96,11 +97,37 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     @GET
+    @Operation(summary="export a proposal as a file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path("/{submittedProposalId}" + "/{investigatorsIncluded}"+"/export")
+    public Response exportProposal(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId")Long submittedProposalId,
+            @PathParam("investigatorsIncluded")Boolean investigatorsIncluded)
+            throws WebApplicationException {
+        SubmittedProposal submittedProposalForExport =
+            findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, submittedProposalId);
+
+        // wipe the investigators if not asked for.
+        if(!investigatorsIncluded) {
+            submittedProposalForExport.setInvestigators(new ArrayList<>());
+        }
+
+        return Response
+                .status(Response.Status.OK)
+                .header("Content-Disposition", "attachment;filename=" + "proposal.json")
+                .entity(writeAsJsonString(submittedProposalForExport))
+                .build();
+    }
+
+    @GET
     @Path("/{submittedProposalId}")
     @Operation(summary = "get the SubmittedProposal specified by 'submittedProposalId'")
     @RolesAllowed({"tac_admin", "tac_member"})
-    public SubmittedProposal getSubmittedProposal(@PathParam("cycleCode") Long cycleCode,
-                                                @PathParam("submittedProposalId") Long submittedProposalId)
+    public SubmittedProposal getSubmittedProposal(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId)
     {
         return findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
               "submittedProposals", cycleCode, submittedProposalId);

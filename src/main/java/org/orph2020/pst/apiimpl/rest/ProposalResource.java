@@ -165,12 +165,13 @@ public class ProposalResource extends ObjectResourceBase {
     {
         // create base query
         String baseQuery =
-            "Select o From ObservingProposal o, Investigator i where i member" +
-            " of o.investigators and o._id = :pid";
+            "Select o From ObservingProposal o, Investigator i where " +
+                "o._id = :pid";
 
         // add investigator check if needed.
         if (doInvestigatorsCheck) {
-            baseQuery = baseQuery + " and i.person._id = :uid";
+            baseQuery = baseQuery + " and i member of o.investigators and " +
+                "i.person._id = :uid";
         }
 
         // create query.
