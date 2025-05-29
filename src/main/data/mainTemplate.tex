@@ -11,8 +11,8 @@
 % functions, or could use their own. In either case, the image files that the figures refer to
 % must be uploaded by the user.
 
-% Users are expected to provide a bibliography file literally named "refs.bib", and use the normal
-% syntax for LaTex citations in their text i.e., "~\cite{namedReference}".
+% Users are expected to provide a bibliography file, which will be renamed "refs.lib", and use
+% the normal syntax for LaTex citations in their text i.e., "~\cite{namedReference}".
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -23,7 +23,7 @@
 \usepackage{graphicx}
 \usepackage{subfig}
 
-\title{Replace this with the proposal title and the cycle number}
+\title{REPLACE_PROPOSAL_TITLE}
 %%%%% empty author and date wanted
 \author{}
 \date{}
@@ -78,18 +78,18 @@
 
     \section*{Scientific Justification}
 
-% Insert user's scientific justification text here
+%INSERT_SCIENTIFIC_TEXT%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     \section*{Technical Justification}
 
-% Insert user's technical justification text here
+%INSERT_TECHNICAL_TEXT%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     \bibliographystyle{plain}
-% Users are expected to provide a bibliography file literally named "refs.bib"
+% Users are expected to provide the bibliography file
     \bibliography{refs}
 
 \end{document}

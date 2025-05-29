@@ -43,31 +43,26 @@ public class ProposalDocumentStore {
         Files.createDirectories(Paths.get(
                 proposalStoreRoot,
                 proposalCode.toString(),
-                "justifications/scientific"
-        ));
-
-        Files.createDirectories(Paths.get(
-                proposalStoreRoot,
-                proposalCode.toString(),
-                "justifications/technical"
+                "justifications"
         ));
 
         //copy LaTex template for Justifications to the proposal store
         Files.copy(
                 Paths.get("src/main/data/mainTemplate.tex"),
-                Paths.get(proposalStoreRoot, proposalCode.toString(), "justifications/main.tex")
+                Paths.get(proposalStoreRoot, proposalCode.toString(),
+                        "justifications/mainTemplate.tex")
         );
     }
 
     /**
-     * Removes the subdirectory, including its subdirectories, specified.
+     * Removes the subdirectory specified, including its subdirectories.
      * We use this to clean up the document store when a proposal is deleted such that the
      * string parameter must refer to the top-level subdirectory for that proposal.
      * @param proposalDirectory the top-level subdirectory for the proposal being deleted
      * @throws IOException if deletion fails
      */
     public void removeStorePath(String proposalDirectory) throws IOException {
-        //this is a recursive delete
+        //this delete is recursive
         FileUtils.deleteDirectory(fetchFile(proposalDirectory));
     }
 
@@ -76,9 +71,9 @@ public class ProposalDocumentStore {
      * and files (intention is that 'source' and 'destination' are unique identifiers for proposals)
      * @param source a string representing the source directory or path (not including the store root)
      * @param destination a string representing the destination directory or path (not including the store root)
-     * @param supportingDocuments list of supporting documents from the CLONED proposal to update
+     * @param supportingDocuments the list of supporting documents from the CLONED proposal to update
      *                            their 'locations' to use the 'destination' path - can be empty
-     * @throws IOException if copy operation fails
+     * @throws IOException if the copy operation fails
      */
     public void copyStore(String source, String destination, List<SupportingDocument> supportingDocuments)
             throws IOException {
@@ -92,7 +87,7 @@ public class ProposalDocumentStore {
 
 
     /**
-     * Convenience method to fetch the file given from this DocumentStore, may refer to a directory
+     * Convenience method to fetch the file given from this DocumentStore may refer to a directory
      * (note: 'filePath' can refer to a non-existent file)
      * @param filePath filename of the file to fetch, can have optional parent paths
      * @return the file identified by the filepath in this DocumentStore
@@ -140,7 +135,7 @@ public class ProposalDocumentStore {
      * List files in the given directory, optionally provide a non-empty array of specific file
      * extension strings to look for
      * @param filePath where to look
-     * @param fileExtensions optional list of file extensions, can be left empty or null to list all files
+     * @param fileExtensions an optional list of file extensions can be left empty or null to list all files
      * @return Set of strings containing the files found
      * @throws IOException thrown by Files.list()
      */
