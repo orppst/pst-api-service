@@ -19,14 +19,10 @@
 % 
 \documentclass[11pt,a4paper,twoside]{article}
 %
-\usepackage[top=1.5cm, left=2.0cm, right=2.0cm, bottom=1.5cm]{geometry}
+\usepackage[textwidth=16cm,textheight=25cm,headheight=14pt]{geometry}
 \usepackage{graphicx}
 \usepackage{subfig}
-
-\title{REPLACE_PROPOSAL_TITLE}
-%%%%% empty author and date wanted
-\author{}
-\date{}
+\usepackage{fancyhdr}
 
 %%%%%%%% Custom "insert figure" commands %%%%%%
 \newcommand{\onefigure}[3][.5]{%
@@ -74,7 +70,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
-    \maketitle
+    \pagestyle{fancy}
+    \fancyhead{}
+    \fancyhead[LO,LE]{\textbf{PROPOSAL-TITLE-HERE}}
+    \fancyhead[RO,RE]{\textbf{CYCLE-ID-HERE}}
 
     \section*{Scientific Justification}
 

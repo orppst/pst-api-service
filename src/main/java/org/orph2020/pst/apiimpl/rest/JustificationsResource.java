@@ -343,13 +343,20 @@ public class JustificationsResource extends ObjectResourceBase {
             throw new WebApplicationException(e.getMessage());
         }
 
+        //Here if successful latex compilation
+
+        File logFile = proposalDocumentStore
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+
+        String pageCount = scanLogForPageNumber(logFile);
+
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
                 .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf");
 
         return responseWrapper(
-                String.format("Latex compilation successful!\nPDF output file saved as: %s",
-                output.getName()), 200);
+                String.format("Latex compilation successful!\nPDF output file saved as: %s\nPage count: %s",
+                output.getName(), pageCount), 200);
     }
 
     @GET
@@ -374,7 +381,20 @@ public class JustificationsResource extends ObjectResourceBase {
                 .build();
     }
 
+    @GET
+    @Path("latexPdf/pages")
+    @Operation(summary = "get the number of pages in the pdf file produced after successfully running 'latexmk'")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLatexPdfPages(@PathParam("proposalCode") Long proposalCode)
+        throws WebApplicationException {
 
+        File logFile = proposalDocumentStore
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+
+        String pageCount = scanLogForPageNumber(logFile);
+
+        return responseWrapper(pageCount, 200);
+    }
 
 // ****** Convenience functions private to this class ********
 
@@ -466,8 +486,37 @@ public class JustificationsResource extends ObjectResourceBase {
                 }
             }
         }
+        scanner.close();
         return list.stream().distinct().toList();
     }
+
+    private String scanLogForPageNumber(File file) throws WebApplicationException {
+        try {
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                //all errors start with "! "
+                if (line.contains("Output written on out/justification.pdf")) {
+                    scanner.close();
+                    Pattern pattern = Pattern.compile("\\d+ page|pages");
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        return matcher.group();
+                    } else {
+                        throw new WebApplicationException(
+                                String.format("No page count found in log file: %s", file.getName()));
+                    }
+                }
+            }
+            scanner.close();
+            throw new WebApplicationException(
+                    String.format("No page count found in log file: %s", file.getName())
+            );
+        } catch (FileNotFoundException e) {
+            throw new WebApplicationException(e);
+        }
+    }
+
 
     /**
      * Checks that the Justification exists and has Latex format
@@ -559,7 +608,7 @@ public class JustificationsResource extends ObjectResourceBase {
     )
             throws IOException {
 
-        String proposalTitleTarget = "REPLACE_PROPOSAL_TITLE";
+        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
         String scientificTarget = "%INSERT_SCIENTIFIC_TEXT%";
         String technicalTarget = "%INSERT_TECHNICAL_TEXT%";
 
