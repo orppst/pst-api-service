@@ -76,78 +76,72 @@ public class JustificationsResource extends ObjectResourceBase {
         };
     }
 
-
     @PUT
-    @Operation( summary = "update a scientific Justification in the ObservingProposal specified by the 'proposalCode'")
-    @Path("scientific")
+    @Operation( summary = "update the technical or scientific justification associated with the ObservingProposal specified by 'proposalCode'")
+    @Path("{which}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
-    public Justification updateScientificJustification(
+    public Justification updateJustification(
             @PathParam("proposalCode") Long proposalCode,
-            Justification incoming)
+            @PathParam("which") String which,
+            Justification incoming
+    )
         throws WebApplicationException
     {
         Justification scientific = getWhichJustification(proposalCode, "scientific");
         Justification technical = getWhichJustification(proposalCode, "technical");
 
-        if (scientific == null) {
+        if (which.equals("scientific") && scientific == null) {
             throw new WebApplicationException(
                     "The Proposal has no existing scientific justification, please 'add' one"
             );
         }
 
-        scientific.updateUsing(incoming);
-        em.merge(scientific);
-
-        //ensure the technical justification has the same format as the scientific justification
-        technical.setFormat(scientific.getFormat());
-
-        if (scientific.getFormat() == TextFormats.LATEX) {
-            try {
-                insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
-            } catch (IOException e) {
-                throw new WebApplicationException(e);
-            }
-        }
-
-        return scientific;
-    }
-
-
-    @PUT
-    @Operation( summary = "update a technical Justification in the ObservingProposal specified by the 'proposalCode'")
-    @Path("technical")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Transactional(rollbackOn={WebApplicationException.class})
-    public Justification updateTechnicalJustification(
-            @PathParam("proposalCode") Long proposalCode,
-            Justification incoming )
-            throws WebApplicationException
-    {
-        Justification scientific = getWhichJustification(proposalCode, "scientific");
-        Justification technical = getWhichJustification(proposalCode, "technical");
-
-        if (technical == null) {
+        if (which.equals("technical") && technical == null) {
             throw new WebApplicationException(
                     "The Proposal has no existing technical justification, please 'add' one"
             );
         }
 
-        technical.updateUsing(incoming);
-        em.merge(technical);
-
-        //ensure the scientific justification has the same format as the technical justification
-        scientific.setFormat(technical.getFormat());
-
-        try {
-            insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
-        } catch (IOException e) {
-            throw new WebApplicationException(e);
+        switch (which) {
+            case "technical" -> {
+                technical.updateUsing(incoming);
+                em.merge(technical);
+                //ensure the scientific justification has the same format as the technical justification
+                scientific.setFormat(technical.getFormat());
+                if (technical.getFormat() == TextFormats.LATEX) {
+                    try {
+                        insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
+                    } catch (IOException e) {
+                        throw new WebApplicationException(e);
+                    }
+                }
+            }
+            case "scientific" -> {
+                scientific.updateUsing(incoming);
+                em.merge(scientific);
+                //ensure the technical justification has the same format as the scientific justification
+                technical.setFormat(scientific.getFormat());
+                if (scientific.getFormat() == TextFormats.LATEX) {
+                    try {
+                        insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
+                    } catch (IOException e) {
+                        throw new WebApplicationException(e);
+                    }
+                }
+            }
         }
 
-        return technical;
+        return switch (which) {
+            case "technical" -> technical;
+            case "scientific" -> scientific;
+            //belt and braces
+            default -> throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
+                    400
+            );
+        };
     }
-
 
     @POST
     @Operation( summary = "add a technical or scientific Justification to the ObservingProposal specified by the 'proposalCode'")
