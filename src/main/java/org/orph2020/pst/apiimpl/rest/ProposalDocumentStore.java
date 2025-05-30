@@ -16,6 +16,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 /**
  *  This is a convenience class bean to help with file I/O and bookkeeping for the document store
  *  of individual proposals
@@ -50,7 +52,8 @@ public class ProposalDocumentStore {
         Files.copy(
                 Paths.get("src/main/data/mainTemplate.tex"),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/mainTemplate.tex")
+                        "justifications/mainTemplate.tex"),
+                REPLACE_EXISTING
         );
     }
 
