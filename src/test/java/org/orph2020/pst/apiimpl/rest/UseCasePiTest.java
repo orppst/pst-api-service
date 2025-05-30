@@ -219,21 +219,21 @@ public class UseCasePiTest {
         given()
                 .multiPart("document", earthImage)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .post("proposals/" + proposalid + "/justifications/resourceFile")
                 .then()
                 .body(containsString("File earth_profile.jpg saved"));
 
         given()
                 .multiPart("document", hhg2g_dp)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .post("proposals/" + proposalid + "/justifications/resourceFile")
                 .then()
                 .body(containsString("File hhg2g_dp.jpg saved"));
 
         given()
                 .multiPart("document", refs)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/scientific/latexResource")
+                .post("proposals/" + proposalid + "/justifications/resourceFile")
                 .then()
                 .body(containsString("File refs.bib saved"));
 
