@@ -70,25 +70,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
-    \pagestyle{fancy}
-    \fancyhead{}
-    \fancyhead[LO,LE]{\textbf{PROPOSAL-TITLE-HERE}}
-    \fancyhead[RO,RE]{\textbf{CYCLE-ID-HERE}}
+% Header file created when a proposal is created
+    \input{justificationsHeader}
 
-    \section*{Scientific Justification}
-
-%INSERT_SCIENTIFIC_TEXT%
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    \section*{Technical Justification}
-
-%INSERT_TECHNICAL_TEXT%
+% Justification files created when user saves the relevant text
+    \input{scientificJustification}
+    \input{technicalJustification}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     \bibliographystyle{plain}
-% Users are expected to provide the bibliography file
+% Users are expected to provide the bibliography file.
+% It will be renamed to "refs.bib" in the backend.
     \bibliography{refs}
 
 \end{document}

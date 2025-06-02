@@ -34,7 +34,9 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 
 /*
@@ -85,6 +87,11 @@ public class ProposalResource extends ObjectResourceBase {
     //needed for import.
     @Inject
     SupportingDocumentResource supportingDocumentResource;
+
+
+    //Justification header stuff
+    String justificationsHeaderTemplate = "justificationsHeaderTemplate.tex";
+    String justificationsHeader = "justificationsHeader.tex";
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -182,9 +189,17 @@ public class ProposalResource extends ObjectResourceBase {
         try {
             proposalDocumentStore.createStorePaths(persisted.getId());
         } catch (IOException e) {
-            //if these directories cannot be created then we should roll back
+            //if these directories cannot be created, then we should roll back
             throw new WebApplicationException(e);
         }
+
+        //Replace the placeholder title in the justification header file with the actual title
+        try {
+            insertProposalTitleIntoHeaderTex(persisted.getId());
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
         return persisted;
     }
 
@@ -300,14 +315,20 @@ public class ProposalResource extends ObjectResourceBase {
                             if (theWindow.getIsAvoidConstraint()) {
                                 if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
                                         && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                                    warn.append("A timing window for the observation of '" + observation.name + "' excludes this entire session.<br/>");
+                                    warn.append("A timing window for the observation of '")
+                                            .append(observation.name)
+                                            .append("' excludes this entire session.<br/>");
                                 }
                             } else {
                                 if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                                    warn.append("A timing window for the observation of '" + observation.name + "' ends before this session begins.<br/>");
+                                    warn.append("A timing window for the observation of '")
+                                            .append(observation.name)
+                                            .append("' ends before this session begins.<br/>");
                                 }
                                 if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                                    warn.append("A timing window for the observation of '" + observation.name + "' begins after this session has ended.<br/>");
+                                    warn.append("A timing window for the observation of '")
+                                            .append(observation.name)
+                                            .append("' begins after this session has ended.<br/>");
                                 }
                             }
                         }
@@ -335,6 +356,13 @@ public class ProposalResource extends ObjectResourceBase {
     {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         proposal.setTitle(replacementTitle);
+
+        //Replace the placeholder title in the justification header file with the updated title
+        try {
+            insertProposalTitleIntoHeaderTex(proposalCode);
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
         return responseWrapper(proposal.getTitle(), 201);
     }
 
@@ -760,4 +788,35 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
     //Other fields of an ObservingProposal have been split out into their own source file
+
+    //Convenience functions --------------
+    private String justificationsStorePath(Long proposalCode) {
+        return proposalCode + "/justifications/";
+    }
+
+    private void insertProposalTitleIntoHeaderTex(
+            Long proposalCode
+    )
+            throws IOException {
+        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
+
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        String proposalTitle = proposal.getTitle();
+
+        //read from this file
+        File templateHeader = proposalDocumentStore.fetchFile(
+                justificationsStorePath(proposalCode) + "/" + justificationsHeaderTemplate
+        );
+
+        //write to this file
+        File header = proposalDocumentStore.fetchFile(
+                justificationsStorePath(proposalCode) + "/" + justificationsHeader);
+
+        String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
+
+        String headerText = templateText.replace(proposalTitleTarget, proposalTitle);
+
+        Files.write(header.toPath(), headerText.getBytes());
+    }
+
 }

@@ -48,11 +48,19 @@ public class ProposalDocumentStore {
                 "justifications"
         ));
 
-        //copy LaTex template for Justifications to the proposal store
+        //copy the LaTex main file for Justifications to the proposal store
         Files.copy(
                 Paths.get("src/main/data/mainTemplate.tex"),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/mainTemplate.tex"),
+                        "justifications/main.tex"),
+                REPLACE_EXISTING
+        );
+
+        //copy the LaTex header file template for Justifications to the proposal store
+        Files.copy(
+                Paths.get("src/main/data/justificationsHeaderTemplate.tex"),
+                Paths.get(proposalStoreRoot, proposalCode.toString(),
+                        "justifications/justificationsHeaderTemplate.tex"),
                 REPLACE_EXISTING
         );
     }
@@ -91,7 +99,7 @@ public class ProposalDocumentStore {
 
     /**
      * Convenience method to fetch the file given from this DocumentStore may refer to a directory
-     * (note: 'filePath' can refer to a non-existent file)
+     * (note: 'filePath' can refer to a non-existent file, it will be created)
      * @param filePath filename of the file to fetch, can have optional parent paths
      * @return the file identified by the filepath in this DocumentStore
      */
@@ -122,7 +130,7 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Write a given string to the given file
+     * Write a given string to the given file. This will overwrite any existing file.
      * @param theString the string you wish to write to file
      * @param filePath the path of the subdirectories to the file to which you will be writing
      * @throws IOException I/O exception from the writer object

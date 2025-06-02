@@ -42,8 +42,9 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //singular file names for LaTeX and RST justifications
     String texFileName = "main.tex";
-    String templateTex = "mainTemplate.tex";
-    String rstFileName = "main.rst";
+    String scientificTexFileName = "scientificJustification.tex";
+    String technicalTexFileName = "technicalJustification.tex";
+    //String templateTex = "mainTemplate.tex";
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
@@ -111,7 +112,7 @@ public class JustificationsResource extends ObjectResourceBase {
                 scientific.setFormat(technical.getFormat());
                 if (technical.getFormat() == TextFormats.LATEX) {
                     try {
-                        insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
+                        createTechnicalJustificationTex(proposalCode, technical.getText());
                     } catch (IOException e) {
                         throw new WebApplicationException(e);
                     }
@@ -124,7 +125,7 @@ public class JustificationsResource extends ObjectResourceBase {
                 technical.setFormat(scientific.getFormat());
                 if (scientific.getFormat() == TextFormats.LATEX) {
                     try {
-                        insertTextIntoMainTex(proposalCode, scientific.getText(), technical.getText());
+                        createScientificJustificationTex(proposalCode, scientific.getText());
                     } catch (IOException e) {
                         throw new WebApplicationException(e);
                     }
@@ -601,39 +602,31 @@ public class JustificationsResource extends ObjectResourceBase {
         return extension;
     }
 
-    private void insertTextIntoMainTex(
+
+    private void createScientificJustificationTex(
             Long proposalCode,
-            String scientificText,
+            String scientificText
+    )
+            throws IOException {
+
+        String completeText = "\\section*{Scientific Justification}\n\n" + scientificText;
+
+        proposalDocumentStore.writeStringToFile(completeText,
+                justificationsStorePath(proposalCode) + "/" + scientificTexFileName
+        );
+    }
+
+    private void createTechnicalJustificationTex(
+            Long proposalCode,
             String technicalText
     )
             throws IOException {
 
-        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
-        String scientificTarget = "%INSERT_SCIENTIFIC_TEXT%";
-        String technicalTarget = "%INSERT_TECHNICAL_TEXT%";
+        String completeText = "\\section*{Technical Justification}\n\n" + technicalText;
 
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        String proposalTitle = proposal.getTitle();
-
-        //reading from this file
-        File templateFile = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + templateTex);
-
-        //writing to this file
-        File mainFile = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + texFileName);
-
-        String templateText = new String(Files.readAllBytes(templateFile.toPath()));
-
-        templateText = templateText.replace(proposalTitleTarget, proposalTitle);
-
-        templateText = templateText.replace(scientificTarget, scientificText);
-
-        String mainText = templateText.replace(technicalTarget, technicalText);
-
-        Files.write(mainFile.toPath(), mainText.getBytes());
+        proposalDocumentStore.writeStringToFile(completeText,
+                justificationsStorePath(proposalCode) + "/" + technicalTexFileName
+        );
     }
-
-
 }
 
