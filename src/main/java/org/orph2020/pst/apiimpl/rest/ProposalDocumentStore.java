@@ -1,6 +1,5 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -12,11 +11,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
  *  This is a convenience class bean to help with file I/O and bookkeeping for the document store
@@ -45,25 +45,35 @@ public class ProposalDocumentStore {
         Files.createDirectories(Paths.get(
                 proposalStoreRoot,
                 proposalCode.toString(),
-                "justifications/scientific"
+                "justifications"
         ));
 
-        Files.createDirectories(Paths.get(
-                proposalStoreRoot,
-                proposalCode.toString(),
-                "justifications/technical"
-        ));
+        //copy the LaTex main file for Justifications to the proposal store
+        Files.copy(
+                Paths.get("src/main/data/mainTemplate.tex"),
+                Paths.get(proposalStoreRoot, proposalCode.toString(),
+                        "justifications/main.tex"),
+                REPLACE_EXISTING
+        );
+
+        //copy the LaTex header file template for Justifications to the proposal store
+        Files.copy(
+                Paths.get("src/main/data/justificationsHeaderTemplate.tex"),
+                Paths.get(proposalStoreRoot, proposalCode.toString(),
+                        "justifications/justificationsHeaderTemplate.tex"),
+                REPLACE_EXISTING
+        );
     }
 
     /**
-     * Removes the subdirectory, including its subdirectories, specified.
+     * Removes the subdirectory specified, including its subdirectories.
      * We use this to clean up the document store when a proposal is deleted such that the
      * string parameter must refer to the top-level subdirectory for that proposal.
      * @param proposalDirectory the top-level subdirectory for the proposal being deleted
      * @throws IOException if deletion fails
      */
     public void removeStorePath(String proposalDirectory) throws IOException {
-        //this is a recursive delete
+        //this delete is recursive
         FileUtils.deleteDirectory(fetchFile(proposalDirectory));
     }
 
@@ -72,9 +82,9 @@ public class ProposalDocumentStore {
      * and files (intention is that 'source' and 'destination' are unique identifiers for proposals)
      * @param source a string representing the source directory or path (not including the store root)
      * @param destination a string representing the destination directory or path (not including the store root)
-     * @param supportingDocuments list of supporting documents from the CLONED proposal to update
+     * @param supportingDocuments the list of supporting documents from the CLONED proposal to update
      *                            their 'locations' to use the 'destination' path - can be empty
-     * @throws IOException if copy operation fails
+     * @throws IOException if the copy operation fails
      */
     public void copyStore(String source, String destination, List<SupportingDocument> supportingDocuments)
             throws IOException {
@@ -88,8 +98,8 @@ public class ProposalDocumentStore {
 
 
     /**
-     * Convenience method to fetch the file given from this DocumentStore, may refer to a directory
-     * (note: 'filePath' can refer to a non-existent file)
+     * Convenience method to fetch the file given from this DocumentStore may refer to a directory
+     * (note: 'filePath' can refer to a non-existent file, it will be created)
      * @param filePath filename of the file to fetch, can have optional parent paths
      * @return the file identified by the filepath in this DocumentStore
      */
@@ -120,7 +130,7 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Write a given string to the given file
+     * Write a given string to the given file. This will overwrite any existing file.
      * @param theString the string you wish to write to file
      * @param filePath the path of the subdirectories to the file to which you will be writing
      * @throws IOException I/O exception from the writer object
@@ -136,19 +146,19 @@ public class ProposalDocumentStore {
      * List files in the given directory, optionally provide a non-empty array of specific file
      * extension strings to look for
      * @param filePath where to look
-     * @param fileExtensions optional list of file extensions, can be left empty or null to list all files
+     * @param fileExtensions an optional list of file extensions can be left empty or null to list all files
      * @return Set of strings containing the files found
      * @throws IOException thrown by Files.list()
      */
-    public Set<String> listFilesIn(String filePath, String[] fileExtensions) throws IOException {
+    public Set<String> listFilesIn(String filePath, List<String> fileExtensions) throws IOException {
         try (Stream<Path> stream = Files.list(Paths.get(proposalStoreRoot, filePath))) {
             return stream
                     .filter(file -> !Files.isDirectory(file))
                     .map(java.nio.file.Path::getFileName)
                     .map(java.nio.file.Path::toString)
                     .filter(f -> {
-                        if (fileExtensions != null && fileExtensions.length > 0) {
-                            return Arrays.stream(fileExtensions).anyMatch(f::endsWith);
+                        if (fileExtensions != null && !fileExtensions.isEmpty()) {
+                            return fileExtensions.stream().anyMatch(f::endsWith);
                         } else {
                             return true;
                         }

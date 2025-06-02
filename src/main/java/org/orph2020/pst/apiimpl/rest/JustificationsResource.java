@@ -40,8 +40,11 @@ import java.util.regex.Pattern;
 @RolesAllowed("default-roles-orppst")
 public class JustificationsResource extends ObjectResourceBase {
 
-    //common file name for the Tex file for Latex type Justifications
+    //singular file names for LaTeX and RST justifications
     String texFileName = "main.tex";
+    String scientificTexFileName = "scientificJustification.tex";
+    String technicalTexFileName = "technicalJustification.tex";
+    //String templateTex = "mainTemplate.tex";
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
@@ -60,12 +63,12 @@ public class JustificationsResource extends ObjectResourceBase {
             case "technical" -> {
                 Justification technical = observingProposal.getTechnicalJustification();
                 yield Objects.requireNonNullElseGet(technical,
-                        () -> new Justification("", TextFormats.ASCIIDOC));
+                        () -> new Justification("", TextFormats.LATEX));
             }
             case "scientific" -> {
                 Justification scientific = observingProposal.getScientificJustification();
                 yield Objects.requireNonNullElseGet(scientific,
-                        () -> new Justification("", TextFormats.ASCIIDOC));
+                        () -> new Justification("", TextFormats.LATEX));
             }
             default -> throw new WebApplicationException(
                     String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
@@ -74,48 +77,72 @@ public class JustificationsResource extends ObjectResourceBase {
         };
     }
 
-
     @PUT
-    @Operation( summary = "update a technical or scientific Justification in the ObservingProposal specified by the 'proposalCode'")
+    @Operation( summary = "update the technical or scientific justification associated with the ObservingProposal specified by 'proposalCode'")
     @Path("{which}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
     public Justification updateJustification(
-            @PathParam("proposalCode") long proposalCode,
+            @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
-            Justification incoming )
-            throws WebApplicationException
+            Justification incoming
+    )
+        throws WebApplicationException
     {
-        Justification justification = getWhichJustification(proposalCode, which);
+        Justification scientific = getWhichJustification(proposalCode, "scientific");
+        Justification technical = getWhichJustification(proposalCode, "technical");
 
-        if (justification == null)
+        if (which.equals("scientific") && scientific == null) {
             throw new WebApplicationException(
-                    String.format(
-                            "The Proposal has no existing %s justification, please 'add' one",
-                            which
-                    )
+                    "The Proposal has no existing scientific justification, please 'add' one"
             );
+        }
 
-        justification.updateUsing(incoming);
+        if (which.equals("technical") && technical == null) {
+            throw new WebApplicationException(
+                    "The Proposal has no existing technical justification, please 'add' one"
+            );
+        }
 
-        em.merge(justification);
-
-        //if justification format is Latex then update the *.tex file
-        if (justification.getFormat() == TextFormats.LATEX) {
-            try {
-                proposalDocumentStore.writeStringToFile(justification.getText(),
-                        storePath(proposalCode, which) + "/" + texFileName);
-            } catch (IOException e) {
-                //if we can't write the update to the *.tex file then we should roll back
-                //the database transaction - otherwise may have mismatch between the database string
-                //and the *.tex file.
-                throw new WebApplicationException(e.getMessage());
+        switch (which) {
+            case "technical" -> {
+                technical.updateUsing(incoming);
+                em.merge(technical);
+                //ensure the scientific justification has the same format as the technical justification
+                scientific.setFormat(technical.getFormat());
+                if (technical.getFormat() == TextFormats.LATEX) {
+                    try {
+                        createTechnicalJustificationTex(proposalCode, technical.getText());
+                    } catch (IOException e) {
+                        throw new WebApplicationException(e);
+                    }
+                }
+            }
+            case "scientific" -> {
+                scientific.updateUsing(incoming);
+                em.merge(scientific);
+                //ensure the technical justification has the same format as the scientific justification
+                technical.setFormat(scientific.getFormat());
+                if (scientific.getFormat() == TextFormats.LATEX) {
+                    try {
+                        createScientificJustificationTex(proposalCode, scientific.getText());
+                    } catch (IOException e) {
+                        throw new WebApplicationException(e);
+                    }
+                }
             }
         }
 
-        return justification;
+        return switch (which) {
+            case "technical" -> technical;
+            case "scientific" -> scientific;
+            //belt and braces
+            default -> throw new WebApplicationException(
+                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
+                    400
+            );
+        };
     }
-
 
     @POST
     @Operation( summary = "add a technical or scientific Justification to the ObservingProposal specified by the 'proposalCode'")
@@ -123,7 +150,7 @@ public class JustificationsResource extends ObjectResourceBase {
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn={WebApplicationException.class})
     public Justification addJustification(
-            @PathParam("proposalCode") long proposalCode,
+            @PathParam("proposalCode") Long proposalCode,
             @PathParam("which") String which,
             Justification incoming )
             throws WebApplicationException
@@ -140,45 +167,40 @@ public class JustificationsResource extends ObjectResourceBase {
             );
         }
 
-        Justification persisted =
-                addNewChildObject(
-                        proposal,
-                        incoming,
-                        which.equals("technical") ?
-                                proposal::setTechnicalJustification :
-                                proposal::setScientificJustification
+        return addNewChildObject(
+                proposal,
+                incoming,
+                which.equals("technical") ?
+                        proposal::setTechnicalJustification :
+                        proposal::setScientificJustification
         );
-
-        if (persisted.getFormat() == TextFormats.LATEX) {
-            try {
-                //create and write the string to file
-                proposalDocumentStore.writeStringToFile(persisted.getText(),
-                        storePath(proposalCode, which) + "/" + texFileName);
-            } catch (IOException e) {
-                //if we can't write the justification text to the *.tex file then we should roll back
-                //the database transaction - otherwise may have mismatch between the database string
-                //and the *.tex file.
-                throw new WebApplicationException(e.getMessage());
-            }
-        }
-        return persisted;
     }
 
 
-    //*********** LATEX Justifications ************
+    //*********** LATEX and RST Justifications ************
 
     @GET
-    @Path("{which}/latexResource")
-    @Operation(summary = "list the latex resource files uploaded by the user")
+    @Path("resourceFile")
+    @Operation(summary = "list the resource files (images, bibliography) uploaded by the user")
     @Produces(MediaType.APPLICATION_JSON)
     public Set<String> getLatexResourceFiles(
-            @PathParam("proposalCode") Long proposalCode,
-            @PathParam("which") String which)
+            @PathParam("proposalCode") Long proposalCode)
         throws WebApplicationException
     {
+        //either justification will do to check the format as we ensure they are the same format
+        //elsewhere
+
         try {
-            String[] extensions = {".bib", ".jpg", "jpeg", ".png", ".eps"};
-            return proposalDocumentStore.listFilesIn(storePath(proposalCode, which), extensions);
+            Justification justification = getWhichJustification(proposalCode, "scientific");
+            List<String> extensions = new ArrayList<>();
+            extensions.add(".jpg");
+            extensions.add(".png");
+            extensions.add(".eps");
+            extensions.add(".jpeg");
+            if (justification.getFormat() == TextFormats.LATEX) {
+                extensions.add(".bib");
+            }
+            return proposalDocumentStore.listFilesIn(justificationsStorePath(proposalCode), extensions);
         } catch (IOException e) {
             throw new WebApplicationException(e.getMessage());
         }
@@ -190,47 +212,40 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //non-transactional, no modification to the database occurs
     @POST
-    @Path("{which}/latexResource")
-    @Operation(summary = "add a resource file for latex Justifications; *.bib, *.jpg, and *.png supported only")
+    @Path("resourceFile")
+    @Operation(summary = "add a resource file for LaTeX or RST Justifications; .bib, .jpg, .png, .eps supported only")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response addLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
-            @PathParam("which") String which,
             @RestForm("document") @Schema(implementation = UploadLatexResourceSchema.class)
             FileUpload fileUpload)
         throws WebApplicationException
     {
-        justificationIsLatex(proposalCode, which);
+        String extension = checkResourceUpload(fileUpload);
 
-        checkFileUpload(fileUpload);
-
-        String filename = fileUpload.fileName();
+        String filename = extension.equals("bib") ? "refs.bib" : fileUpload.fileName();
 
         // save the uploaded file to the document store
         // this will overwrite existing files with the same filename
         if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(),
-                storePath(proposalCode, which) + "/" + filename)) {
+                justificationsStorePath(proposalCode) + "/" + filename)) {
             throw new WebApplicationException("Unable to save uploaded file");
         }
 
         return Response.ok(String.format("File %s saved", filename)).build();
     }
 
-
     //non-transactional, no modification to the database occurs
     @DELETE
-    @Path("{which}/latexResource")
-    @Operation(summary = "remove the given resource file from the latex Justification")
+    @Path("resourceFile")
+    @Operation(summary = "remove the given resource file from the Justification")
     @Consumes(MediaType.TEXT_PLAIN)
     public Response removeLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
-            @PathParam("which") String which,
             String filename)
     throws WebApplicationException
     {
-        justificationIsLatex(proposalCode, which);
-
-        if (!proposalDocumentStore.deleteFile(storePath(proposalCode, which) + "/" + filename)) {
+        if (!proposalDocumentStore.deleteFile(justificationsStorePath(proposalCode) + "/" + filename)) {
             throw new WebApplicationException(String.format("Unable to delete file: %s", filename));
         }
 
@@ -238,52 +253,50 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path ("{which}/checkForPdf")
+    @Path ("checkForPdf")
     @Operation(summary = "checks for the existence of a latex PDF output file")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response checkForPdf(@PathParam("proposalCode") Long proposalCode,
-                                @PathParam("which") String which
-    )
+    public Response checkForPdf(@PathParam("proposalCode") Long proposalCode)
         throws WebApplicationException
     {
         return responseWrapper(
                 proposalDocumentStore
-                        .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf")
-                        .exists(), 200);
+                        .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf")
+                        .exists(), 200
+        );
     }
 
 
-    @GET
-    @Path("{which}/latexPdf")
+    @POST
+    @Path("latexPdf")
     @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
     @Produces(MediaType.APPLICATION_JSON)
     public Response createPDFLaTex(@PathParam("proposalCode") Long proposalCode,
-                                   @PathParam("which") String which,
                                    @RestQuery Boolean warningsAsErrors
     )
         throws WebApplicationException
     {
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
-        // this API call has functioned correctly; it is the user defined files that need attention.
-        // Errors are flagged back to the user as simple string message containing the list of issues.
-        // If there is a problem server side we throw an exception.
+        // this API call has functioned correctly; it is the user-defined files that need attention.
+        // Errors are flagged back to the user as a simple string message containing the list of issues.
+        // If there is a problem server side, we throw an exception.
 
         // NOTICE: 'latexmk' leaves intermediate files in the output directory on failed runs in an
         // attempt to speed up the next compilation. This has been observed to lead to potential
         // problems when producing the PDF output.
-        // Removing the output directory on a failed run avoids this issue; subsequent runs do so
-        // on a clean directory, but obviously they do not benefit from a speed-up.
+        // Removing the output directory on a failed run avoids this issue, but later runs will not
+        // benefit from a speed-up. As Justifications are intended to be only a handful of A4
+        // pages in length, this is not a problem.
 
-        justificationIsLatex(proposalCode, which);
+        justificationIsLatex(proposalCode);
 
-        File mainTex = proposalDocumentStore.fetchFile(storePath(proposalCode, which) + "/" + texFileName);
+        File mainTex = proposalDocumentStore.fetchFile(justificationsStorePath(proposalCode) + "/" + texFileName);
 
         if (!mainTex.exists()) {
             throw new WebApplicationException(String.format("%s file not found", texFileName));
         }
 
-        ProcessBuilder processBuilder = getLatexmkProcessBuilder(
-                mainTex.getAbsolutePath(), which);
+        ProcessBuilder processBuilder = getLatexmkProcessBuilder(mainTex.getAbsolutePath());
 
         try {
             Process process = processBuilder.start();
@@ -291,16 +304,16 @@ public class JustificationsResource extends ObjectResourceBase {
             int exitCode = process.waitFor();
 
             // output directory "out" created by latexmk process
-            File outputDir = proposalDocumentStore.fetchFile(storePath(proposalCode, which) + "/out");
+            File outputDir = proposalDocumentStore.fetchFile(justificationsStorePath(proposalCode) + "/out");
 
             File logFile = proposalDocumentStore
-                    .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.log");
+                    .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
 
             List<String> warnings = findWarnings(Files.readString(logFile.toPath()));
 
             StringBuilder errorsStringBuilder = new StringBuilder();
 
-            //if user selects 'warningsAsErrors' then we need to feed back the warnings along
+            //if the user selects 'warningsAsErrors', then we need to feed back the warnings along
             //with potential errors for them to attempt to fix the issues, potentially in one go.
             if (warningsAsErrors && !warnings.isEmpty()) {
                 errorsStringBuilder
@@ -317,13 +330,13 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append("You have LaTeX compilation errors:\n")
                         .append(String.join("\n", errors));
 
-                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
+                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for the next run
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
-            // exit code is zero here, but there may be warnings
+            // the exit code is zero here, but there may be warnings
             if (warningsAsErrors && !warnings.isEmpty()) {
-                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for next run
+                FileUtils.deleteDirectory(outputDir); //clean up latex generated files for the next run
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
@@ -331,29 +344,34 @@ public class JustificationsResource extends ObjectResourceBase {
             throw new WebApplicationException(e.getMessage());
         }
 
+        //Here if successful latex compilation
+
+        File logFile = proposalDocumentStore
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+
+        String pageCount = scanLogForPageNumber(logFile);
+
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
-                .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf");
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf");
 
         return responseWrapper(
-                String.format("Latex compilation successful!\nPDF output file saved as: %s",
-                output.getName()), 200);
+                String.format("Latex compilation successful!\nPDF output file saved as: %s\nPage count: %s",
+                output.getName(), pageCount), 200);
     }
 
     @GET
-    @Path("{which}/latexPdf/download")
+    @Path("latexPdf/download")
     @Operation(summary = "download the pdf file produced after successfully running 'latexmk'")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    public Response downloadLatexPdf(
-            @PathParam("proposalCode") Long proposalCode,
-            @PathParam("which") String which)
+    public Response downloadLatexPdf(@PathParam("proposalCode") Long proposalCode)
         throws WebApplicationException {
 
-        justificationIsLatex(proposalCode, which);
+        justificationIsLatex(proposalCode);
 
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
-                .fetchFile(storePath(proposalCode, which) + "/out/" + which + "-justification.pdf");
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf");
 
         if (!output.exists()) {
             throw new WebApplicationException(String.format("Nonexistent file: %s", output.getName()));
@@ -364,18 +382,30 @@ public class JustificationsResource extends ObjectResourceBase {
                 .build();
     }
 
+    @GET
+    @Path("latexPdf/pages")
+    @Operation(summary = "get the number of pages in the pdf file produced after successfully running 'latexmk'")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getLatexPdfPages(@PathParam("proposalCode") Long proposalCode)
+        throws WebApplicationException {
 
+        File logFile = proposalDocumentStore
+                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+
+        String pageCount = scanLogForPageNumber(logFile);
+
+        return responseWrapper(pageCount, 200);
+    }
 
 // ****** Convenience functions private to this class ********
 
     /**
      * Create the path to the justifications section of the proposal document store
      * @param proposalCode proposal id
-     * @param which "scientific" or "technical"
      * @return string of the path to the justifications section
      */
-    private String storePath(Long proposalCode, String which) {
-        return proposalCode + "/justifications/" + which;
+    private String justificationsStorePath(Long proposalCode) {
+        return proposalCode + "/justifications/";
     }
 
     /**
@@ -400,17 +430,16 @@ public class JustificationsResource extends ObjectResourceBase {
      * Convenience function to create the ProcessBuilder for 'latexmk'
      *
      * @param filePath  String containing the path-filename of the source *.tex file to compile
-     * @param which     String "type" of Justification
      * @return ProcessBuilder of the 'latexmk' command with desired options
      */
-    private ProcessBuilder getLatexmkProcessBuilder(String filePath, String which) {
+    private ProcessBuilder getLatexmkProcessBuilder(String filePath) {
         return new ProcessBuilder(
                 "latexmk",
-                "-cd", //change directory into source file
+                "-cd", //change directory into the source subdirectory
                 "-pdf", //we want PDF output
                 "-interaction=nonstopmode", //i.e. non-interactive
                 "-output-directory=out", //relative to source directory due to '-cd' option
-                "-jobname=" + which + "-justification", //output base name
+                "-jobname=" + "justification", //output base name
                 filePath
         );
     }
@@ -458,32 +487,62 @@ public class JustificationsResource extends ObjectResourceBase {
                 }
             }
         }
+        scanner.close();
         return list.stream().distinct().toList();
     }
+
+    private String scanLogForPageNumber(File file) throws WebApplicationException {
+        try {
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                //all errors start with "! "
+                if (line.contains("Output written on out/justification.pdf")) {
+                    scanner.close();
+                    Pattern pattern = Pattern.compile("\\d+ page|pages");
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        return matcher.group();
+                    } else {
+                        throw new WebApplicationException(
+                                String.format("No page count found in log file: %s", file.getName()));
+                    }
+                }
+            }
+            scanner.close();
+            throw new WebApplicationException(
+                    String.format("No page count found in log file: %s", file.getName())
+            );
+        } catch (FileNotFoundException e) {
+            throw new WebApplicationException(e);
+        }
+    }
+
 
     /**
      * Checks that the Justification exists and has Latex format
      *
      * @param proposalCode Long proposal id
-     * @param which        String "type" of Justification
      * @throws WebApplicationException if either the Justification does not exist or the format is not LATEX
      */
-    private void justificationIsLatex(Long proposalCode, String which)
+    private void justificationIsLatex(Long proposalCode)
             throws WebApplicationException
     {
-        Justification justification = getWhichJustification(proposalCode, which);
+        Justification scientific = getWhichJustification(proposalCode, "scientific");
+        Justification technical = getWhichJustification(proposalCode, "technical");
 
-        if (justification == null) {
+        //the following check should be impossible, but those are some famous last words.
+        if (scientific == null || technical == null) {
             throw new WebApplicationException(String.format(
-                    "Proposal code %d, %s justification does not exist",
-                    proposalCode, which
+                    "Proposal code %d, one or both of the justifications does not exist",
+                    proposalCode
             ));
         }
 
-        if (justification.getFormat() != TextFormats.LATEX) {
+        if (scientific.getFormat() != TextFormats.LATEX && technical.getFormat() != TextFormats.LATEX) {
             throw new WebApplicationException(String.format(
-                    "%s Justification not LaTeX format, current format: %s",
-                    which, justification.getFormat().toString()
+                    "Justifications not in LaTeX format, current formats scientific: %s, technical: %s",
+                    scientific.getFormat().toString(), technical.getFormat().toString()
             ));
         }
     }
@@ -491,10 +550,11 @@ public class JustificationsResource extends ObjectResourceBase {
     /**
      * Function to check uploaded files content-type and file extension
      * @param fileUpload the uploaded file
+     * @return String containing the file extension.
      * @throws WebApplicationException if fileUpload is null, or content-type is null,
      * or file extension is empty, or file extension does not match the content-type
      */
-    private void checkFileUpload(FileUpload fileUpload)
+    private String checkResourceUpload(FileUpload fileUpload)
             throws WebApplicationException {
 
         if (fileUpload == null) {
@@ -511,11 +571,9 @@ public class JustificationsResource extends ObjectResourceBase {
             throw new WebApplicationException("Uploads require the correct file extension");
         }
 
-        // mime types aren't very well-defined so we include octect-stream as a coverall for .bib
-        // extensions, and postscript as a coverall for .eps extensions.
+        // mime types aren't very well-defined, so we include octect-stream as a coverall for, well, everything.
 
         switch (contentType) {
-            //.bib, .png, .jpg (.jpeg), .eps only
             case "application/octet-stream":
             case "application/x-bibtex":
             case "application/postscript":
@@ -528,7 +586,8 @@ public class JustificationsResource extends ObjectResourceBase {
                         !extension.equals("png") &&
                         !extension.equals("eps")
                 )
-                    throw new WebApplicationException("Invalid file extension");
+                    throw new WebApplicationException(
+                            String.format("Invalid file extension: %s", extension));
                 break;
             default:
                 throw new WebApplicationException(
@@ -538,8 +597,36 @@ public class JustificationsResource extends ObjectResourceBase {
         //NOTICE: content-type and file extension can be manipulated so that they misrepresent the
         // actual contents of the file. However, on Linux and Linux-like systems uploaded files saved
         // in this way have read-write permissions for the 'user' only (the "application" is the user here),
-        // i.e. no executable permissions, and no permissions for 'groups' or 'other users'.
+        // i.e., no executable permissions, and no permissions for 'groups' or 'other users'.
+
+        return extension;
     }
 
+
+    private void createScientificJustificationTex(
+            Long proposalCode,
+            String scientificText
+    )
+            throws IOException {
+
+        String completeText = "\\section*{Scientific Justification}\n\n" + scientificText;
+
+        proposalDocumentStore.writeStringToFile(completeText,
+                justificationsStorePath(proposalCode) + "/" + scientificTexFileName
+        );
+    }
+
+    private void createTechnicalJustificationTex(
+            Long proposalCode,
+            String technicalText
+    )
+            throws IOException {
+
+        String completeText = "\\section*{Technical Justification}\n\n" + technicalText;
+
+        proposalDocumentStore.writeStringToFile(completeText,
+                justificationsStorePath(proposalCode) + "/" + technicalTexFileName
+        );
+    }
 }
 
