@@ -129,7 +129,7 @@ public class PersonResource extends ObjectResourceBase {
    @PUT
    @Operation(summary = "update a Person's home institute")
    @Path("{id}/homeInstitute")
-   @Consumes(MediaType.TEXT_PLAIN)
+   @Consumes(MediaType.APPLICATION_JSON)
    @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Response updateHomeInstitute(@PathParam("id") Long personId, Organization replacementHomeInstitute)
