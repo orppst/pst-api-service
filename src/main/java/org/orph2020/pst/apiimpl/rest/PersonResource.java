@@ -7,6 +7,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.ivoa.StringIdentifier ;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -83,7 +84,7 @@ public class PersonResource extends ObjectResourceBase {
    @Path("{id}/fullName")
    @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response updateFullName(@PathParam("id") long personId, String replacementFullName)
+   public Response updateFullName(@PathParam("id") Long personId, String replacementFullName)
       throws WebApplicationException
    {
       Person person = findObject(Person.class, personId);
@@ -99,7 +100,7 @@ public class PersonResource extends ObjectResourceBase {
    @Path("{id}/eMail")
    @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response updateEMail(@PathParam("id") long personId, String replacementEMail)
+   public Response updateEMail(@PathParam("id") Long personId, String replacementEMail)
            throws WebApplicationException
    {
       Person person = findObject(Person.class, personId);
@@ -115,12 +116,28 @@ public class PersonResource extends ObjectResourceBase {
    @Path("{id}/orcidId")
    @RolesAllowed("default-roles-orppst")
    @Transactional(rollbackOn = {WebApplicationException.class})
-   public Response updateOrcidId(@PathParam("id") long personId, String replacementOrcidId)
+   public Response updateOrcidId(@PathParam("id") Long personId, String replacementOrcidId)
            throws WebApplicationException
    {
       Person person = findObject(Person.class, personId);
 
       person.setOrcidId(new StringIdentifier(replacementOrcidId));
+
+      return responseWrapper(person, 201);
+   }
+
+   @PUT
+   @Operation(summary = "update a Person's home institute")
+   @Path("{id}/homeInstitute")
+   @Consumes(MediaType.APPLICATION_JSON)
+   @RolesAllowed("default-roles-orppst")
+   @Transactional(rollbackOn = {WebApplicationException.class})
+   public Response updateHomeInstitute(@PathParam("id") Long personId, Organization replacementHomeInstitute)
+      throws WebApplicationException
+   {
+      Person person = findObject(Person.class, personId);
+
+      person.setHomeInstitute(replacementHomeInstitute);
 
       return responseWrapper(person, 201);
    }
