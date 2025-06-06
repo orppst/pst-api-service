@@ -25,7 +25,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 @RequestScoped
 public class ProposalDocumentStore {
 
-    @ConfigProperty(name = "document-store.proposals.root")
+    @ConfigProperty(name = "document-store.root")
     String proposalStoreRoot;
 
 

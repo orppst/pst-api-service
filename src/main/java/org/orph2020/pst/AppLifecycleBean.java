@@ -5,6 +5,7 @@ package org.orph2020.pst;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.runtime.configuration.ConfigUtils;
 import jakarta.inject.Inject;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -34,7 +35,7 @@ public class AppLifecycleBean {
     @PersistenceContext
     protected EntityManager em;  // exists for the application lifetime no need to close
 
-    @ConfigProperty(name = "document-store.proposals.root")
+    @ConfigProperty(name = "document-store.root")
     String documentStoreRoot;
 
     @Inject
@@ -103,21 +104,26 @@ public class AppLifecycleBean {
 
         LOGGER.info("The application is stopping...");
 
-        LOGGER.info("Deleting document store...");
+
+
+        //active profile should be the build-time profile
+        List<String> profiles = ConfigUtils.getProfiles();
 
         //*****************************************************
-        //This code obliterates the document store - okay for dev, but prod?
-        File documentStorePath = new File(documentStoreRoot);
-        try {
-            FileUtils.deleteDirectory(documentStorePath);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        //convenience total delete of the document store for development
+        // DO NOT DO THIS IN PRODUCTION
+        if (profiles.contains("dev")) {
+            LOGGER.info("Dev mode: Deleting document store...");
+            File documentStorePath = new File(documentStoreRoot);
+            LOGGER.info("Dev mode: Deleted document store");
+            try {
+                FileUtils.deleteDirectory(documentStorePath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         //*****************************************************
-
-        LOGGER.info("Deleted document store");
     }
-
 }
 
 
