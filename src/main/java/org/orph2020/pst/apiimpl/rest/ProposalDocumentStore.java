@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +51,7 @@ public class ProposalDocumentStore {
 
         //copy the LaTex main file for Justifications to the proposal store
         Files.copy(
-                Paths.get("src/main/data/mainTemplate.tex"),
+              Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/mainTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         "justifications/main.tex"),
                 REPLACE_EXISTING
@@ -58,7 +59,7 @@ public class ProposalDocumentStore {
 
         //copy the LaTex header file template for Justifications to the proposal store
         Files.copy(
-                Paths.get("src/main/data/justificationsHeaderTemplate.tex"),
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/justificationsHeaderTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         "justifications/justificationsHeaderTemplate.tex"),
                 REPLACE_EXISTING
