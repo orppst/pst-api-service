@@ -124,6 +124,11 @@ abstract public class ObjectResourceBase {
         return Response.ok(writeAsJsonString(object)).status(statusCode).build();
     }
 
+    /**
+     * Indicates an operation was successful but with a no-content response. Generally used
+     * with DELETE operations but is not exclusive to them.
+     * @return empty response to indicate success but with no actual return value
+     */
     protected Response emptyResponse204() {
         return Response.noContent().build();
     }
