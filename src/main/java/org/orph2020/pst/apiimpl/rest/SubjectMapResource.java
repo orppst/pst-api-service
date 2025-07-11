@@ -5,6 +5,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -180,24 +181,29 @@ public class SubjectMapResource extends ObjectResourceBase {
     @Path("{personId}/firstName")
     @Operation(summary = "change the given person's first name")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("default-roles-orppst")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response changeFirstName(@PathParam("personId") Long personId, String firstName)
             throws WebApplicationException
     {
         SubjectMap subjectMap = findSubjectMap(personId);
 
-        //this does not change the firstname in the Keycloak realm
+        //this code doesn't seem to do anything in the keycloak realm
         realmOrppst.users().get(subjectMap.uid).toRepresentation(true).setFirstName(firstName);
 
         Person person = findObject(Person.class, personId);
 
         String currentFullName = person.getFullName();
 
+        System.out.println("current name: " + currentFullName);
+
         String currentFirstName = currentFullName.substring(0, currentFullName.indexOf(" "));
 
         String newFullName = currentFullName.replaceFirst(currentFirstName, firstName);
 
         person.setFullName(newFullName);
+
+        System.out.println("new name: " + newFullName);
 
         return responseWrapper(person, 200);
     }
@@ -206,12 +212,14 @@ public class SubjectMapResource extends ObjectResourceBase {
     @Path("{personId}/lastName")
     @Operation(summary = "change the given subject's last name")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("default-roles-orppst")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response changeLastName(@PathParam("personId") Long personId, String lastName)
             throws WebApplicationException
     {
         SubjectMap subjectMap = findSubjectMap(personId);
 
+        //this code doesn't seem to do anything in the keycloak realm
         keycloak.realm("orppst").users().get(subjectMap.uid).toRepresentation().setLastName(lastName);
 
         Person person = findObject(Person.class, personId);
@@ -231,12 +239,24 @@ public class SubjectMapResource extends ObjectResourceBase {
     @Path("{personId}/email")
     @Operation(summary = "change the given subject's email address")
     @Consumes(MediaType.TEXT_PLAIN)
+    @RolesAllowed("default-roles-orppst")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response changeEmailAddress(@PathParam("personId") Long personId, String emailAddress)
             throws WebApplicationException
     {
+        //check that the incoming email address is unique
+
+        String queryStr = "select p.eMail from Person p";
+
+        List<String> emails = em.createQuery(queryStr, String.class).getResultList();
+
+        if (emails.contains(emailAddress)) {
+            throw new WebApplicationException(String.format("email: '%s' already in use", emailAddress ), 400);
+        }
+
         SubjectMap subjectMap = findSubjectMap(personId);
 
+        //this code doesn't seem to do anything in the keycloak realm
         keycloak.realm("orppst").users().get(subjectMap.uid).toRepresentation().setEmail(emailAddress);
 
         Person person = findObject(Person.class, personId);
@@ -249,6 +269,7 @@ public class SubjectMapResource extends ObjectResourceBase {
     @PUT
     @Path("{personId}/password")
     @Operation(summary = "reset the given subject's password")
+    @RolesAllowed("default-roles-orppst")
     @Consumes(MediaType.TEXT_PLAIN)
     public Response resetPassword(@PathParam("personId") Long personId, String newPassword)
             throws WebApplicationException
@@ -263,6 +284,7 @@ public class SubjectMapResource extends ObjectResourceBase {
         credentialRepresentation.setValue(newPassword);
         credentialRepresentation.setTemporary(false); //just to be explicit
 
+        // change the password in the keycloak realm
         keycloak.realm("orppst").users().get(subjectMap.uid).resetPassword(credentialRepresentation);
 
         return emptyResponse204();
