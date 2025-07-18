@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -23,7 +24,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
  *  This is a convenience class bean to help with file I/O and bookkeeping for the document store
  *  of individual proposals
  */
-@RequestScoped
+@ApplicationScoped
 public class ProposalDocumentStore {
 
     @ConfigProperty(name = "document-store.root")

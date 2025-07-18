@@ -16,6 +16,7 @@ import org.ivoa.dm.proposal.prop.Observation;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.jboss.resteasy.reactive.RestQuery;
+import org.orph2020.pst.apiimpl.ProposalCodeGenerator;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
@@ -33,6 +34,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    @Inject
+    ProposalCodeGenerator   proposalCodeGenerator;
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
@@ -151,7 +155,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         //FIXME need to gather the config
 
         // TODO Double check all references are updated correctly
-        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, configMappings, new Date(), false, new Date(0L), null );
+        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, proposalCodeGenerator.generateProposalCode(cycle), configMappings, new Date(), false, new Date(0L), null );
         submittedProposal.updateClonedReferences();
         em.persist(submittedProposal);
         submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
