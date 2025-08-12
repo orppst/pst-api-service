@@ -17,6 +17,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
@@ -37,6 +40,7 @@ import static org.hamcrest.Matchers.*;
 })
 public class UseCaseTacChairTest {
 
+   private static final Logger log = LoggerFactory.getLogger(UseCaseTacChairTest.class);
    private long cycleId;
    @Inject
    protected ObjectMapper mapper;
@@ -54,6 +58,7 @@ public class UseCaseTacChairTest {
             .body(
                   "$.size()", greaterThanOrEqualTo(1)
             )
+            .log().body()
             .extract().jsonPath().getLong("[0].dbid");
       raObjectMapper = new Jackson2Mapper(((type, charset) -> mapper));
 
@@ -64,6 +69,7 @@ public class UseCaseTacChairTest {
                   .then()
                   .statusCode(200)
                   .extract().as(TAC.class, raObjectMapper);
+
       reviewer = tac.getMembers().get(0);
 
 
