@@ -1,6 +1,10 @@
 package org.orph2020.pst.apiimpl.rest;
 
 
+import io.quarkus.mailer.MailTemplate;
+import io.quarkus.qute.CheckedTemplate;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Uni;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
@@ -12,14 +16,13 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
-import org.ivoa.dm.proposal.prop.Observation;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
-import org.ivoa.dm.proposal.prop.RelatedProposal;
+import org.ivoa.dm.proposal.prop.*;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.ProposalCodeGenerator;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.ProposalSynopsis;
+import org.orph2020.pst.common.json.SubmittedProposalMailData;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -241,6 +244,87 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         return responseWrapper(submittedProposal, 200);
     }
 
+    @CheckedTemplate
+    static class Templates {
+        public static native
+        MailTemplate.MailTemplateInstance
+        tacReviewResults(SubmittedProposalMailData proposal);
+    }
+
+    @GET
+    @Path("{submittedProposalId}/mailResults")
+    @Operation(summary = "for the given submitted proposal in the cycle email all investigators with review details and success status")
+    @Blocking
+    @RolesAllowed({"tac_admin"})
+    public Uni<Void> sendTACReviewResults(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long  submittedProposalId
+    )
+            throws WebApplicationException {
+
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, submittedProposalId);
+
+        //all dates are initialised to the posix epoch, meaning that if they equal to that date they've
+        //yet to be updated.
+        if (submittedProposal.getReviewsCompleteDate().compareTo(new Date(0L)) == 0) {
+            throw new WebApplicationException(
+                    "You may only send TAC result emails after the reviews have been finalised for this proposal"
+            );
+        }
+
+        String cycleTitle = findObject(ProposalCycle.class, cycleCode).getTitle();
+
+        SubmittedProposalMailData submittedProposalMailData = new SubmittedProposalMailData();
+        submittedProposalMailData.cycle = cycleTitle;
+        submittedProposalMailData.title = submittedProposal.getTitle();
+
+        List<Investigator> investigators = submittedProposal.getInvestigators();
+
+        Investigator principalInvestigator = investigators
+                .stream()
+                .filter(i -> i.getType().equals(InvestigatorKind.PI))
+                .findFirst()
+                .orElseThrow(
+                        () -> new WebApplicationException("No principal investigator found", 404)
+                ); //every proposal should have a nominated PI so this shouldn't occur
+
+        submittedProposalMailData.principalName = principalInvestigator.getPerson().getFullName();
+
+        //this list can be empty i.e., principal investigator only, no co-investigators
+        List<Investigator> otherInvestigators = investigators
+                .stream()
+                .filter(i -> i.getType().equals(InvestigatorKind.COI))
+                .toList();
+
+        submittedProposalMailData.otherNames = new ArrayList<>();
+
+        //if otherInvestigators is empty this loop is skipped and otherNames remains empty
+        for(Investigator investigator : otherInvestigators) {
+            submittedProposalMailData.otherNames.add(investigator.getPerson().getFullName());
+        }
+
+        submittedProposalMailData.isSuccessful = submittedProposal.getSuccessful();
+
+        List<ProposalReview> reviews = submittedProposal.getReviews();
+
+        submittedProposalMailData.reviews = new ArrayList<>();
+
+        for (ProposalReview review : reviews) {
+            submittedProposalMailData.reviews.add(review.getComment());
+        }
+
+        List<String> recipientEmails = new ArrayList<>();
+
+        for (Investigator investigator : investigators) {
+            recipientEmails.add(investigator.getPerson().getEMail());
+        }
+
+        return Templates.tacReviewResults(submittedProposalMailData)
+                .to(recipientEmails.toArray(new String[0]))
+                .subject(cycleTitle + " TAC review result for " + submittedProposal.getTitle())
+                .send();
+    }
 }
 
 
