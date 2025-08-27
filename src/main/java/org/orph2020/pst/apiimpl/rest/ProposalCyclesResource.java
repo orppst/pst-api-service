@@ -98,11 +98,15 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         // Filter these TACs for those that include this user
         for (Object[] cycle : cycles) {
             TAC cycleTac = (TAC) cycle[2];
-            cycleTac.getMembers().forEach(member -> {
-                if(member.getMember().getId().equals(personId)) {
+
+            for(int i = 0; i < cycleTac.getMembers().size(); i++ ) {
+                Long memberPersonId = cycleTac.getMembers().get(i).getMember().getPerson().getId();
+                if(Objects.equals(memberPersonId, personId)) {
                     matchedCycles.add(new ObjectIdentifier((long)cycle[0], cycle[1].toString()));
+                    break;
                 }
-            });
+            }
+
         }
 
         return matchedCycles;
