@@ -244,6 +244,25 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         return responseWrapper(submittedProposal, 200);
     }
 
+    @PUT
+    @Path("/{submittedProposalId}/resetCompleteDate")
+    @RolesAllowed({"tac_admin", "tac_member"})
+    @Operation(summary = "reset the 'reviewsCompleteDate' of the given SubmittedProposal to the posix epoch")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response resetReviewsCompleteDate(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId)
+        throws WebApplicationException
+    {
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, submittedProposalId);
+
+        //reset date to the posix epoch (use as an "undo" after setting the complete date)
+        submittedProposal.setReviewsCompleteDate(new Date(0L));
+
+        return responseWrapper(submittedProposal, 200);
+    }
+
     @CheckedTemplate
     static class Templates {
         public static native

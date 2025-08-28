@@ -25,8 +25,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Inject
     ProposalCyclesResource proposalCyclesResource;
 
-    private static final String confirmed =
-            "Unable to edit as this Review has been confirmed as completed on %s";
+    private static final String locked = "Reviews have been locked, no edits allowed";
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
@@ -117,7 +116,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewComment(
             @PathParam("cycleCode") Long cycleCode,
-            @PathParam("submittedProposalId") Long reviewedProposalId,
+            @PathParam("submittedProposalId") Long submittedProposalId,
             @PathParam("reviewId") Long reviewId,
             String replacementComment
     )
@@ -126,13 +125,12 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setComment(replacementComment);
@@ -148,7 +146,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewScore(@PathParam("cycleCode") Long cycleCode,
-                                            @PathParam("submittedProposalId") Long reviewedProposalId,
+                                            @PathParam("submittedProposalId") Long submittedProposalId,
                                             @PathParam("reviewId") Long reviewId,
                                             Double replacementScore
     )
@@ -157,13 +155,12 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setScore(replacementScore);
@@ -180,7 +177,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewFeasibility(
             @PathParam("cycleCode") Long cycleCode,
-            @PathParam("submittedProposalId") Long reviewedProposalId,
+            @PathParam("submittedProposalId") Long submittedProposalId,
             @PathParam("reviewId") Long reviewId,
             Boolean replacementFeasibility
     )
@@ -189,13 +186,12 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setTechnicalFeasibility(replacementFeasibility);
@@ -208,7 +204,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     //confirmation that the review is complete
     @PUT
     @Path("/{reviewId}/confirmReview")
-    @Operation(summary = "confirm the review is complete; sets the review's completeDate to now, making the review un-editable")
+    @Operation(summary = "confirm the review is complete")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview confirmReviewComplete(
             @PathParam("cycleCode") Long cycleCode,
