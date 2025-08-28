@@ -130,6 +130,22 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .toList();
     }
 
+    @GET
+    @Path("allReviewsLocked")
+    @RolesAllowed({"tac_admin", "tac_member"})
+    @Operation(summary = "check that the reviews for all submitted proposals have been locked")
+    public boolean checkAllReviewsLocked(@PathParam("cycleCode") Long cycleCode)
+        throws WebApplicationException
+    {
+        ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+        List<SubmittedProposal> submittedProposals = proposalCycle.getSubmittedProposals();
+
+        return submittedProposals
+                .stream()
+                .noneMatch(sp -> sp.getReviewsCompleteDate().equals(new Date(0L)));
+    }
+
 
     @POST
     @Operation(summary = "submit a proposal")
