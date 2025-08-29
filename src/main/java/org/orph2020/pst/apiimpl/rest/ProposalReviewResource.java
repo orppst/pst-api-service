@@ -103,10 +103,14 @@ public class ProposalReviewResource extends ObjectResourceBase{
     /*
         Here we provide an API to edit certain individual fields of the ProposalReview class rather
         that updating via an object in its entirety to avoid users setting whatever completion
-        date they like. The completion date can only be updated by the user confirming that the
-        review is completed. Additionally, this avoids users changing the "reviewer" at will; to
-        change a "reviewer" one must delete "this" review and add an entirely new one with the
-        "reviewer" of choice.
+        date they like. The completion date can only be updated to the current date by the "reviewer"
+        confirming that the review is completed. Review dates are reset to the posix epoch on any
+        change to the 'comment','review score', or 'technical feasibility' fields.
+
+        Additionally, this avoids users changing the "reviewer" at will; to change a "reviewer" one
+        must delete "this" review and add an entirely new one with the "reviewer" of choice.
+
+        Once the "tac_admin" user "locks" reviews, no further edits are allowed.
      */
 
     @PUT
@@ -134,6 +138,9 @@ public class ProposalReviewResource extends ObjectResourceBase{
         }
 
         proposalReview.setComment(replacementComment);
+
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
 
         em.merge(proposalReview);
 
@@ -165,6 +172,9 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         proposalReview.setScore(replacementScore);
 
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
+
         em.merge(proposalReview);
 
         return proposalReview;
@@ -195,6 +205,9 @@ public class ProposalReviewResource extends ObjectResourceBase{
         }
 
         proposalReview.setTechnicalFeasibility(replacementFeasibility);
+
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
 
         em.merge(proposalReview);
 
