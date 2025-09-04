@@ -21,10 +21,10 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.apiimpl.ProposalCodeGenerator;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalSynopsis;
 import org.orph2020.pst.common.json.SubmittedProposalMailData;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -40,6 +40,18 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     ProposalCodeGenerator   proposalCodeGenerator;
+
+
+    @CheckedTemplate
+    static class Templates {
+        public static native
+        MailTemplate.MailTemplateInstance
+        tacReviewResults(SubmittedProposalMailData proposal);
+
+        public static native
+        MailTemplate.MailTemplateInstance
+        confirmSubmittedProposal(SubmittedProposalMailData proposal);
+    }
 
     @GET
     @Operation(summary = "get the identifiers for the SubmittedProposals in the ProposalCycle, note optional use of sourceProposalId overrides title and investigatorName")
@@ -130,6 +142,16 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .toList();
     }
 
+    /*
+        Work around: Java Dates seem to use local timezone i.e., new Date(0L) gives
+        "1970-01-01 01:00:00" rather than "1970-01-01 00:00:00" - when creating Dates
+        on a machine in the UK during the summer (BST).
+     */
+    private Boolean compareDatesOnly(Date a, Date b) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        return sdf.format(a).equals(sdf.format(b));
+    }
+
     @GET
     @Path("allReviewsLocked")
     @RolesAllowed({"tac_admin", "tac_member"})
@@ -143,15 +165,16 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         return submittedProposals
                 .stream()
-                .noneMatch(sp -> sp.getReviewsCompleteDate().equals(new Date(0L)));
+                .noneMatch(sp -> compareDatesOnly(sp.getReviewsCompleteDate(), new Date(0L)));
     }
 
 
     @POST
     @Operation(summary = "submit a proposal")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ProposalSynopsis submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
+    public Uni<Void> submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
     {
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
@@ -196,8 +219,20 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
+        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
 
-        return new ProposalSynopsis(proposal);
+        List<Investigator> investigators = submittedProposal.getInvestigators();
+
+        List<String> recipientEmails = new ArrayList<>();
+
+        for (Investigator investigator : investigators) {
+            recipientEmails.add(investigator.getPerson().getEMail());
+        }
+
+        return Templates.confirmSubmittedProposal(mailData)
+                .to(recipientEmails.toArray(new String[0]))
+                .subject("Submission Confirmation of " +   submittedProposal.getTitle() + " to " + cycle.getTitle())
+                .send();
     }
 
     @PUT
@@ -279,13 +314,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         return responseWrapper(submittedProposal, 200);
     }
 
-    @CheckedTemplate
-    static class Templates {
-        public static native
-        MailTemplate.MailTemplateInstance
-        tacReviewResults(SubmittedProposalMailData proposal);
-    }
-
     @GET
     @Path("{submittedProposalId}/mailResults")
     @Operation(summary = "for the given submitted proposal in the cycle email all investigators with review details and success status")
@@ -308,46 +336,11 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             );
         }
 
-        String cycleTitle = findObject(ProposalCycle.class, cycleCode).getTitle();
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        SubmittedProposalMailData submittedProposalMailData = new SubmittedProposalMailData();
-        submittedProposalMailData.cycle = cycleTitle;
-        submittedProposalMailData.title = submittedProposal.getTitle();
+        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
 
         List<Investigator> investigators = submittedProposal.getInvestigators();
-
-        Investigator principalInvestigator = investigators
-                .stream()
-                .filter(i -> i.getType().equals(InvestigatorKind.PI))
-                .findFirst()
-                .orElseThrow(
-                        () -> new WebApplicationException("No principal investigator found", 404)
-                ); //every proposal should have a nominated PI so this shouldn't occur
-
-        submittedProposalMailData.principalName = principalInvestigator.getPerson().getFullName();
-
-        //this list can be empty i.e., principal investigator only, no co-investigators
-        List<Investigator> otherInvestigators = investigators
-                .stream()
-                .filter(i -> i.getType().equals(InvestigatorKind.COI))
-                .toList();
-
-        submittedProposalMailData.otherNames = new ArrayList<>();
-
-        //if otherInvestigators is empty this loop is skipped and otherNames remains empty
-        for(Investigator investigator : otherInvestigators) {
-            submittedProposalMailData.otherNames.add(investigator.getPerson().getFullName());
-        }
-
-        submittedProposalMailData.isSuccessful = submittedProposal.getSuccessful();
-
-        List<ProposalReview> reviews = submittedProposal.getReviews();
-
-        submittedProposalMailData.reviews = new ArrayList<>();
-
-        for (ProposalReview review : reviews) {
-            submittedProposalMailData.reviews.add(review.getComment());
-        }
 
         List<String> recipientEmails = new ArrayList<>();
 
@@ -355,11 +348,15 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             recipientEmails.add(investigator.getPerson().getEMail());
         }
 
-        return Templates.tacReviewResults(submittedProposalMailData)
+        return Templates.tacReviewResults(mailData)
                 .to(recipientEmails.toArray(new String[0]))
-                .subject(cycleTitle + " TAC review result for " + submittedProposal.getTitle())
+                .subject(cycle.getTitle() + " TAC review result for " + submittedProposal.getTitle())
                 .send();
     }
+
+
+
+
 }
 
 

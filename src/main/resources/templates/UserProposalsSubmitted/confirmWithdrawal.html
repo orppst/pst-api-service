@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>
+        Confirmation: {proposal.title} withdrawn from {proposal.cycle}
+    </title>
+</head>
+<body>
+
+<div>
+    <p>Hello,</p>
+</div>
+
+<div>
+    <p>
+        You are being emailed this withdrawal confirmation as you are listed as an investigator on the observation
+        proposal '{proposal.title}'.
+    </p>
+    <p>
+        Principal Investigator: {proposal.principalName}
+        {#if proposal.otherNames.size > 0}
+            Co-Investigators:
+        {/if}
+    </p>
+    <ul>
+        {#for name in proposal.otherNames}
+            <li>{name}</li>
+        {/for}
+    </ul>
+    <p>
+        The principal investigator has withdrawn this proposal from '{proposal.cycle}'. You should contact them
+        for further details about the withdrawal.
+    </p>
+    <p>
+        Sent from the Polaris Observation Proposal Preparation Tool.
+    </p>
+
+</div>
+</body>
+</html>

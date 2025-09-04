@@ -581,7 +581,7 @@ public class UseCasePiTest {
              .when()
              .post("/proposalCycles/"+cycleId+"/submittedProposals")
              .then()
-             .statusCode(200);
+             .statusCode(204);
 
         LOGGER.info("list submitted proposals");
         // check we can see at least 1 submitted proposal
@@ -599,7 +599,7 @@ public class UseCasePiTest {
                 .when()
                 .delete("/proposalsSubmitted/" + submittedId + "/withdraw?cycleId=" + cycleId)
                 .then()
-                .statusCode(200);
+                .statusCode(204);
 
         // take a look at what is there now
         LOGGER.info("List of proposals");
