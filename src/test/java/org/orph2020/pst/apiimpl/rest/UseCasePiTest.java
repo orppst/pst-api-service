@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ProposalCycleDates;
 
 import java.io.File;
 import java.io.IOException;
@@ -556,6 +557,7 @@ public class UseCasePiTest {
              )
              .extract().jsonPath().getInt("[0].dbid"); //note does not actually use JSONPath syntax! https://github.com/rest-assured/rest-assured/wiki/Usage#json-using-jsonpath
 
+
         LOGGER.info("getting observing mode");
         int obsModeId = given()
                 .when()
@@ -594,12 +596,23 @@ public class UseCasePiTest {
                 .extract()
                 .jsonPath().getInt("[0].code");
 
+        //get the ProposalCycle for access to the submission deadline date
+        ProposalCycleDates cycleDates = given()
+                .when()
+                .get("/proposalCycles/" + cycleId + "/dates")
+                .then()
+                .statusCode(200)
+                .body("title", equalTo("Cycle 19"))
+                .extract().as(ProposalCycleDates.class, raObjectMapper);
+
+        boolean afterDeadline = cycleDates.submissionDeadline.after(new Date());
+
         LOGGER.info("withdraw submitted proposal id=" + submittedId);
         given()
                 .when()
                 .delete("/proposalsSubmitted/" + submittedId + "/withdraw?cycleId=" + cycleId)
                 .then()
-                .statusCode(204);
+                .statusCode(afterDeadline ? 409: 204);
 
         // take a look at what is there now
         LOGGER.info("List of proposals");

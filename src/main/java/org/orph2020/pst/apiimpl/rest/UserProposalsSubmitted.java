@@ -25,6 +25,7 @@ import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,6 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Tag(name="user-proposals-submitted")
 @RolesAllowed("default-roles-orppst")
 public class UserProposalsSubmitted extends ObjectResourceBase {
+    @Inject
+    ProposalCyclesResource proposalCyclesResource;
     @Inject
     SubjectMapResource subjectMapResource;
     @Inject
@@ -119,9 +122,8 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             throw new WebApplicationException("You are not a PI on this submitted proposal", Response.Status.FORBIDDEN);
         }
 
-        //Has this been assigned reviewer(s)
-        if(!submittedProposal.getReviews().isEmpty()) {
-            throw new WebApplicationException("Reviews have already been submitted please contact the TAC",
+        if (proposalCyclesResource.getProposalCycleDates(cycleCode).submissionDeadline.after(new Date())) {
+            throw new WebApplicationException("You may not withdraw your proposal as the submission date has been surpassed. Please contact the TAC if you want to withdraw",
                     Response.Status.CONFLICT);
         }
 
