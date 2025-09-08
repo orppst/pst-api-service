@@ -25,8 +25,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Inject
     ProposalCyclesResource proposalCyclesResource;
 
-    private static final String confirmed =
-            "Unable to edit as this Review has been confirmed as completed on %s";
+    private static final String locked = "Reviews have been locked, no edits allowed";
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
@@ -104,10 +103,14 @@ public class ProposalReviewResource extends ObjectResourceBase{
     /*
         Here we provide an API to edit certain individual fields of the ProposalReview class rather
         that updating via an object in its entirety to avoid users setting whatever completion
-        date they like. The completion date can only be updated by the user confirming that the
-        review is completed. Additionally, this avoids users changing the "reviewer" at will; to
-        change a "reviewer" one must delete "this" review and add an entirely new one with the
-        "reviewer" of choice.
+        date they like. The completion date can only be updated to the current date by the "reviewer"
+        confirming that the review is completed. Review dates are reset to the posix epoch on any
+        change to the 'comment','review score', or 'technical feasibility' fields.
+
+        Additionally, this avoids users changing the "reviewer" at will; to change a "reviewer" one
+        must delete "this" review and add an entirely new one with the "reviewer" of choice.
+
+        Once the "tac_admin" user "locks" reviews, no further edits are allowed.
      */
 
     @PUT
@@ -117,7 +120,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewComment(
             @PathParam("cycleCode") Long cycleCode,
-            @PathParam("submittedProposalId") Long reviewedProposalId,
+            @PathParam("submittedProposalId") Long submittedProposalId,
             @PathParam("reviewId") Long reviewId,
             String replacementComment
     )
@@ -126,16 +129,18 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setComment(replacementComment);
+
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
 
         em.merge(proposalReview);
 
@@ -148,7 +153,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Consumes(MediaType.TEXT_PLAIN)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewScore(@PathParam("cycleCode") Long cycleCode,
-                                            @PathParam("submittedProposalId") Long reviewedProposalId,
+                                            @PathParam("submittedProposalId") Long submittedProposalId,
                                             @PathParam("reviewId") Long reviewId,
                                             Double replacementScore
     )
@@ -157,16 +162,18 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setScore(replacementScore);
+
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
 
         em.merge(proposalReview);
 
@@ -180,7 +187,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview updateReviewFeasibility(
             @PathParam("cycleCode") Long cycleCode,
-            @PathParam("submittedProposalId") Long reviewedProposalId,
+            @PathParam("submittedProposalId") Long submittedProposalId,
             @PathParam("reviewId") Long reviewId,
             Boolean replacementFeasibility
     )
@@ -189,16 +196,18 @@ public class ProposalReviewResource extends ObjectResourceBase{
         proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
 
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
-                ProposalReview.class, "reviews", reviewedProposalId, reviewId);
+                ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
-        if (proposalReview.getReviewDate().compareTo(new Date(0L)) > 0) {
-            throw new WebApplicationException(
-                    String.format(confirmed, proposalReview.getReviewDate().toString()),
-                    400
-            );
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+            throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setTechnicalFeasibility(replacementFeasibility);
+
+        //any change indicated by resetting the review date to posix epoch,
+        proposalReview.setReviewDate(new Date(0L));
 
         em.merge(proposalReview);
 
@@ -208,7 +217,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     //confirmation that the review is complete
     @PUT
     @Path("/{reviewId}/confirmReview")
-    @Operation(summary = "confirm the review is complete; sets the review's completeDate to now, making the review un-editable")
+    @Operation(summary = "confirm the review is complete")
     @Transactional(rollbackOn = {WebApplicationException.class})
     public ProposalReview confirmReviewComplete(
             @PathParam("cycleCode") Long cycleCode,

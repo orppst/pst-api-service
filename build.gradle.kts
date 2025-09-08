@@ -4,6 +4,9 @@ plugins {
 version = "0.7"
 
 dependencies {
+    implementation("io.quarkus:quarkus-mailer")
+
+    implementation("io.quarkiverse.qute.web:quarkus-qute-web")
 
 
     implementation("io.quarkus:quarkus-smallrye-graphql")

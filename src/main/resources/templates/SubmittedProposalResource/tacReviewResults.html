@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>
+        {proposal.cycle} Review Results for {proposal.title}
+    </title>
+</head>
+<body>
+
+<div>
+    <p>Hello,</p>
+</div>
+
+<h1>RE: '{proposal.cycle}' TAC Review Result for proposal: {proposal.title} </h1>
+
+<div>
+    <p>
+        You are being emailed this information as you are listed as an investigator on the observation
+        proposal {proposal.title}.
+    </p>
+    <p>
+        Principal Investigator: {proposal.principalName}
+        {#if proposal.otherNames.size > 0}
+            Co-Investigators:
+        {/if}
+    </p>
+    <ul>
+        {#for name in proposal.otherNames}
+        <li>{name}</li>
+        {/for}
+    </ul>
+    <p>
+        Your proposal has been {proposal.isSuccessful ? "accepted" : "rejected"} by the
+        time allocation committee for the {proposal.cycle} proposal cycle.
+    </p>
+    <p>
+        Reviewers comments on the proposal:
+    </p>
+    <ul>
+        {#for review in proposal.reviews}
+        <li>{review}</li>
+        {/for}
+    </ul>
+    <p>
+        Sent from the Polaris Observation Proposal Preparation Tool for the observation cycle {proposal.cycle}.
+    </p>
+
+</div>
+</body>
+</html>

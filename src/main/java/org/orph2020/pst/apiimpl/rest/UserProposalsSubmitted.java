@@ -1,5 +1,9 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import io.quarkus.mailer.MailTemplate;
+import io.quarkus.qute.CheckedTemplate;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Uni;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
@@ -11,13 +15,17 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.SubmittedProposalMailData;
 import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -26,9 +34,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RolesAllowed("default-roles-orppst")
 public class UserProposalsSubmitted extends ObjectResourceBase {
     @Inject
+    ProposalCyclesResource proposalCyclesResource;
+    @Inject
     SubjectMapResource subjectMapResource;
     @Inject
     JsonWebToken userInfo;
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
+
+    @CheckedTemplate
+    static class Templates {
+        public static native
+        MailTemplate.MailTemplateInstance
+        confirmWithdrawal(SubmittedProposalMailData proposal);
+    }
 
     @GET
     @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user optionally pass a cycle id, or include all cycles that have not passed")
@@ -81,9 +100,10 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     @DELETE
     @Operation(summary = "Withdraw a submitted proposal from an observing cycle")
     @Path("{submittedProposalId}/withdraw")
+    @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
-                                     @QueryParam("cycleId") long cycleCode)
+    public Uni<Void> withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
+                                      @QueryParam("cycleId") long cycleCode)
         throws WebApplicationException
     {
         Person currentUser = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson();
@@ -102,9 +122,8 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             throw new WebApplicationException("You are not a PI on this submitted proposal", Response.Status.FORBIDDEN);
         }
 
-        //Has this been assigned reviewer(s)
-        if(!submittedProposal.getReviews().isEmpty()) {
-            throw new WebApplicationException("Reviews have already been submitted please contact the TAC",
+        if (proposalCyclesResource.getProposalCycleDates(cycleCode).submissionDeadline.after(new Date())) {
+            throw new WebApplicationException("You may not withdraw your proposal as the submission date has been surpassed. Please contact the TAC if you want to withdraw",
                     Response.Status.CONFLICT);
         }
 
@@ -112,10 +131,31 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
         cycle.removeFromSubmittedProposals(submittedProposal);
 
-        //TODO: Check for and clean up and orphaned objects and documents
+        //remove the document store for the submitted proposal (copied from the original proposal on submission)
+        try {
+            proposalDocumentStore.removeStorePath(String.valueOf(submittedProposalId));
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
 
-        return responseWrapper("Withdrawn", 200);
 
+        //gather data to send in an email confirming the withdrawal
+        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
+
+        List<Investigator> investigators = submittedProposal.getInvestigators();
+
+        List<String> recipientEmails = new ArrayList<>();
+
+        for (Investigator investigator : investigators) {
+            recipientEmails.add(investigator.getPerson().getEMail());
+        }
+
+        return Templates.confirmWithdrawal(mailData)
+                .to(recipientEmails.toArray(new String[0]))
+                .subject("Confirmation of withdrawal of proposal '"
+                        + submittedProposal.getTitle() + "' from observation cycle '"
+                        + cycle.getTitle() + "'")
+                .send();
     }
 
 }
