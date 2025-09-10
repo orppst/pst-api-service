@@ -197,6 +197,7 @@ public class JustificationsResource extends ObjectResourceBase {
             extensions.add(".png");
             extensions.add(".eps");
             extensions.add(".jpeg");
+            extensions.add(".pdf");
             if (justification.getFormat() == TextFormats.LATEX) {
                 extensions.add(".bib");
             }
@@ -213,7 +214,7 @@ public class JustificationsResource extends ObjectResourceBase {
     //non-transactional, no modification to the database occurs
     @POST
     @Path("resourceFile")
-    @Operation(summary = "add a resource file for LaTeX or RST Justifications; .bib, .jpg, .png, .eps supported only")
+    @Operation(summary = "add a resource file for LaTeX or RST Justifications; .bib, .jpg, .png, .eps, .pdf supported only")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response addLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
@@ -580,11 +581,13 @@ public class JustificationsResource extends ObjectResourceBase {
             case "image/jpeg":
             case "image/png":
             case "image/x-eps":
+            case "application/pdf":
                 if (!extension.equals("bib") &&
                         !extension.equals("jpeg") &&
                         !extension.equals("jpg") &&
                         !extension.equals("png") &&
-                        !extension.equals("eps")
+                        !extension.equals("eps") &&
+                        !extension.equals("pdf")
                 )
                     throw new WebApplicationException(
                             String.format("Invalid file extension: %s", extension));
