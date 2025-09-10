@@ -290,6 +290,13 @@ public class ProposalResource extends ObjectResourceBase {
             error.append("No technical goals defined.<br/>");
         }
 
+        File compiledPDF = proposalDocumentStore.fetchFile(justificationsStorePath(proposalCode) + "/out/justification.pdf");
+
+        if(!compiledPDF.exists()) {
+            valid = false;
+            error.append("Justifications pdf has not been compiled.<br/>");
+        }
+
         List<ObjectIdentifier> observations = observationResource.getObservations(proposalCode, null, null);
         if(observations.isEmpty()) {
             valid = false;
