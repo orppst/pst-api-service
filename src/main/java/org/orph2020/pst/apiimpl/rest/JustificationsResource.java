@@ -367,7 +367,9 @@ public class JustificationsResource extends ObjectResourceBase {
     public Response downloadLatexPdf(@PathParam("proposalCode") Long proposalCode)
         throws WebApplicationException {
 
-        justificationIsLatex(proposalCode);
+        // ToDo: This check is disabled to allow download of submitted proposal justifications
+        // ToDo: Is there a better way to do this?
+        //justificationIsLatex(proposalCode);
 
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
