@@ -605,7 +605,7 @@ public class UseCasePiTest {
                 .body("title", equalTo("Cycle 19"))
                 .extract().as(ProposalCycleDates.class, raObjectMapper);
 
-        boolean afterDeadline = cycleDates.submissionDeadline.after(new Date());
+        boolean afterDeadline = cycleDates.submissionDeadline.before(new Date());
 
         LOGGER.info("withdraw submitted proposal id=" + submittedId);
         given()
