@@ -233,6 +233,16 @@ public class JustificationsResource extends ObjectResourceBase {
             throw new WebApplicationException("Unable to save uploaded file");
         }
 
+        if (extension.equals("bib")) {
+            // replace any latex macro calls in the bibliography file with literal acronyms
+            try {
+                replaceMacrosWithLiteralAcronyms(proposalCode);
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
+            }
+
+        }
+
         return Response.ok(String.format("File %s saved", filename)).build();
     }
 
@@ -631,5 +641,56 @@ public class JustificationsResource extends ObjectResourceBase {
                 justificationsStorePath(proposalCode) + "/" + technicalTexFileName
         );
     }
+
+    private void replaceMacrosWithLiteralAcronyms(Long proposalCode)
+    throws IOException {
+        // I don't know who said it first but acronyms really are the bane of modern life!
+
+        //Automatically exported references tend to give journal acronyms as a latex macro
+        //e.g. 'journal = {\mnras}' meaning you must have that macro (\mnras) defined in your
+        // .tex file/s somewhere to give MNRAS as the literal. The bibliography style file
+        // (.bst) can be used to define "MACRO"s but, they expect the value without the back-slash.
+        // As people will typically be using automated reference export services then we either have
+        // to define any and all possible journal acronyms as macros in the 'main.tex' template, say,
+        // this is impractical,
+        // --OR--
+        // we programmatically edit the references here, replacing any "journal = {\xxx}" with "journal = XXX".
+
+        // Rather disappointingly the macro for "Astrophysics and Space Science" is not "\ass" but "\apss"
+        // because generally Astrophysics is shortened to "Ap". So in general the string "ap" needs to be
+        // replaced with "Ap" not "AP".
+        // Notice that there may be exceptions to this "rule". For example, the acronym for
+        // "Astronomy & Astrophysics" is "A&A" rather than "AAp", the macro for which is "\aap".
+        // This is further complicated by "A&A" also having "review" and "supplementary" versions;
+        // "\aapr" and "\aaps" respectively.
+        // Another exception is the macro "\nat" that should be replaced with "Nature".
+        // There are potentially other exceptions. So what could possibly go wrong? :P
+
+        File references = proposalDocumentStore.fetchFile(
+                justificationsStorePath(proposalCode) + "/refs.bib");
+
+        Scanner theScanner = new Scanner(references);
+        StringBuilder newContent = new StringBuilder();
+
+        //first attempt - needs exceptions adding
+        while (theScanner.hasNextLine()) {
+            String line = theScanner.nextLine();
+            // I LOVE Java regex strings, they're SO intuitive!
+            if (line.matches(" *journal *= *\\{\\\\[a-z]+},$")) {
+                String acronym = line.substring(line.indexOf("{\\") + 1, line.lastIndexOf("}"));
+                newContent.append(line.replace(
+                        acronym, acronym.substring(acronym.indexOf("\\") + 1).toUpperCase())
+                );
+            } else {
+                newContent.append(line);
+            }
+            newContent.append("\n");
+        }
+        theScanner.close();
+
+        proposalDocumentStore.writeStringToFile(newContent.toString(),
+                justificationsStorePath(proposalCode) + "/refs.bib");
+    }
+
 }
 

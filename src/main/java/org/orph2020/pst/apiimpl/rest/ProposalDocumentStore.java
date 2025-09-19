@@ -67,9 +67,9 @@ public class ProposalDocumentStore {
 
         //copy the bibliography style file for Justifications to the proposal store
         Files.copy(
-                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/prop.bst")),
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/abbreviateReferences.bst")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/abbreviate_refs.bst"),
+                        "justifications/polarisStyle.bst"),
                 REPLACE_EXISTING
         );
     }
