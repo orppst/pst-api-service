@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
@@ -28,6 +29,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
@@ -41,6 +43,11 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Inject
     ProposalCodeGenerator   proposalCodeGenerator;
 
+    @Inject
+    JsonWebToken userInfo;
+
+    @Inject
+    SubjectMapResource subjectMapResource;
 
     @CheckedTemplate
     static class Templates {
@@ -180,6 +187,22 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
 
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
+
+        //Only a PI can submit this proposal
+        Person currentUser = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson();
+
+        //Check this person has rights to withdraw this submitted proposal
+        AtomicBoolean foundPI = new AtomicBoolean(false);
+        proposal.getInvestigators().forEach(investigator -> {
+            if(investigator.getType() == InvestigatorKind.PI
+                    && investigator.getPerson() == currentUser)
+                foundPI.set(true);
+        });
+
+        //Authenticated user is not associated with this submittedProposal.
+        if(!foundPI.get()) {
+            throw new WebApplicationException("You are not a PI on this proposal", Response.Status.FORBIDDEN);
+        }
 
         List<ObservationConfiguration> configMappings = new ArrayList<>();
         for (SubmissionConfiguration.ObservationConfigMapping cm: submissionConfiguration.config)
