@@ -45,6 +45,12 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Inject
     ProposalCodeGenerator   proposalCodeGenerator;
 
+    @Inject
+    JsonWebToken userInfo;
+
+    @Inject
+    SubjectMapResource subjectMapResource;
+
     //Justification header stuff
     String justificationsHeaderTemplate = "justificationsHeaderTemplate.tex";
     String justificationsHeader = "justificationsHeader.tex";
