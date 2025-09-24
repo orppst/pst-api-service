@@ -646,24 +646,30 @@ public class JustificationsResource extends ObjectResourceBase {
     throws IOException {
         // I don't know who said it first but acronyms really are the bane of modern life!
 
-        //Automatically exported references tend to give journal acronyms as a latex macro
-        //e.g. 'journal = {\mnras}' meaning you must have that macro (\mnras) defined in your
-        // .tex file/s somewhere to give MNRAS as the literal. The bibliography style file
-        // (.bst) can be used to define "MACRO"s but, they expect the value without the back-slash.
-        // As people will typically be using automated reference export services then we either have
-        // to define any and all possible journal acronyms as macros in the 'main.tex' template, say,
-        // this is impractical,
+        // Automatically exported references tend to give journal acronyms as a latex macro
+        // e.g. 'journal = {\mnras}' meaning you must have that macro, \mnras, defined in your
+        // .tex file/s somewhere to print the journal title however you want it printed.
+        // This is fine for articles were you're in control of the bibliography; you simply
+        // provide the macro definition. As we are providing a generalised main.tex template
+        // this is not so straightforward.
+        // We either have to define any and all possible journal acronyms as macros in the
+        // 'main.tex' template, this is impractical,
         // --OR--
-        // we programmatically edit the references here, replacing any "journal = {\xxx}" with "journal = XXX".
+        // ask users to provide the macro definitions for the references they have cited,
+        // taking up precious character space in their justifications (and is tedious, and even possible?)
+        // --OR--
+        // we programmatically edit the references here, replacing any "journal = {\xxx}" with
+        // "journal = XXX", but there are exceptions - see below
+        // None of these "solutions" are ideal.
 
         // Rather disappointingly the macro for "Astrophysics and Space Science" is not "\ass" but "\apss"
         // because generally Astrophysics is shortened to "Ap". So in general the string "ap" needs to be
         // replaced with "Ap" not "AP".
-        // Notice that there may be exceptions to this "rule". For example, the acronym for
+        // Even so, there are exceptions to this exception. For example, the acronym for
         // "Astronomy & Astrophysics" is "A&A" rather than "AAp", the macro for which is "\aap".
         // This is further complicated by "A&A" also having "review" and "supplementary" versions;
         // "\aapr" and "\aaps" respectively.
-        // Another exception is the macro "\nat" that should be replaced with "Nature".
+        // Another exception is the macro "\nat", which should be replaced with "Nature" not "NAT".
         // There are potentially other exceptions. So what could possibly go wrong? :P
 
         File references = proposalDocumentStore.fetchFile(
@@ -672,15 +678,40 @@ public class JustificationsResource extends ObjectResourceBase {
         Scanner theScanner = new Scanner(references);
         StringBuilder newContent = new StringBuilder();
 
-        //first attempt - needs exceptions adding
         while (theScanner.hasNextLine()) {
             String line = theScanner.nextLine();
             // I LOVE Java regex strings, they're SO intuitive!
+            // We're matching for ' journal = {\<macro>},' where there could be zero or more spaces
             if (line.matches(" *journal *= *\\{\\\\[a-z]+},$")) {
                 String acronym = line.substring(line.indexOf("{\\") + 1, line.lastIndexOf("}"));
-                newContent.append(line.replace(
-                        acronym, acronym.substring(acronym.indexOf("\\") + 1).toUpperCase())
-                );
+                switch (acronym) {
+                    case "\\aap":
+                        newContent.append(line.replace("\\aap", "A&A"));
+                        break;
+                    case "\\aapr":
+                        newContent.append(line.replace("\\aapr", "A&A Rev."));
+                        break;
+                    case "\\aaps":
+                        newContent.append(line.replace("\\aaps", "A&A Sup."));
+                        break;
+                    case "\\jcap":
+                        //Journal of Cosmology and Astroparticle Physics (avoids "AP" -> "Ap" issue)
+                        newContent.append(line.replace("\\jcap", "JCAP"));
+                        break;
+                    case "\\nat":
+                        newContent.append(line.replace("\\nat", "Nature"));
+                        break;
+                    default: {
+                        String newLine = line.replace(
+                                acronym, acronym.substring(acronym.indexOf("\\") + 1).toUpperCase());
+                        if (acronym.contains("ap")) {
+                            newContent.append(newLine.replace("AP", "Ap"));
+                        } else {
+                            newContent.append(newLine);
+                        }
+                        break;
+                    }
+                }
             } else {
                 newContent.append(line);
             }

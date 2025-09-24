@@ -22,9 +22,12 @@
 \usepackage[textwidth=17.5cm,textheight=25cm,headheight=14pt]{geometry}
 \usepackage{graphicx}
 \usepackage{subfig}
+\usepackage{wrapfig}
 \usepackage{fancyhdr}
-\usepackage{paralist}
 \usepackage[square,numbers,super]{natbib}
+
+% condense the line separation between bibitems
+\setlength{\bibsep}{1pt plus 0.3ex}
 
 %%%%%%%% Custom "insert figure" commands %%%%%%
 \newcommand{\onefigure}[3][.5]{%
@@ -49,9 +52,9 @@
 \newcommand{\threefigures}[5][.33]{%
     \begin{figure}[ht]
     \centering
-    \subfloat{\includegraphics[width=#1\textwidth]{#2}}
-    \subfloat{\includegraphics[width=#1\textwidth]{#3}}
-    \subfloat{\includegraphics[width=#1\textwidth]{#4}}
+    \subfloat[]{\includegraphics[width=#1\textwidth]{#2}}
+    \subfloat[]{\includegraphics[width=#1\textwidth]{#3}}
+    \subfloat[]{\includegraphics[width=#1\textwidth]{#4}}
     \caption{#5}
     \label{fig:#2}
     \end{figure}
@@ -69,6 +72,15 @@
     \end{figure}
 }
 
+\newcommand{\textwrapfigure}[4][.5]{%
+    \begin{wrapfigure}{#4}{#1\textwidth}
+    \centering
+    \includegraphics[width=#1\textwidth]{#2}
+    \caption{#3}
+    \label{fig:#2}
+    \end{wrapfigure}
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
@@ -81,14 +93,12 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    \bibliographystyle{polarisStyle}
+    \bibliographystyle{polaris}
 % Users are expected to provide the bibliography file.
 % It will be renamed to "refs.bib" in the backend.
-    \begin{flushleft}
     {
         \footnotesize
         \bibliography{refs}
     }
-    \end{flushleft}
 
 \end{document}
