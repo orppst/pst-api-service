@@ -377,7 +377,24 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .send();
     }
 
+    @PUT
+    @Path("/{submittedProposalId}/replaceCode")
+    @RolesAllowed({"tac_admin", "tac_member"})
+    @Operation(summary = "update the 'proposalCode' of the given SubmittedProposal")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response replaceCode(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId,
+            @QueryParam("proposalCode") String newProposalCode)
+            throws WebApplicationException
+    {
+        SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
+                "submittedProposals", cycleCode, submittedProposalId);
 
+        submittedProposal.setProposalCode(newProposalCode);
+
+        return responseWrapper(submittedProposal, 200);
+    }
 
 
 }
