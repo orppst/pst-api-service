@@ -1,7 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.RequestScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
@@ -63,6 +62,14 @@ public class ProposalDocumentStore {
                 Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/justificationsHeaderTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         "justifications/justificationsHeaderTemplate.tex"),
+                REPLACE_EXISTING
+        );
+
+        //copy the bibliography style file for Justifications to the proposal store
+        Files.copy(
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/polaris.bst")),
+                Paths.get(proposalStoreRoot, proposalCode.toString(),
+                        "justifications/polaris.bst"),
                 REPLACE_EXISTING
         );
     }
