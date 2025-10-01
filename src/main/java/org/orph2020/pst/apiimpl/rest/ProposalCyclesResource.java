@@ -185,6 +185,40 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return responseWrapper(cycle.getTitle(), 200);
     }
 
+    ///********* CODE **********
+
+    @GET
+    @Path("{cycleCode}/code")
+    @Operation(summary = "Get the code for a given proposal cycle")
+    public Response getProposalCycleCode(@PathParam("cycleCode") Long cycleCode)
+    {
+        ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
+
+        return responseWrapper(fullCycle.getCode(), 200);
+    }
+
+    @PUT
+    @Path("{cycleCode}/code")
+    @Operation(summary = "change the code of the given proposal cycle")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
+    public Response replaceCycleCode(
+            @PathParam("cycleCode") Long cycleCode,
+            String replacementCode
+    )
+            throws WebApplicationException
+    {
+        // Get the TAC for this cycle
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // See if user is on the TAC
+        checkUserOnTAC(cycle);
+
+        cycle.setCode(replacementCode);
+
+        return responseWrapper(cycle.getTitle(), 200);
+    }
 
     //********* DATES **********
 
