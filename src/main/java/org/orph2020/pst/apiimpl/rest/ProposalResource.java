@@ -296,7 +296,7 @@ public class ProposalResource extends ObjectResourceBase {
             error.append("No observations defined.<br/>");
         } else if(cycleId != 0) {
             //Compare timing windows with cycle dates and times.
-            ProposalCycleSynopsis theCycleDates = proposalCyclesResource.getProposalCycleDates(cycleId);
+            ProposalCycleSynopsis theCycleDates = proposalCyclesResource.getProposalCycleDetails(cycleId);
 
             //Has proposal cycle submission deadline passed?
             Date now = new Date();

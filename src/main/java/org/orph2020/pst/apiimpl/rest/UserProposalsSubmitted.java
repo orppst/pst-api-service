@@ -122,7 +122,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             throw new WebApplicationException("You are not a PI on this submitted proposal", Response.Status.FORBIDDEN);
         }
 
-        if (proposalCyclesResource.getProposalCycleDates(cycleCode).submissionDeadline.before(new Date())) {
+        if (proposalCyclesResource.getProposalCycleDetails(cycleCode).submissionDeadline.before(new Date())) {
             throw new WebApplicationException("You may not withdraw your proposal as the submission date has been surpassed. Please contact the TAC if you want to withdraw",
                     Response.Status.CONFLICT);
         }

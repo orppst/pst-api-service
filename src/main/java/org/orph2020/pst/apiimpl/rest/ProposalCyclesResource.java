@@ -225,7 +225,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/details")
     @Operation(summary = "Get the dates associated with a given proposal cycle")
-    public ProposalCycleSynopsis getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
+    public ProposalCycleSynopsis getProposalCycleDetails(@PathParam("cycleCode") Long cycleCode)
     {
         ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
 
