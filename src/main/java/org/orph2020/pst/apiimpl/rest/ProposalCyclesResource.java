@@ -17,7 +17,7 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.CycleObservingTimeTotal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalCycleSynopsys;
+import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -220,19 +220,46 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return responseWrapper(cycle.getTitle(), 200);
     }
 
-    //********* DATES **********
+    //********* DETAILS **********
 
     @GET
-    @Path("{cycleCode}/dates")
+    @Path("{cycleCode}/details")
     @Operation(summary = "Get the dates associated with a given proposal cycle")
-    public ProposalCycleSynopsys getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
+    public ProposalCycleSynopsis getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
     {
         ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
 
-        return new ProposalCycleSynopsys(fullCycle.getTitle(), fullCycle.getCode(),
+        return new ProposalCycleSynopsis(fullCycle.getTitle(), fullCycle.getCode(),
                 fullCycle.getSubmissionDeadline(), fullCycle.getObservationSessionStart(),
                 fullCycle.getObservationSessionEnd(), fullCycle.getObservatory());
 
+    }
+
+    @PUT
+    @Path("{cycleCode}/details")
+    @Operation(summary = "change all the details of a given proposal cycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("tac_admin")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ProposalCycleSynopsis updateProposalCycleDetails(
+            @PathParam("cycleCode") Long cycleCode,
+            ProposalCycleSynopsis newDetails
+    )
+        throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+        checkUserOnTAC(cycle);
+
+        cycle.setTitle(newDetails.title);
+        cycle.setCode(newDetails.code);
+        cycle.setSubmissionDeadline(newDetails.submissionDeadline);
+        cycle.setObservationSessionStart(newDetails.observationSessionStart);
+        cycle.setObservationSessionEnd(newDetails.observationSessionEnd);
+        cycle.setObservatory(newDetails.observatory);
+
+        return new ProposalCycleSynopsis(cycle.getTitle(), cycle.getCode(),
+                cycle.getSubmissionDeadline(), cycle.getObservationSessionStart(),
+                cycle.getObservationSessionEnd(), cycle.getObservatory());
     }
 
     @PUT
