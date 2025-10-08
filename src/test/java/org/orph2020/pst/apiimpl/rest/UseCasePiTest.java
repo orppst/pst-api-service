@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.inject.Inject;
 import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalCycleDates;
+import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 
 import java.io.File;
 import java.io.IOException;
@@ -597,13 +597,13 @@ public class UseCasePiTest {
                 .jsonPath().getInt("[0].code");
 
         //get the ProposalCycle for access to the submission deadline date
-        ProposalCycleDates cycleDates = given()
+        ProposalCycleSynopsis cycleDates = given()
                 .when()
                 .get("/proposalCycles/" + cycleId + "/dates")
                 .then()
                 .statusCode(200)
                 .body("title", equalTo("Cycle 19"))
-                .extract().as(ProposalCycleDates.class, raObjectMapper);
+                .extract().as(ProposalCycleSynopsis.class, raObjectMapper);
 
         boolean afterDeadline = cycleDates.submissionDeadline.before(new Date());
 
