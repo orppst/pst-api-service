@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -25,6 +27,8 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
  */
 @ApplicationScoped
 public class ProposalDocumentStore {
+
+     static final Logger logger = LoggerFactory.getLogger(ProposalDocumentStore.class.getName());
 
     @ConfigProperty(name = "document-store.root")
     String proposalStoreRoot;
@@ -135,7 +139,17 @@ public class ProposalDocumentStore {
                 }
             }
         }
-        return file.renameTo(fetchFile(saveFileAs));
+
+       final File dest = fetchFile(saveFileAs);
+        logger.debug("Moving file {}  exists {} to {}", file, file.exists(), dest );
+       try {
+          Files.move(file.toPath(),dest.toPath());
+          return true;
+       } catch (IOException e) {
+          throw new RuntimeException(e);
+
+       }
+
     }
 
     /**
