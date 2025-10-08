@@ -87,7 +87,7 @@ RUN curl  -4  -L  https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.t
 
 #FIXME need way to discover path - or fix version downloaded...
 ENV PATH="/usr/local/texlive/2024/bin/x86_64-linux/:${PATH}"
-RUN tlmgr install latexmk
+RUN tlmgr install latexmk subfig graphicx wrapfig
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
 COPY --chown=185 build/quarkus-app/lib/ /deployments/lib/
