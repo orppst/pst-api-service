@@ -17,7 +17,7 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.CycleObservingTimeTotal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.ProposalCycleDates;
+import org.orph2020.pst.common.json.ProposalCycleSynopsys;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -225,13 +225,14 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}/dates")
     @Operation(summary = "Get the dates associated with a given proposal cycle")
-    public ProposalCycleDates getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
+    public ProposalCycleSynopsys getProposalCycleDates(@PathParam("cycleCode") Long cycleCode)
     {
         ProposalCycle fullCycle =  findObject(ProposalCycle.class, cycleCode);
 
-        return new ProposalCycleDates(fullCycle.getTitle(), fullCycle.getSubmissionDeadline(),
-                fullCycle.getObservationSessionStart(), fullCycle.getObservationSessionEnd(),
-                fullCycle.getObservatory());
+        return new ProposalCycleSynopsys(fullCycle.getTitle(), fullCycle.getCode(),
+                fullCycle.getSubmissionDeadline(), fullCycle.getObservationSessionStart(),
+                fullCycle.getObservationSessionEnd(), fullCycle.getObservatory());
+
     }
 
     @PUT
