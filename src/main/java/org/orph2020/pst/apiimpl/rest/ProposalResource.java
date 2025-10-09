@@ -71,6 +71,8 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     JsonWebToken userInfo;
 //    UserInfo userInfo; // IMPL it would be nice to use UserInfo
+    @Inject
+    JustificationsResource justificationsResource;
 
     private static final String proposalRoot = "{proposalCode}";
 
@@ -335,6 +337,13 @@ public class ProposalResource extends ObjectResourceBase {
                     }
                 }
             }
+        }
+
+        try {
+            justificationsResource.downloadLatexPdf(proposalCode);
+        } catch (WebApplicationException e) {
+            valid = false;
+            error.append("Justification PDF has not been generated.<br/>");
         }
 
         if(!valid) {
