@@ -61,9 +61,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         MailTemplate.MailTemplateInstance
         tacReviewResults(SubmittedProposalMailData proposal);
 
-//        public static native
-//        MailTemplate.MailTemplateInstance
-//        confirmSubmittedProposal(SubmittedProposalMailData proposal);
+        public static native
+        MailTemplate.MailTemplateInstance
+        confirmSubmittedProposal(SubmittedProposalMailData proposal);
     }
 
     @GET
@@ -187,7 +187,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Consumes(MediaType.APPLICATION_JSON)
     @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Response submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
+    public Uni<Void> submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
     {
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
@@ -258,22 +258,20 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
-//        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
-//
-//        List<Investigator> investigators = submittedProposal.getInvestigators();
-//
-//        List<String> recipientEmails = new ArrayList<>();
-//
-//        for (Investigator investigator : investigators) {
-//            recipientEmails.add(investigator.getPerson().getEMail());
-//        }
+        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
 
-        return emptyResponse204();
+        List<Investigator> investigators = submittedProposal.getInvestigators();
 
-//        return Templates.confirmSubmittedProposal(mailData)
-//                .to(recipientEmails.toArray(new String[0]))
-//                .subject("Submission Confirmation of " +   submittedProposal.getTitle() + " to " + cycle.getTitle())
-//                .send();
+        List<String> recipientEmails = new ArrayList<>();
+
+        for (Investigator investigator : investigators) {
+            recipientEmails.add(investigator.getPerson().getEMail());
+        }
+
+        return Templates.confirmSubmittedProposal(mailData)
+                .to(recipientEmails.toArray(new String[0]))
+                .subject("Submission Confirmation of " +   submittedProposal.getTitle() + " to " + cycle.getTitle())
+                .send();
     }
 
 
