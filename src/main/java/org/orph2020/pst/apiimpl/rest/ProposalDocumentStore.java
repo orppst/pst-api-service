@@ -104,7 +104,7 @@ public class ProposalDocumentStore {
         FileUtils.copyDirectory(fetchFile(source), fetchFile(destination));
         supportingDocuments.forEach(s ->
             s.setLocation(s.getLocation().replace(
-                    "proposals/" + source,"proposals/" + destination
+                    proposalStoreRoot + source,proposalStoreRoot + destination
             ))
         );
     }
