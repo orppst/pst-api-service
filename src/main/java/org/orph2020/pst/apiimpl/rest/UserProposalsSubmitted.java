@@ -1,9 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import io.quarkus.mailer.MailTemplate;
-import io.quarkus.qute.CheckedTemplate;
 import io.smallrye.common.annotation.Blocking;
-import io.smallrye.mutiny.Uni;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
@@ -15,12 +12,10 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
-import org.ivoa.dm.proposal.prop.Investigator;
 import org.ivoa.dm.proposal.prop.InvestigatorKind;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.proposal.prop.RelatedProposal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
-import org.orph2020.pst.common.json.SubmittedProposalMailData;
 import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
 
 import java.io.IOException;
@@ -42,12 +37,12 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     @Inject
     ProposalDocumentStore proposalDocumentStore;
 
-    @CheckedTemplate
-    static class Templates {
-        public static native
-        MailTemplate.MailTemplateInstance
-        confirmWithdrawal(SubmittedProposalMailData proposal);
-    }
+//    @CheckedTemplate
+//    static class Templates {
+//        public static native
+//        MailTemplate.MailTemplateInstance
+//        confirmWithdrawal(SubmittedProposalMailData proposal);
+//    }
 
     @GET
     @Operation(summary = "Get a list of synopsis for proposals submitted by the authenticated user optionally pass a cycle id, or include all cycles that have not passed")
@@ -102,7 +97,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     @Path("{submittedProposalId}/withdraw")
     @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Uni<Void> withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
+    public Response withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
                                       @QueryParam("cycleId") long cycleCode)
         throws WebApplicationException
     {
@@ -140,22 +135,24 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
 
 
         //gather data to send in an email confirming the withdrawal
-        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
+//        SubmittedProposalMailData mailData = new SubmittedProposalMailData(submittedProposal, cycle);
+//
+//        List<Investigator> investigators = submittedProposal.getInvestigators();
+//
+//        List<String> recipientEmails = new ArrayList<>();
+//
+//        for (Investigator investigator : investigators) {
+//            recipientEmails.add(investigator.getPerson().getEMail());
+//        }
 
-        List<Investigator> investigators = submittedProposal.getInvestigators();
+        return emptyResponse204();
 
-        List<String> recipientEmails = new ArrayList<>();
-
-        for (Investigator investigator : investigators) {
-            recipientEmails.add(investigator.getPerson().getEMail());
-        }
-
-        return Templates.confirmWithdrawal(mailData)
-                .to(recipientEmails.toArray(new String[0]))
-                .subject("Confirmation of withdrawal of proposal '"
-                        + submittedProposal.getTitle() + "' from observation cycle '"
-                        + cycle.getTitle() + "'")
-                .send();
+//        return Templates.confirmWithdrawal(mailData)
+//                .to(recipientEmails.toArray(new String[0]))
+//                .subject("Confirmation of withdrawal of proposal '"
+//                        + submittedProposal.getTitle() + "' from observation cycle '"
+//                        + cycle.getTitle() + "'")
+//                .send();
     }
 
 }

@@ -599,7 +599,7 @@ public class UseCasePiTest {
         //get the ProposalCycle for access to the submission deadline date
         ProposalCycleSynopsis cycleDates = given()
                 .when()
-                .get("/proposalCycles/" + cycleId + "/dates")
+                .get("/proposalCycles/" + cycleId + "/details")
                 .then()
                 .statusCode(200)
                 .body("title", equalTo("Cycle 19"))
