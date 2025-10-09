@@ -3,6 +3,8 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,6 +17,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Justification;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
+import org.ivoa.dm.proposal.prop.SupportingDocument;
 import org.ivoa.dm.proposal.prop.TextFormats;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -211,11 +214,11 @@ public class JustificationsResource extends ObjectResourceBase {
     @Schema(type = SchemaType.STRING, format = "binary")
     public static class UploadLatexResourceSchema {}
 
-    //non-transactional, no modification to the database occurs
     @POST
     @Path("resourceFile")
     @Operation(summary = "add a resource file for LaTeX or RST Justifications; .bib, .jpg, .png, .eps, .pdf supported only")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional(rollbackOn={WebApplicationException.class})
     public Response addLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
             @RestForm("document") @Schema(implementation = UploadLatexResourceSchema.class)
@@ -226,12 +229,24 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String filename = extension.equals("bib") ? "refs.bib" : fileUpload.fileName();
 
+        String saveFileAs = justificationsStorePath(proposalCode) + "/" + filename;
+
         // save the uploaded file to the document store
         // this will overwrite existing files with the same filename
-        if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(),
-                justificationsStorePath(proposalCode) + "/" + filename)) {
+        if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
             throw new WebApplicationException("Unable to save uploaded file");
         }
+
+        //store the resource file as a Supporting Document, notice we set the document title as the filename
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+        addNewChildObject(
+                proposal,
+                new SupportingDocument(
+                        filename,
+                        proposalDocumentStore.fetchFile(saveFileAs).getAbsolutePath()
+                ),
+                proposal::addToSupportingDocuments
+        );
 
         if (extension.equals("bib")) {
             // replace any latex macro calls in the bibliography file with literal acronyms
@@ -246,21 +261,38 @@ public class JustificationsResource extends ObjectResourceBase {
         return Response.ok(String.format("File %s saved", filename)).build();
     }
 
-    //non-transactional, no modification to the database occurs
     @DELETE
-    @Path("resourceFile")
+    @Path("resourceFile/{fileName}")
     @Operation(summary = "remove the given resource file from the Justification")
-    @Consumes(MediaType.TEXT_PLAIN)
+    @Transactional(rollbackOn={WebApplicationException.class})
     public Response removeLatexResourceFile(
             @PathParam("proposalCode") Long proposalCode,
-            String filename)
+            @PathParam("fileName") String fileName)
     throws WebApplicationException
     {
-        if (!proposalDocumentStore.deleteFile(justificationsStorePath(proposalCode) + "/" + filename)) {
-            throw new WebApplicationException(String.format("Unable to delete file: %s", filename));
-        }
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
 
-        return Response.ok(String.format("File %s deleted", filename)).build();
+        String queryStr = "select s from ObservingProposal o inner join o.supportingDocuments s where o._id = :pid and s.title = :fname";
+
+        TypedQuery<SupportingDocument> q = em.createQuery(queryStr, SupportingDocument.class);
+        q.setParameter("pid", proposalCode);
+        q.setParameter("fname", fileName);
+
+        try {
+            SupportingDocument supportingDocument = q.getSingleResult();
+
+            File fileToRemove = new File(supportingDocument.getLocation());
+
+            deleteChildObject(proposal, supportingDocument, proposal::removeFromSupportingDocuments);
+
+            if (!fileToRemove.delete()) {
+                throw new WebApplicationException("unable to delete file: " + fileToRemove.getName());
+            }
+
+            return Response.ok(String.format("File %s deleted", fileToRemove.getName())).build();
+        } catch (NoResultException e) {
+            throw new WebApplicationException(e);
+        }
     }
 
     @GET
