@@ -156,6 +156,13 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
     }
 
+    //insert string two into string one after the index given
+    private String insert(String one, String two, int index) {
+        String oneStart = one.substring(0, index + 1);
+        String oneEnd = one.substring(index);
+        return oneStart + two + oneEnd;
+    }
+
     @DELETE
     @Path("/{id}")
     @Operation(summary = "remove the SupportingDocument specified by 'id' from the given ObservingProposal")
@@ -170,10 +177,10 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                 findChildByQuery(ObservingProposal.class, SupportingDocument.class, "supportingDocuments",
                         proposalCode, id);
 
-        //DEV NOTE: it is more convenient NOT to use the proposalDocumentStore here
+        String documentFile = supportingDocument.getLocation();
 
         // need to get the File from the location BEFORE we remove the SupportingDocument object
-        File fileToRemove = new File(supportingDocument.getLocation());
+        File fileToRemove = new File(documentFile);
 
         // remove the SupportingDocument
         Response response = deleteChildObject(observingProposal, supportingDocument,
@@ -184,6 +191,19 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         {
             throw new WebApplicationException("unable to delete file: " + fileToRemove.getName(), 400);
         }
+
+
+        //if the file is a justifications resource file we need to also remove the copy
+        //Nothing to see here. Move along --------------
+        File justificationFileToRemove = new File(insert(documentFile, "justifications/",
+                documentFile.lastIndexOf('/')));
+        if (justificationFileToRemove.exists()) {
+            if(!justificationFileToRemove.delete()) {
+                throw new WebApplicationException(
+                        "Unable to remove justification resource file: " + fileToRemove.getName(), 400);
+            }
+        }
+        //------------------------------------------------
 
         return response;
     }
