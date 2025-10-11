@@ -78,6 +78,12 @@ public class ProposalDocumentStore {
                         justificationsPath, "polaris.bst"),
                 REPLACE_EXISTING
         );
+
+        //create empty files for the scientific and technical justifications
+        writeStringToFile("", proposalCode + "/" + justificationsPath
+                + "scientificJustification.tex");
+        writeStringToFile("", proposalCode + "/" + justificationsPath
+                + "technicalJustification.tex");
     }
 
     public String getSupportingDocumentsPath(Long proposalCode) {
@@ -163,7 +169,7 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Write a given string to the given file. This will overwrite any existing file.
+     * Write a given string to the given file. This will overwrite an existing file or create a new file.
      * @param theString the string you wish to write to file
      * @param filePath the path of the subdirectories to the file to which you will be writing
      * @throws IOException I/O exception from the writer object

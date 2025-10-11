@@ -92,59 +92,26 @@ public class JustificationsResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
-        Justification scientific = getWhichJustification(proposalCode, "scientific");
-        Justification technical = getWhichJustification(proposalCode, "technical");
+        Justification justification = getWhichJustification(proposalCode, which);
 
-        if (which.equals("scientific") && scientific == null) {
+        if (justification == null) {
             throw new WebApplicationException(
-                    "The Proposal has no existing scientific justification, please 'add' one"
+                    which + " justification does not exist, please add one instead", 404
             );
         }
 
-        if (which.equals("technical") && technical == null) {
-            throw new WebApplicationException(
-                    "The Proposal has no existing technical justification, please 'add' one"
-            );
-        }
+        justification.updateUsing(incoming);
+        em.merge(justification);
 
-        switch (which) {
-            case "technical" -> {
-                technical.updateUsing(incoming);
-                em.merge(technical);
-                //ensure the scientific justification has the same format as the technical justification
-                scientific.setFormat(technical.getFormat());
-                if (technical.getFormat() == TextFormats.LATEX) {
-                    try {
-                        createTechnicalJustificationTex(proposalCode, technical.getText());
-                    } catch (IOException e) {
-                        throw new WebApplicationException(e);
-                    }
-                }
-            }
-            case "scientific" -> {
-                scientific.updateUsing(incoming);
-                em.merge(scientific);
-                //ensure the technical justification has the same format as the scientific justification
-                technical.setFormat(scientific.getFormat());
-                if (scientific.getFormat() == TextFormats.LATEX) {
-                    try {
-                        createScientificJustificationTex(proposalCode, scientific.getText());
-                    } catch (IOException e) {
-                        throw new WebApplicationException(e);
-                    }
-                }
+        if (justification.getFormat() == TextFormats.LATEX) {
+            try {
+                updateJustificationTex(proposalCode, which, justification.getText());
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
             }
         }
 
-        return switch (which) {
-            case "technical" -> technical;
-            case "scientific" -> scientific;
-            //belt and braces
-            default -> throw new WebApplicationException(
-                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                    400
-            );
-        };
+        return justification;
     }
 
     @POST
@@ -170,13 +137,23 @@ public class JustificationsResource extends ObjectResourceBase {
             );
         }
 
-        return addNewChildObject(
+        Justification result = addNewChildObject(
                 proposal,
                 incoming,
                 which.equals("technical") ?
                         proposal::setTechnicalJustification :
                         proposal::setScientificJustification
         );
+
+        if (result.getFormat() == TextFormats.LATEX) {
+            try {
+                updateJustificationTex(proposalCode, which, result.getText());
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
+            }
+        }
+
+        return result;
     }
 
 
@@ -605,7 +582,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         if (scientific.getFormat() != TextFormats.LATEX && technical.getFormat() != TextFormats.LATEX) {
             throw new WebApplicationException(String.format(
-                    "Justifications not in LaTeX format, current formats scientific: %s, technical: %s",
+                    "Both justifications must be latex format, current formats scientific: %s, technical: %s",
                     scientific.getFormat().toString(), technical.getFormat().toString()
             ));
         }
@@ -669,29 +646,17 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
 
-    private void createScientificJustificationTex(
+    private void updateJustificationTex(
             Long proposalCode,
-            String scientificText
+            String which,
+            String theText
     )
             throws IOException {
 
-        String completeText = "\\section*{Scientific Justification}\n\n" + scientificText;
+        String theFile = which.equals("scientific") ? scientificTexFileName : technicalTexFileName;
 
-        proposalDocumentStore.writeStringToFile(completeText,
-                justificationsPath(proposalCode) + "/" + scientificTexFileName
-        );
-    }
-
-    private void createTechnicalJustificationTex(
-            Long proposalCode,
-            String technicalText
-    )
-            throws IOException {
-
-        String completeText = "\\section*{Technical Justification}\n\n" + technicalText;
-
-        proposalDocumentStore.writeStringToFile(completeText,
-                justificationsPath(proposalCode) + "/" + technicalTexFileName
+        proposalDocumentStore.writeStringToFile(theText,
+                justificationsPath(proposalCode) + theFile
         );
     }
 
@@ -774,7 +739,7 @@ public class JustificationsResource extends ObjectResourceBase {
         }
         theScanner.close();
 
-        //write to the justifications working directory, which preserves the original upload
+        //write result to the justifications working directory
         proposalDocumentStore.writeStringToFile(newContent.toString(),
                 justificationsPath(proposalCode) + "/refs.bib");
     }

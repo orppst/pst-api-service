@@ -414,9 +414,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     //Convenience functions --------------
-    private String justificationsStorePath(Long proposalCode) {
-        return proposalCode + "/justifications/";
-    }
 
     private void insertTitleAndCycleCodeIntoHeader(
             Long proposalCode
@@ -431,12 +428,13 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         //read from this file
         File templateHeader = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + justificationsHeaderTemplate
+                proposalDocumentStore.getJustificationsPath(proposalCode) + justificationsHeaderTemplate
         );
 
         //write to this file
         File header = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + justificationsHeader);
+                proposalDocumentStore.getJustificationsPath(proposalCode) + justificationsHeader
+        );
 
         String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
 
