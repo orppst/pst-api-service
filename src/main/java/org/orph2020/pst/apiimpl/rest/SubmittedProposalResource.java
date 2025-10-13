@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import io.quarkus.logging.Log;
 
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
@@ -187,7 +188,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Consumes(MediaType.APPLICATION_JSON)
     @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Uni<Void> submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
+    public Response submitProposal(@PathParam("cycleCode") long cycleId, SubmissionConfiguration submissionConfiguration)
     {
         final long proposalId = submissionConfiguration.proposalId;
         ProposalCycle cycle =  findObject(ProposalCycle.class,cycleId);
@@ -268,10 +269,18 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             recipientEmails.add(investigator.getPerson().getEMail());
         }
 
-        return Templates.confirmSubmittedProposal(mailData)
-                .to(recipientEmails.toArray(new String[0]))
-                .subject("Submission Confirmation of " +   submittedProposal.getTitle() + " to " + cycle.getTitle())
-                .send();
+       Uni<Void> mail = Templates.confirmSubmittedProposal(mailData)
+             .to(recipientEmails.toArray(new String[0]))
+             .subject("Submission Confirmation of " + submittedProposal.getTitle() + " to " + cycle.getTitle())
+             .send();
+
+        mail.subscribe().with(
+              item -> Log.info("submission mail sent"),
+              error -> Log.error("submission mail failed", error)
+        );
+
+
+       return emptyResponse204();
     }
 
 

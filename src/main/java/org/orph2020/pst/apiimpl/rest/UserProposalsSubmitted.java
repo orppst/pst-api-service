@@ -1,5 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
+import io.quarkus.logging.Log;
 import io.quarkus.mailer.MailTemplate;
 import io.quarkus.qute.CheckedTemplate;
 import io.smallrye.common.annotation.Blocking;
@@ -102,7 +103,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
     @Path("{submittedProposalId}/withdraw")
     @Blocking
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Uni<Void> withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
+    public Response withdrawProposal(@PathParam("submittedProposalId") long submittedProposalId,
                                       @QueryParam("cycleId") long cycleCode)
         throws WebApplicationException
     {
@@ -150,12 +151,18 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             recipientEmails.add(investigator.getPerson().getEMail());
         }
 
-        return Templates.confirmWithdrawal(mailData)
-                .to(recipientEmails.toArray(new String[0]))
-                .subject("Confirmation of withdrawal of proposal '"
-                        + submittedProposal.getTitle() + "' from observation cycle '"
-                        + cycle.getTitle() + "'")
-                .send();
+       Uni<Void> mail = Templates.confirmWithdrawal(mailData)
+             .to(recipientEmails.toArray(new String[0]))
+             .subject("Confirmation of withdrawal of proposal '"
+                   + submittedProposal.getTitle() + "' from observation cycle '"
+                   + cycle.getTitle() + "'")
+             .send();
+       mail.subscribe().with(
+             item -> Log.info("withdrawal mail sent"),
+             error -> Log.error("withdrawal mail failed", error)
+       );
+
+       return emptyResponse204();
     }
 
 }
