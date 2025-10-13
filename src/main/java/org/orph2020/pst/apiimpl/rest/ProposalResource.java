@@ -801,9 +801,6 @@ public class ProposalResource extends ObjectResourceBase {
     //Other fields of an ObservingProposal have been split out into their own source file
 
     //Convenience functions --------------
-    private String justificationsStorePath(Long proposalCode) {
-        return proposalCode + "/justifications/";
-    }
 
     private void insertProposalTitleIntoHeaderTex(
             Long proposalCode
@@ -816,12 +813,12 @@ public class ProposalResource extends ObjectResourceBase {
 
         //read from this file
         File templateHeader = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + justificationsHeaderTemplate
+                proposalDocumentStore.getJustificationsPath(proposalCode) + "/" + justificationsHeaderTemplate
         );
 
         //write to this file
         File header = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/" + justificationsHeader);
+                proposalDocumentStore.getJustificationsPath(proposalCode) + "/" + justificationsHeader);
 
         String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
 

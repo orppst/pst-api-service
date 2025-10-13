@@ -33,6 +33,12 @@ public class ProposalDocumentStore {
     @ConfigProperty(name = "document-store.root")
     String proposalStoreRoot;
 
+    @ConfigProperty(name = "document-store.supportingDocuments-path")
+    String supportingDocumentsPath;
+
+    @ConfigProperty(name = "document-store.justifications-path")
+    String justificationsPath;
+
 
     /**
      * Creates the subdirectory structure for this Store from the given parameter.
@@ -41,23 +47,19 @@ public class ProposalDocumentStore {
      * @throws IOException I/O exception
      */
     public void createStorePaths(Long proposalCode) throws IOException {
-        Files.createDirectories(Paths.get(
-                proposalStoreRoot,
-                proposalCode.toString(),
-                "supportingDocuments"
-        ));
 
+        //creates all non-existent parent directories
         Files.createDirectories(Paths.get(
                 proposalStoreRoot,
                 proposalCode.toString(),
-                "justifications"
+                justificationsPath
         ));
 
         //copy the LaTex main file for Justifications to the proposal store
         Files.copy(
               Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/mainTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/main.tex"),
+                        justificationsPath, "main.tex"),
                 REPLACE_EXISTING
         );
 
@@ -65,7 +67,7 @@ public class ProposalDocumentStore {
         Files.copy(
                 Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/justificationsHeaderTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/justificationsHeaderTemplate.tex"),
+                        justificationsPath, "justificationsHeaderTemplate.tex"),
                 REPLACE_EXISTING
         );
 
@@ -73,9 +75,23 @@ public class ProposalDocumentStore {
         Files.copy(
                 Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/polaris.bst")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        "justifications/polaris.bst"),
+                        justificationsPath, "polaris.bst"),
                 REPLACE_EXISTING
         );
+
+        //create empty files for the scientific and technical justifications
+        writeStringToFile("", proposalCode + "/" + justificationsPath
+                + "scientificJustification.tex");
+        writeStringToFile("", proposalCode + "/" + justificationsPath
+                + "technicalJustification.tex");
+    }
+
+    public String getSupportingDocumentsPath(Long proposalCode) {
+        return proposalCode.toString() + "/" + supportingDocumentsPath;
+    }
+
+    public String getJustificationsPath(Long proposalCode) {
+        return proposalCode.toString() + "/" + justificationsPath;
     }
 
     /**
@@ -153,7 +169,7 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Write a given string to the given file. This will overwrite any existing file.
+     * Write a given string to the given file. This will overwrite an existing file or create a new file.
      * @param theString the string you wish to write to file
      * @param filePath the path of the subdirectories to the file to which you will be writing
      * @throws IOException I/O exception from the writer object

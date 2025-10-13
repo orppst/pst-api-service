@@ -34,8 +34,8 @@ import java.util.regex.Pattern;
     are NOT separate Java Classes. They are different Justification members of the
     ObservingProposal class. The Rest end-points specify "which" one we are using, and we deal
     with this is in the implementation. It is HIGHLY UNLIKELY that more "types" of Justification
-    will be added as members to the ObservingProposal class, so simple 'if' and 'switch'
-    constructs are okay to use.
+    will be added as members to the ObservingProposal class, so use of 'if' and 'switch'
+    constructs in the implementations is fine.
  */
 
 @Path("proposals/{proposalCode}/justifications")
@@ -92,59 +92,26 @@ public class JustificationsResource extends ObjectResourceBase {
     )
         throws WebApplicationException
     {
-        Justification scientific = getWhichJustification(proposalCode, "scientific");
-        Justification technical = getWhichJustification(proposalCode, "technical");
+        Justification justification = getWhichJustification(proposalCode, which);
 
-        if (which.equals("scientific") && scientific == null) {
+        if (justification == null) {
             throw new WebApplicationException(
-                    "The Proposal has no existing scientific justification, please 'add' one"
+                    which + " justification does not exist, please add one instead", 404
             );
         }
 
-        if (which.equals("technical") && technical == null) {
-            throw new WebApplicationException(
-                    "The Proposal has no existing technical justification, please 'add' one"
-            );
-        }
+        justification.updateUsing(incoming);
+        em.merge(justification);
 
-        switch (which) {
-            case "technical" -> {
-                technical.updateUsing(incoming);
-                em.merge(technical);
-                //ensure the scientific justification has the same format as the technical justification
-                scientific.setFormat(technical.getFormat());
-                if (technical.getFormat() == TextFormats.LATEX) {
-                    try {
-                        createTechnicalJustificationTex(proposalCode, technical.getText());
-                    } catch (IOException e) {
-                        throw new WebApplicationException(e);
-                    }
-                }
-            }
-            case "scientific" -> {
-                scientific.updateUsing(incoming);
-                em.merge(scientific);
-                //ensure the technical justification has the same format as the scientific justification
-                technical.setFormat(scientific.getFormat());
-                if (scientific.getFormat() == TextFormats.LATEX) {
-                    try {
-                        createScientificJustificationTex(proposalCode, scientific.getText());
-                    } catch (IOException e) {
-                        throw new WebApplicationException(e);
-                    }
-                }
+        if (justification.getFormat() == TextFormats.LATEX) {
+            try {
+                updateJustificationTex(proposalCode, which, justification.getText());
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
             }
         }
 
-        return switch (which) {
-            case "technical" -> technical;
-            case "scientific" -> scientific;
-            //belt and braces
-            default -> throw new WebApplicationException(
-                    String.format("Justifications are either 'technical' or 'scientific', I got '%s'", which),
-                    400
-            );
-        };
+        return justification;
     }
 
     @POST
@@ -170,13 +137,23 @@ public class JustificationsResource extends ObjectResourceBase {
             );
         }
 
-        return addNewChildObject(
+        Justification result = addNewChildObject(
                 proposal,
                 incoming,
                 which.equals("technical") ?
                         proposal::setTechnicalJustification :
                         proposal::setScientificJustification
         );
+
+        if (result.getFormat() == TextFormats.LATEX) {
+            try {
+                updateJustificationTex(proposalCode, which, result.getText());
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
+            }
+        }
+
+        return result;
     }
 
 
@@ -204,7 +181,7 @@ public class JustificationsResource extends ObjectResourceBase {
             if (justification.getFormat() == TextFormats.LATEX) {
                 extensions.add(".bib");
             }
-            return proposalDocumentStore.listFilesIn(justificationsStorePath(proposalCode), extensions);
+            return proposalDocumentStore.listFilesIn(justificationsPath(proposalCode), extensions);
         } catch (IOException e) {
             throw new WebApplicationException(e.getMessage());
         }
@@ -229,13 +206,23 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String filename = extension.equals("bib") ? "refs.bib" : fileUpload.fileName();
 
-        String saveFileAs = justificationsStorePath(proposalCode) + "/" + filename;
+        String saveFileAs = proposalDocumentStore.getSupportingDocumentsPath(proposalCode) + filename;
 
         // save the uploaded file to the document store
         // this will overwrite existing files with the same filename
         if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
             throw new WebApplicationException("Unable to save uploaded file");
         }
+
+        //copy file into the justifications working directory
+        try {
+            FileUtils.copyFile(proposalDocumentStore.fetchFile(saveFileAs),
+                    proposalDocumentStore.fetchFile(
+                            proposalDocumentStore.getJustificationsPath(proposalCode) + filename));
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
 
         //store the resource file as a Supporting Document, notice we set the document title as the filename
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
@@ -251,6 +238,7 @@ public class JustificationsResource extends ObjectResourceBase {
         if (extension.equals("bib")) {
             // replace any latex macro calls in the bibliography file with literal acronyms
             try {
+                //this call creates a new, sanitised "refs.bib" in the justifications working directory
                 replaceMacrosWithLiteralAcronyms(proposalCode);
             } catch (IOException e) {
                 throw new WebApplicationException(e);
@@ -281,12 +269,22 @@ public class JustificationsResource extends ObjectResourceBase {
         try {
             SupportingDocument supportingDocument = q.getSingleResult();
 
+            //file in the supporting documents directory
             File fileToRemove = new File(supportingDocument.getLocation());
+
+            //copy of file in the justifications working directory
+            File copyToRemove = proposalDocumentStore.fetchFile(
+                    proposalDocumentStore.getJustificationsPath(proposalCode) + fileName
+            );
 
             deleteChildObject(proposal, supportingDocument, proposal::removeFromSupportingDocuments);
 
             if (!fileToRemove.delete()) {
                 throw new WebApplicationException("unable to delete file: " + fileToRemove.getName());
+            }
+
+            if (!copyToRemove.delete()) {
+                throw new WebApplicationException("unable to delete copy of file: " + copyToRemove.getName());
             }
 
             return Response.ok(String.format("File %s deleted", fileToRemove.getName())).build();
@@ -304,7 +302,7 @@ public class JustificationsResource extends ObjectResourceBase {
     {
         return responseWrapper(
                 proposalDocumentStore
-                        .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf")
+                        .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.pdf")
                         .exists(), 200
         );
     }
@@ -333,7 +331,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         justificationIsLatex(proposalCode);
 
-        File mainTex = proposalDocumentStore.fetchFile(justificationsStorePath(proposalCode) + "/" + texFileName);
+        File mainTex = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/" + texFileName);
 
         if (!mainTex.exists()) {
             throw new WebApplicationException(String.format("%s file not found", texFileName));
@@ -347,10 +345,10 @@ public class JustificationsResource extends ObjectResourceBase {
             int exitCode = process.waitFor();
 
             // output directory "out" created by latexmk process
-            File outputDir = proposalDocumentStore.fetchFile(justificationsStorePath(proposalCode) + "/out");
+            File outputDir = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/out");
 
             File logFile = proposalDocumentStore
-                    .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+                    .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.log");
 
             List<String> warnings = findWarnings(Files.readString(logFile.toPath()));
 
@@ -390,13 +388,13 @@ public class JustificationsResource extends ObjectResourceBase {
         //Here if successful latex compilation
 
         File logFile = proposalDocumentStore
-                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+                .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.log");
 
         String pageCount = scanLogForPageNumber(logFile);
 
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
-                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf");
+                .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.pdf");
 
         return responseWrapper(
                 String.format("Latex compilation successful!\nPDF output file saved as: %s\nPage count: %s",
@@ -414,7 +412,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
-                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.pdf");
+                .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.pdf");
 
         if (!output.exists()) {
             throw new WebApplicationException(String.format("Nonexistent file: %s", output.getName()));
@@ -433,7 +431,7 @@ public class JustificationsResource extends ObjectResourceBase {
         throws WebApplicationException {
 
         File logFile = proposalDocumentStore
-                .fetchFile(justificationsStorePath(proposalCode) + "/out/" + "justification.log");
+                .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.log");
 
         String pageCount = scanLogForPageNumber(logFile);
 
@@ -443,12 +441,12 @@ public class JustificationsResource extends ObjectResourceBase {
 // ****** Convenience functions private to this class ********
 
     /**
-     * Create the path to the justifications section of the proposal document store
+     * Convenience function returning the path to the justifications subdirectory of the given proposal
      * @param proposalCode proposal id
      * @return string of the path to the justifications section
      */
-    private String justificationsStorePath(Long proposalCode) {
-        return proposalCode + "/justifications/";
+    private String justificationsPath(Long proposalCode) {
+        return proposalDocumentStore.getJustificationsPath(proposalCode);
     }
 
     /**
@@ -584,7 +582,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         if (scientific.getFormat() != TextFormats.LATEX && technical.getFormat() != TextFormats.LATEX) {
             throw new WebApplicationException(String.format(
-                    "Justifications not in LaTeX format, current formats scientific: %s, technical: %s",
+                    "Both justifications must be latex format, current formats scientific: %s, technical: %s",
                     scientific.getFormat().toString(), technical.getFormat().toString()
             ));
         }
@@ -648,29 +646,17 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
 
-    private void createScientificJustificationTex(
+    private void updateJustificationTex(
             Long proposalCode,
-            String scientificText
+            String which,
+            String theText
     )
             throws IOException {
 
-        String completeText = "\\section*{Scientific Justification}\n\n" + scientificText;
+        String theFile = which.equals("scientific") ? scientificTexFileName : technicalTexFileName;
 
-        proposalDocumentStore.writeStringToFile(completeText,
-                justificationsStorePath(proposalCode) + "/" + scientificTexFileName
-        );
-    }
-
-    private void createTechnicalJustificationTex(
-            Long proposalCode,
-            String technicalText
-    )
-            throws IOException {
-
-        String completeText = "\\section*{Technical Justification}\n\n" + technicalText;
-
-        proposalDocumentStore.writeStringToFile(completeText,
-                justificationsStorePath(proposalCode) + "/" + technicalTexFileName
+        proposalDocumentStore.writeStringToFile(theText,
+                justificationsPath(proposalCode) + theFile
         );
     }
 
@@ -704,8 +690,10 @@ public class JustificationsResource extends ObjectResourceBase {
         // Another exception is the macro "\nat", which should be replaced with "Nature" not "NAT".
         // There are potentially other exceptions. So what could possibly go wrong? :P
 
+
+        //get the original references.bib upload
         File references = proposalDocumentStore.fetchFile(
-                justificationsStorePath(proposalCode) + "/refs.bib");
+                proposalDocumentStore.getSupportingDocumentsPath(proposalCode) + "refs.bib");
 
         Scanner theScanner = new Scanner(references);
         StringBuilder newContent = new StringBuilder();
@@ -751,8 +739,9 @@ public class JustificationsResource extends ObjectResourceBase {
         }
         theScanner.close();
 
+        //write result to the justifications working directory
         proposalDocumentStore.writeStringToFile(newContent.toString(),
-                justificationsStorePath(proposalCode) + "/refs.bib");
+                justificationsPath(proposalCode) + "/refs.bib");
     }
 
 }
