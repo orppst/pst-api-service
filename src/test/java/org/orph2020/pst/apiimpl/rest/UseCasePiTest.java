@@ -220,23 +220,23 @@ public class UseCasePiTest {
         given()
                 .multiPart("document", earthImage)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/resourceFile")
+                .post("proposals/" + proposalid + "/supportingDocuments")
                 .then()
-                .body(containsString("File earth_profile.jpg saved"));
+                .body(containsString("earth_profile.jpg"));
 
         given()
                 .multiPart("document", hhg2g_dp)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/resourceFile")
+                .post("proposals/" + proposalid + "/supportingDocuments")
                 .then()
-                .body(containsString("File hhg2g_dp.jpg saved"));
+                .body(containsString("hhg2g_dp.jpg"));
 
         given()
                 .multiPart("document", refs)
                 .when()
-                .post("proposals/" + proposalid + "/justifications/resourceFile")
+                .post("proposals/" + proposalid + "/supportingDocuments")
                 .then()
-                .body(containsString("File refs.bib saved"));
+                .body(containsString("refs.bib"));
 
         //this won't work as 'latexmk' needs to be installed in the container running these tests
         //call the api function that calls "latexmk"
