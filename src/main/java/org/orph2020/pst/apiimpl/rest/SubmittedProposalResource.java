@@ -24,9 +24,7 @@ import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.SubmittedProposalMailData;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -52,9 +50,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Inject
     SubjectMapResource subjectMapResource;
 
-    //Justification header stuff
-    String justificationsHeaderTemplate = "justificationsHeaderTemplate.tex";
-    String justificationsHeader = "justificationsHeader.tex";
 
     @CheckedTemplate
     static class Templates {
@@ -246,16 +241,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         }
         //************************************************************
 
-        //It is more convenient to replace both the proposal title and
-        // cycle id placeholders in the 'justificationsHeaderTemplate.tex
-        // file in one go, saving the result to 'justificationsHeader.tex',
-        // than try to edit the header directly.
-        try {
-            insertTitleAndCycleCodeIntoHeader(submittedProposal.getId());
-        } catch (IOException e) {
-            throw new WebApplicationException(e);
-        }
-
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
 
@@ -423,36 +408,6 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     }
 
     //Convenience functions --------------
-
-    private void insertTitleAndCycleCodeIntoHeader(
-            Long proposalCode
-    )
-            throws IOException {
-        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
-        String cycleCodeTarget = "CYCLE-ID-HERE";
-
-        //we control the input so we know that 'proposalCode' here belongs to a SubmittedProposal
-        SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
-        String proposalTitle = proposal.getTitle();
-
-        //read from this file
-        File templateHeader = proposalDocumentStore.fetchFile(
-                proposalDocumentStore.getJustificationsPath(proposalCode) + justificationsHeaderTemplate
-        );
-
-        //write to this file
-        File header = proposalDocumentStore.fetchFile(
-                proposalDocumentStore.getJustificationsPath(proposalCode) + justificationsHeader
-        );
-
-        String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
-
-        String headerText = templateText
-                .replace(proposalTitleTarget, proposalTitle)
-                .replace(cycleCodeTarget, proposal.getProposalCode());
-
-        Files.write(header.toPath(), headerText.getBytes());
-    }
 }
 
 

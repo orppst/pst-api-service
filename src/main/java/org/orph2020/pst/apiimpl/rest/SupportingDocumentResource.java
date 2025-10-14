@@ -2,6 +2,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import org.apache.commons.io.FilenameUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -20,6 +21,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 /*
@@ -109,6 +112,8 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         String saveFileAs = storePath(proposalCode) + "/" + fileUpload.fileName();
 
+        String extension = FilenameUtils.getExtension(fileUpload.fileName());
+
         String storeLocation = proposalDocumentStore.fetchFile(saveFileAs).getAbsolutePath();
 
         //check for existence of file with the same filename
@@ -119,6 +124,23 @@ public class SupportingDocumentResource extends ObjectResourceBase {
 
         if (supportingDocument == null) {
             //adding a new supporting document
+
+            //Allow one '.bib' file at a time in the proposal store location
+            if (extension.equals("bib")) {
+                try {
+                    if (!proposalDocumentStore.listFilesIn(
+                            proposalDocumentStore.getSupportingDocumentsPath(proposalCode),
+                            Collections.singletonList("bib")).isEmpty()) {
+                        throw new WebApplicationException(
+                                "Only one '.bib' allowed per proposal: either remove or replace the existing file"
+                        );
+                    }
+                } catch (IOException e) {
+                    throw new WebApplicationException(e);
+
+                }
+            }
+
             String _title = title == null ? fileUpload.fileName() : sanitiseTitle(title, supportingDocuments);
 
             SupportingDocument newSupportingDocument =
@@ -156,13 +178,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         }
     }
 
-    //insert string two into string one after the index given
-    private String insert(String one, String two, int index) {
-        String oneStart = one.substring(0, index + 1);
-        String oneEnd = one.substring(index);
-        return oneStart + two + oneEnd;
-    }
-
     @DELETE
     @Path("/{id}")
     @Operation(summary = "remove the SupportingDocument specified by 'id' from the given ObservingProposal")
@@ -192,18 +207,6 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throw new WebApplicationException("unable to delete file: " + fileToRemove.getName(), 400);
         }
 
-
-        //if the file is a justifications resource file we need to also remove the copy
-        //Nothing to see here. Move along --------------
-        File justificationFileToRemove = new File(insert(documentFile, "justifications/",
-                documentFile.lastIndexOf('/')));
-        if (justificationFileToRemove.exists()) {
-            if(!justificationFileToRemove.delete()) {
-                throw new WebApplicationException(
-                        "Unable to remove justification resource file: " + fileToRemove.getName(), 400);
-            }
-        }
-        //------------------------------------------------
 
         return response;
     }

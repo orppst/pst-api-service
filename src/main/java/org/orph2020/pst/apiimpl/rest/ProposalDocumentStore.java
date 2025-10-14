@@ -10,11 +10,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -52,26 +55,47 @@ public class ProposalDocumentStore {
         Files.createDirectories(Paths.get(
                 proposalStoreRoot,
                 proposalCode.toString(),
+                supportingDocumentsPath
+        ));
+    }
+
+    /**
+     * Creates the working directory for 'latexmk' to produce PDF output from the given Justifications data.
+     * @param proposalCode the ID of the proposal
+     * @param proposalTitle the title of the proposal (inserted into the header)
+     * @param observingCycleName the cycle name (or code) to be inserted when a proposal is submitted; can be null
+     * @param scientificText the user supplied text for the scientific justification
+     * @param technicalText the user supplied text for the technical justification
+     * @param referencesFilename the user supplied '.bib' file
+     * @return the path to the created working directory
+     * @throws IOException thrown from read/write operations
+     * @throws URISyntaxException thrown when trying to access resource files as Files
+     */
+    public String createLatexWorkingDirectory(
+            Long proposalCode,
+            String proposalTitle,
+            String observingCycleName,
+            String scientificText,
+            String technicalText,
+            String referencesFilename
+    ) throws IOException, URISyntaxException {
+
+        //creates all non-existent parent directories
+        Files.createDirectories(Paths.get(
+                proposalStoreRoot,
+                proposalCode.toString(),
                 justificationsPath
         ));
 
-        //copy the LaTex main file for Justifications to the proposal store
+        //copy the LaTex main file for Justifications to the working directory
         Files.copy(
-              Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/mainTemplate.tex")),
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/mainTemplate.tex")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         justificationsPath, "main.tex"),
                 REPLACE_EXISTING
         );
 
-        //copy the LaTex header file template for Justifications to the proposal store
-        Files.copy(
-                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/justificationsHeaderTemplate.tex")),
-                Paths.get(proposalStoreRoot, proposalCode.toString(),
-                        justificationsPath, "justificationsHeaderTemplate.tex"),
-                REPLACE_EXISTING
-        );
-
-        //copy the bibliography style file for Justifications to the proposal store
+        //copy the bibliography style file for Justifications to the working directory
         Files.copy(
                 Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/polaris.bst")),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
@@ -79,11 +103,27 @@ public class ProposalDocumentStore {
                 REPLACE_EXISTING
         );
 
-        //create empty files for the scientific and technical justifications
-        writeStringToFile("", proposalCode + "/" + justificationsPath
+        //copies and modifies the header tex file into working directory (observingCycleName can be null)
+        insertTitleAndCycleCodeIntoHeaderTex(proposalCode, proposalTitle, observingCycleName);
+
+        //copies and modifies the <references>.bib to "refs.bib" in the working directory (if it exists)
+        if (referencesFilename != null) {
+            copyAndModifyReferences(proposalCode, referencesFilename);
+        }
+
+        writeStringToFile(scientificText, proposalCode + "/" + justificationsPath
                 + "scientificJustification.tex");
-        writeStringToFile("", proposalCode + "/" + justificationsPath
+
+        writeStringToFile(technicalText, proposalCode + "/" + justificationsPath
                 + "technicalJustification.tex");
+
+        //image files are found using the '\graphicspath' latex command in "main.tex"
+
+        return proposalStoreRoot + proposalCode + "/" + justificationsPath;
+    }
+
+    public String getStoreRoot() {
+        return proposalStoreRoot;
     }
 
     public String getSupportingDocumentsPath(Long proposalCode) {
@@ -95,10 +135,8 @@ public class ProposalDocumentStore {
     }
 
     /**
-     * Removes the subdirectory specified, including its subdirectories.
-     * We use this to clean up the document store when a proposal is deleted such that the
-     * string parameter must refer to the top-level subdirectory for that proposal.
-     * @param proposalDirectory the top-level subdirectory for the proposal being deleted
+     * Recursively removes the subdirectory specified
+     * @param proposalDirectory the (sub)directory being deleted
      * @throws IOException if deletion fails
      */
     public void removeStorePath(String proposalDirectory) throws IOException {
@@ -159,7 +197,7 @@ public class ProposalDocumentStore {
        final File dest = fetchFile(saveFileAs);
         logger.debug("Moving file {}  exists {} to {}", file, file.exists(), dest );
        try {
-          Files.move(file.toPath(),dest.toPath());
+          Files.move(file.toPath(),dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
           return true;
        } catch (IOException e) {
           throw new RuntimeException(e);
@@ -215,5 +253,117 @@ public class ProposalDocumentStore {
     public Boolean deleteFile(String filePath) {
         return fetchFile(filePath).delete();
     }
+
+
+    private void insertTitleAndCycleCodeIntoHeaderTex(
+            Long proposalCode,
+            String proposalTitle,
+            String observingProposalName
+    )
+            throws IOException, URISyntaxException {
+        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
+        String cycleCodeTarget = "CYCLE-ID-HERE";
+
+        //read from this file
+        File templateHeader = new File(Objects.requireNonNull(
+                ProposalDocumentStore.class.getResource("/justificationsHeaderTemplate.tex")).toURI()
+        );
+
+        String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
+
+        String headerText = observingProposalName != null ?
+                templateText.replace(proposalTitleTarget, proposalTitle)
+                        .replace(cycleCodeTarget, observingProposalName)
+                :
+                templateText.replace(proposalTitleTarget, proposalTitle);
+
+        writeStringToFile(headerText, proposalCode + "/" + justificationsPath + "justificationsHeader.tex");
+    }
+
+
+
+    private void copyAndModifyReferences(Long proposalCode, String referencesFilename)
+            throws IOException {
+        // I don't know who said it first but acronyms really are the bane of modern life!
+
+        // Automatically exported references tend to give journal acronyms as a latex macro
+        // e.g. 'journal = {\mnras}' meaning you must have that macro, \mnras, defined in your
+        // .tex file/s somewhere to print the journal title however you want it printed.
+        // This is fine for articles were you're in control of the bibliography; you simply
+        // provide the macro definition. As we are providing a generalised main.tex template
+        // this is not so straightforward.
+        // We either have to define any and all possible journal acronyms as macros in the
+        // 'main.tex' template, this is impractical,
+        // --OR--
+        // ask users to provide the macro definitions for the references they have cited,
+        // taking up precious character space in their justifications (and is tedious, and even possible?)
+        // --OR--
+        // we programmatically edit the references here, replacing any "journal = {\xxx}" with
+        // "journal = XXX", but there are exceptions - see below
+        // None of these "solutions" are ideal.
+
+        // Rather disappointingly the macro for "Astrophysics and Space Science" is not "\ass" but "\apss"
+        // because generally Astrophysics is shortened to "Ap". So in general the string "ap" needs to be
+        // replaced with "Ap" not "AP".
+        // Even so, there are exceptions to this exception. For example, the acronym for
+        // "Astronomy & Astrophysics" is "A&A" rather than "AAp", the macro for which is "\aap".
+        // This is further complicated by "A&A" also having "review" and "supplementary" versions;
+        // "\aapr" and "\aaps" respectively.
+        // Another exception is the macro "\nat", which should be replaced with "Nature" not "NAT".
+        // There are potentially other exceptions. So what could possibly go wrong? :P
+
+
+        //get the original references.bib upload
+        File references = fetchFile(proposalCode + "/" + supportingDocumentsPath + referencesFilename);
+
+        Scanner theScanner = new Scanner(references);
+        StringBuilder newContent = new StringBuilder();
+
+        while (theScanner.hasNextLine()) {
+            String line = theScanner.nextLine();
+            // I LOVE Java regex strings, they're SO intuitive!
+            // We're matching for ' journal = {\<macro>},' where there could be zero or more spaces
+            if (line.matches(" *journal *= *\\{\\\\[a-z]+},$")) {
+                String acronym = line.substring(line.indexOf("{\\") + 1, line.lastIndexOf("}"));
+                switch (acronym) {
+                    case "\\aap":
+                        newContent.append(line.replace("\\aap", "A&A"));
+                        break;
+                    case "\\aapr":
+                        newContent.append(line.replace("\\aapr", "A&A Rev."));
+                        break;
+                    case "\\aaps":
+                        newContent.append(line.replace("\\aaps", "A&A Sup."));
+                        break;
+                    case "\\jcap":
+                        //Journal of Cosmology and Astroparticle Physics (avoids "AP" -> "Ap" issue)
+                        newContent.append(line.replace("\\jcap", "JCAP"));
+                        break;
+                    case "\\nat":
+                        newContent.append(line.replace("\\nat", "Nature"));
+                        break;
+                    default: {
+                        String newLine = line.replace(
+                                acronym, acronym.substring(acronym.indexOf("\\") + 1).toUpperCase());
+                        if (acronym.contains("ap")) {
+                            newContent.append(newLine.replace("AP", "Ap"));
+                        } else {
+                            newContent.append(newLine);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                newContent.append(line);
+            }
+            newContent.append("\n");
+        }
+        theScanner.close();
+
+        //write result to the justifications working directory
+        writeStringToFile(newContent.toString(),
+                proposalCode + "/" + justificationsPath + "refs.bib");
+    }
+
 
 }
