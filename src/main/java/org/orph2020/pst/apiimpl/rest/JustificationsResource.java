@@ -141,7 +141,7 @@ public class JustificationsResource extends ObjectResourceBase {
     {
         return responseWrapper(
                 proposalDocumentStore
-                        .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.pdf")
+                        .fetchFile(supportingDocumentsPath(proposalCode) + jobName + ".pdf")
                         .exists(), 200
         );
     }
@@ -305,8 +305,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         //fetch the output PDF of the Justification
         File output = proposalDocumentStore
-                .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposalCode)
-                        + jobName + ".pdf");
+                .fetchFile(supportingDocumentsPath(proposalCode) + jobName + ".pdf");
 
         if (!output.exists()) {
             throw new WebApplicationException(String.format("Nonexistent file: %s", output.getName()));
@@ -315,21 +314,6 @@ public class JustificationsResource extends ObjectResourceBase {
         return Response.ok(output)
                 .header("Content-Disposition", "attachment; filename=" + output.getName())
                 .build();
-    }
-
-    @GET
-    @Path("latexPdf/pages")
-    @Operation(summary = "get the number of pages in the pdf file produced after successfully running 'latexmk'")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getLatexPdfPages(@PathParam("proposalCode") Long proposalCode)
-        throws WebApplicationException {
-
-        File logFile = proposalDocumentStore
-                .fetchFile(justificationsPath(proposalCode) + "/out/" + "justification.log");
-
-        String pageCount = scanLogForPageNumber(logFile);
-
-        return responseWrapper(pageCount, 200);
     }
 
 // ****** Convenience functions private to this class ********
@@ -341,6 +325,10 @@ public class JustificationsResource extends ObjectResourceBase {
      */
     private String justificationsPath(Long proposalCode) {
         return proposalDocumentStore.getJustificationsPath(proposalCode);
+    }
+
+    private String supportingDocumentsPath(Long proposalCode) {
+        return proposalDocumentStore.getSupportingDocumentsPath(proposalCode);
     }
 
     /**
