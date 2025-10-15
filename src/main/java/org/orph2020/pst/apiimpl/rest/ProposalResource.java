@@ -34,9 +34,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 
 /*
@@ -90,10 +88,6 @@ public class ProposalResource extends ObjectResourceBase {
     @Inject
     SupportingDocumentResource supportingDocumentResource;
 
-
-    //Justification header stuff
-    String justificationsHeaderTemplate = "justificationsHeaderTemplate.tex";
-    String justificationsHeader = "justificationsHeader.tex";
 
     private List<ProposalSynopsis> getSynopses(String queryStr) {
         List<ProposalSynopsis> result = new ArrayList<>();
@@ -192,13 +186,6 @@ public class ProposalResource extends ObjectResourceBase {
             proposalDocumentStore.createStorePaths(persisted.getId());
         } catch (IOException e) {
             //if these directories cannot be created, then we should roll back
-            throw new WebApplicationException(e);
-        }
-
-        //Replace the placeholder title in the justification header file with the actual title
-        try {
-            insertProposalTitleIntoHeaderTex(persisted.getId());
-        } catch (IOException e) {
             throw new WebApplicationException(e);
         }
 
@@ -366,12 +353,6 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
         proposal.setTitle(replacementTitle);
 
-        //Replace the placeholder title in the justification header file with the updated title
-        try {
-            insertProposalTitleIntoHeaderTex(proposalCode);
-        } catch (IOException e) {
-            throw new WebApplicationException(e);
-        }
         return responseWrapper(proposal.getTitle(), 201);
     }
 
@@ -802,29 +783,6 @@ public class ProposalResource extends ObjectResourceBase {
 
     //Convenience functions --------------
 
-    private void insertProposalTitleIntoHeaderTex(
-            Long proposalCode
-    )
-            throws IOException {
-        String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
 
-        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
-        String proposalTitle = proposal.getTitle();
-
-        //read from this file
-        File templateHeader = proposalDocumentStore.fetchFile(
-                proposalDocumentStore.getJustificationsPath(proposalCode) + "/" + justificationsHeaderTemplate
-        );
-
-        //write to this file
-        File header = proposalDocumentStore.fetchFile(
-                proposalDocumentStore.getJustificationsPath(proposalCode) + "/" + justificationsHeader);
-
-        String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
-
-        String headerText = templateText.replace(proposalTitleTarget, proposalTitle);
-
-        Files.write(header.toPath(), headerText.getBytes());
-    }
 
 }
