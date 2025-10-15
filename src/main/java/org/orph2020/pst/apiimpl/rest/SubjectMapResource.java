@@ -45,7 +45,7 @@ public class SubjectMapResource extends ObjectResourceBase {
     @ConfigProperty(name = "keycloak.admin-password")
     String admin_password;
 
-    @ConfigProperty(name = "quarkus.oidc.auth-server-master")
+    @ConfigProperty(name = "auth-server-master")
     String authServerMaster;
 
     @PostConstruct
