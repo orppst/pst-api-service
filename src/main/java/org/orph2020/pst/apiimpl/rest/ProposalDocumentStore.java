@@ -7,9 +7,7 @@ import org.ivoa.dm.proposal.prop.SupportingDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -265,19 +263,22 @@ public class ProposalDocumentStore {
         String cycleCodeTarget = "CYCLE-ID-HERE";
 
         //read from this file
-        File templateHeader = new File(Objects.requireNonNull(
-                ProposalDocumentStore.class.getResource("/justificationsHeaderTemplate.tex")).toURI()
-        );
+        try (InputStream is = Objects.requireNonNull(
+                ProposalDocumentStore.class.getResourceAsStream("/justificationsHeaderTemplate.tex"))) {
 
-        String templateText = new String(Files.readAllBytes(templateHeader.toPath()));
+           try (InputStreamReader isr = new InputStreamReader(is);
+                BufferedReader reader = new BufferedReader(isr)) {
+              String templateText = reader.lines().collect(Collectors.joining(System.lineSeparator()));
 
-        String headerText = observingProposalName != null ?
-                templateText.replace(proposalTitleTarget, proposalTitle)
-                        .replace(cycleCodeTarget, observingProposalName)
-                :
-                templateText.replace(proposalTitleTarget, proposalTitle);
+              String headerText = observingProposalName != null ?
+                    templateText.replace(proposalTitleTarget, proposalTitle)
+                          .replace(cycleCodeTarget, observingProposalName)
+                    :
+                    templateText.replace(proposalTitleTarget, proposalTitle);
 
-        writeStringToFile(headerText, proposalCode + "/" + justificationsPath + "justificationsHeader.tex");
+              writeStringToFile(headerText, proposalCode + "/" + justificationsPath + "justificationsHeader.tex");
+           }
+        }
     }
 
 
