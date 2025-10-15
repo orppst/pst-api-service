@@ -45,10 +45,13 @@ public class SubjectMapResource extends ObjectResourceBase {
     @ConfigProperty(name = "keycloak.admin-password")
     String admin_password;
 
+    @ConfigProperty(name = "auth-server-master")
+    String authServerMaster;
+
     @PostConstruct
     public void initKeyCloak() {
         keycloak = KeycloakBuilder.builder()
-                .serverUrl("http://localhost:53536")
+                .serverUrl(authServerMaster)
                 .realm("master")
                 .clientId("admin-cli")
                 .grantType("password")
