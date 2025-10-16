@@ -181,6 +181,46 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String technicalText = proposal.getTechnicalJustification().getText();
 
+        String proposalSummary = proposal.getSummary();
+
+        String proposalTargets = "\\begin{tabular}{|c|}\n";
+        proposalTargets += " \\hline\n Name \\\\\n \\hline\n";
+        for(Target target : proposal.getTargets()) {
+            proposalTargets += " " + target.getSourceName() + " \\\\\n \\hline\n";
+        }
+        proposalTargets += "\\end{tabular}\n";
+//System.out.println(proposalTargets);
+
+        String proposalInvestigators = "\\begin{tabular}{|c|c|c|c|}\n";
+        proposalInvestigators += " \\hline\n Name & email & Institute & for PHD? \\\\\n \\hline\n";
+        for(Investigator investigator : proposal.getInvestigators()) {
+            proposalInvestigators += " " + investigator.getPerson().getFullName() + " & "
+                    + investigator.getPerson().getEMail() + " & "
+                    + investigator.getPerson().getHomeInstitute().getName() + " & "
+                    + investigator.getForPhD() + " \\\\\n \\hline\n";
+        }
+        proposalInvestigators += "\\end{tabular}\n";
+//System.out.println(proposalInvestigators);
+
+        String proposalTechnicalGoals = "\\begin{tabular}{|c|}\n";
+        proposalTechnicalGoals += " \\hline\n Name \\\\\n \\hline\n";
+
+        for(TechnicalGoal technicalGoal : proposal.getTechnicalGoals()) {
+            proposalTechnicalGoals += " "+ technicalGoal.getPerformance().getDesiredAngularResolution()
+                + " \\\\\n \\hline\n";
+        }
+        proposalTechnicalGoals += "\\end{tabular}\n";
+//System.out.println(proposalTechnicalGoals);
+
+        String proposalObservations = "\\begin{tabular}{|c|}\n";
+        proposalObservations += " \\hline\n Name \\\\\n \\hline\n";
+        for(Observation observation : proposal.getObservations()) {
+            proposalObservations += " " + observation.getTarget().get(0).getSourceName() + " \\\\\n \\hline\n";
+        }
+        proposalObservations += "\\end{tabular}\n";
+
+//System.out.println(proposalObservations);
+
         Set<String> bibFileList = proposalDocumentStore.listFilesIn(
                 proposalDocumentStore.getSupportingDocumentsPath(proposalCode), Collections.singletonList("bib")
         );
@@ -194,6 +234,11 @@ public class JustificationsResource extends ObjectResourceBase {
         String workingDirectory = proposalDocumentStore.createLatexWorkingDirectory(
                 proposalCode,
                 proposalTitle,
+                proposalSummary,
+                proposalInvestigators,
+                proposalTargets,
+                proposalTechnicalGoals,
+                proposalObservations,
                 observingCycleName,
                 scientificText,
                 technicalText,
