@@ -328,13 +328,13 @@ public class ProposalDocumentStore {
                 String acronym = line.substring(line.indexOf("{\\") + 1, line.lastIndexOf("}"));
                 switch (acronym) {
                     case "\\aap":
-                        newContent.append(line.replace("\\aap", "A&A"));
+                        newContent.append(line.replace("\\aap", "A\\&A"));
                         break;
                     case "\\aapr":
-                        newContent.append(line.replace("\\aapr", "A&A Rev."));
+                        newContent.append(line.replace("\\aapr", "A\\&A Rev."));
                         break;
                     case "\\aaps":
-                        newContent.append(line.replace("\\aaps", "A&A Sup."));
+                        newContent.append(line.replace("\\aaps", "A\\&A Sup."));
                         break;
                     case "\\jcap":
                         //Journal of Cosmology and Astroparticle Physics (avoids "AP" -> "Ap" issue)
