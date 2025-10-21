@@ -146,6 +146,59 @@ public class JustificationsResource extends ObjectResourceBase {
         );
     }
 
+    static final String tableLine = " \\hline\n";
+    static final String endLine = " \\\\\n";
+
+    private String targetTable(List<Target> targets) {
+        StringBuilder proposalTargets = new StringBuilder("\\begin{tabular}{|c|}\n");
+        proposalTargets.append(tableLine + " Name " + endLine + tableLine);
+        for(Target target : targets) {
+            proposalTargets.append(" ")
+                    .append(target.getSourceName())
+                    .append(endLine).append(tableLine);
+        }
+        proposalTargets.append("\\end{tabular}\n");
+        return proposalTargets.toString();
+    }
+
+    private String investigatorsTable(List<Investigator> investigators) {
+        StringBuilder proposalInvestigators = new StringBuilder("\\begin{tabular}{|c|c|c|c|}\n");
+        proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD?" + endLine + tableLine);
+        for(Investigator investigator : investigators) {
+            proposalInvestigators.append(" ")
+                    .append(investigator.getPerson().getFullName())
+                    .append(" & ").append(investigator.getPerson().getEMail())
+                    .append(" & ").append(investigator.getPerson().getHomeInstitute().getName())
+                    .append(" & ").append(investigator.getForPhD())
+                    .append(endLine).append(tableLine);
+        }
+        proposalInvestigators.append("\\end{tabular}\n");
+        return proposalInvestigators.toString();
+    }
+
+    private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
+        StringBuilder proposalTechnicalGoals = new StringBuilder("\\begin{tabular}{|c|}\n");
+        proposalTechnicalGoals.append(tableLine + " Angular Resolution " + endLine + tableLine);
+
+        for(TechnicalGoal technicalGoal : technicalGoals) {
+            proposalTechnicalGoals.append(" ")
+                    .append(technicalGoal.getPerformance().getDesiredAngularResolution())
+                    .append(endLine).append(tableLine);
+        }
+        proposalTechnicalGoals.append("\\end{tabular}\n");
+        return proposalTechnicalGoals.toString();
+    }
+
+    private String observationsTable(List<Observation> observations) {
+        StringBuilder proposalObservations = new StringBuilder("\\begin{tabular}{|c|}\n");
+        proposalObservations.append(tableLine + " Name " + endLine + tableLine);
+        for(Observation observation : observations) {
+            proposalObservations.append(" ").append(observation.getTarget().get(0).getSourceName())
+                    .append(endLine).append(tableLine);
+        }
+        proposalObservations.append("\\end{tabular}\n");
+        return proposalObservations.toString();
+    }
 
     @POST
     @Path("latexPdf")
@@ -183,43 +236,13 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String proposalSummary = proposal.getSummary();
 
-        String proposalTargets = "\\begin{tabular}{|c|}\n";
-        proposalTargets += " \\hline\n Name \\\\\n \\hline\n";
-        for(Target target : proposal.getTargets()) {
-            proposalTargets += " " + target.getSourceName() + " \\\\\n \\hline\n";
-        }
-        proposalTargets += "\\end{tabular}\n";
-//System.out.println(proposalTargets);
+        String proposalTargets = targetTable(proposal.getTargets());
 
-        String proposalInvestigators = "\\begin{tabular}{|c|c|c|c|}\n";
-        proposalInvestigators += " \\hline\n Name & email & Institute & for PHD? \\\\\n \\hline\n";
-        for(Investigator investigator : proposal.getInvestigators()) {
-            proposalInvestigators += " " + investigator.getPerson().getFullName() + " & "
-                    + investigator.getPerson().getEMail() + " & "
-                    + investigator.getPerson().getHomeInstitute().getName() + " & "
-                    + investigator.getForPhD() + " \\\\\n \\hline\n";
-        }
-        proposalInvestigators += "\\end{tabular}\n";
-//System.out.println(proposalInvestigators);
+        String proposalInvestigators = investigatorsTable(proposal.getInvestigators());
 
-        String proposalTechnicalGoals = "\\begin{tabular}{|c|}\n";
-        proposalTechnicalGoals += " \\hline\n Name \\\\\n \\hline\n";
+        String proposalTechnicalGoals = technicalGoalsTable(proposal.getTechnicalGoals());
 
-        for(TechnicalGoal technicalGoal : proposal.getTechnicalGoals()) {
-            proposalTechnicalGoals += " "+ technicalGoal.getPerformance().getDesiredAngularResolution()
-                + " \\\\\n \\hline\n";
-        }
-        proposalTechnicalGoals += "\\end{tabular}\n";
-//System.out.println(proposalTechnicalGoals);
-
-        String proposalObservations = "\\begin{tabular}{|c|}\n";
-        proposalObservations += " \\hline\n Name \\\\\n \\hline\n";
-        for(Observation observation : proposal.getObservations()) {
-            proposalObservations += " " + observation.getTarget().get(0).getSourceName() + " \\\\\n \\hline\n";
-        }
-        proposalObservations += "\\end{tabular}\n";
-
-//System.out.println(proposalObservations);
+        String proposalObservations = observationsTable(proposal.getObservations());
 
         Set<String> bibFileList = proposalDocumentStore.listFilesIn(
                 proposalDocumentStore.getSupportingDocumentsPath(proposalCode), Collections.singletonList("bib")
