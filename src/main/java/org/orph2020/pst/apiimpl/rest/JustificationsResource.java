@@ -148,55 +148,102 @@ public class JustificationsResource extends ObjectResourceBase {
 
     static final String tableLine = " \\hline\n";
     static final String endLine = " \\\\\n";
-
-    private String targetTable(List<Target> targets) {
-        StringBuilder proposalTargets = new StringBuilder("\\begin{tabular}{|c|}\n");
-        proposalTargets.append(tableLine + " Name " + endLine + tableLine);
-        for(Target target : targets) {
-            proposalTargets.append(" ")
-                    .append(target.getSourceName())
-                    .append(endLine).append(tableLine);
+    static final String startTable = "\\begin{tabular}";
+    static final String endTable = "\\end{tabular}\n";
+    private String latexEsc(String input)
+    {
+        //String output = input.replaceAll("\\", "\\\\");
+        //output = output.replaceAll("&", "\\&");
+        if(input == null || input.isEmpty()) {
+            return "Not set";
         }
-        proposalTargets.append("\\end{tabular}\n");
+        return input.replaceAll("&", "\\&");
+    }
+
+    private String targetsTable(List<Target> targets) {
+        StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
+        proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
+        for(Target target : targets) {
+            if(target.getClass() == CelestialTarget.class) {
+                CelestialTarget tt = (CelestialTarget) target;
+                proposalTargets.append(" ")
+                        .append(latexEsc(tt.getSourceName())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame())).append(" & ")
+                        .append(latexEsc(tt.getPositionEpoch().value())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getLon().getValue().toString()))
+                        .append(endLine).append(tableLine);
+            }
+        }
+        proposalTargets.append(endTable);
         return proposalTargets.toString();
     }
 
     private String investigatorsTable(List<Investigator> investigators) {
-        StringBuilder proposalInvestigators = new StringBuilder("\\begin{tabular}{|c|c|c|c|}\n");
+        StringBuilder proposalInvestigators = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
         proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD?" + endLine + tableLine);
         for(Investigator investigator : investigators) {
             proposalInvestigators.append(" ")
-                    .append(investigator.getPerson().getFullName())
-                    .append(" & ").append(investigator.getPerson().getEMail())
-                    .append(" & ").append(investigator.getPerson().getHomeInstitute().getName())
+                    .append(latexEsc(investigator.getPerson().getFullName()))
+                    .append(" & ").append(latexEsc(investigator.getPerson().getEMail()))
+                    .append(" & ").append(latexEsc(investigator.getPerson().getHomeInstitute().getName()))
                     .append(" & ").append(investigator.getForPhD())
                     .append(endLine).append(tableLine);
         }
-        proposalInvestigators.append("\\end{tabular}\n");
+        proposalInvestigators.append(endTable);
         return proposalInvestigators.toString();
     }
 
+    private String spectralWindowTable(ScienceSpectralWindow window) {
+        return "Blank " + window.toString();
+    }
+
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
-        StringBuilder proposalTechnicalGoals = new StringBuilder("\\begin{tabular}{|c|}\n");
-        proposalTechnicalGoals.append(tableLine + " Angular Resolution " + endLine + tableLine);
+        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
+        proposalTechnicalGoals.append(tableLine
+                + " Angular Resolution & Largest scale & Sensitivity & Dynamic range & "
+                + endLine + tableLine);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
             proposalTechnicalGoals.append(" ")
-                    .append(technicalGoal.getPerformance().getDesiredAngularResolution())
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredAngularResolution()!=null?
+                            technicalGoal.getPerformance().getDesiredAngularResolution().getValue().toString():""))
+                    .append(" ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredAngularResolution()!=null?
+                            technicalGoal.getPerformance().getDesiredAngularResolution().getUnit().value():""))
+                    .append(" & ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredLargestScale()!=null?
+                            technicalGoal.getPerformance().getDesiredLargestScale().getValue().toString():""))
+                    .append(" ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredLargestScale()!=null?
+                            technicalGoal.getPerformance().getDesiredLargestScale().getUnit().value():""))
+                    .append(" & ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredSensitivity()!=null?
+                            technicalGoal.getPerformance().getDesiredSensitivity().getValue().toString():""))
+                    .append(" ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredSensitivity()!=null?
+                            technicalGoal.getPerformance().getDesiredSensitivity().getUnit().value():""))
+                    .append(" & ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredDynamicRange()!=null?
+                            technicalGoal.getPerformance().getDesiredDynamicRange().getValue().toString():""))
+                    .append(" ")
+                    .append(latexEsc(technicalGoal.getPerformance().getDesiredDynamicRange()!=null?
+                            technicalGoal.getPerformance().getDesiredDynamicRange().getUnit().value():""))
                     .append(endLine).append(tableLine);
         }
-        proposalTechnicalGoals.append("\\end{tabular}\n");
+        proposalTechnicalGoals.append(endTable);
+        System.out.println(proposalTechnicalGoals.toString());
         return proposalTechnicalGoals.toString();
     }
 
     private String observationsTable(List<Observation> observations) {
-        StringBuilder proposalObservations = new StringBuilder("\\begin{tabular}{|c|}\n");
+        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|}\n");
         proposalObservations.append(tableLine + " Name " + endLine + tableLine);
         for(Observation observation : observations) {
             proposalObservations.append(" ").append(observation.getTarget().get(0).getSourceName())
                     .append(endLine).append(tableLine);
         }
-        proposalObservations.append("\\end{tabular}\n");
+        proposalObservations.append(endTable);
         return proposalObservations.toString();
     }
 
@@ -236,7 +283,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         String proposalSummary = proposal.getSummary();
 
-        String proposalTargets = targetTable(proposal.getTargets());
+        String proposalTargets = targetsTable(proposal.getTargets());
 
         String proposalInvestigators = investigatorsTable(proposal.getInvestigators());
 
