@@ -305,12 +305,20 @@ public class ProposalResource extends ObjectResourceBase {
             int scientificLength = proposal.getScientificJustification().getText().length();
             int technicalLength = proposal.getTechnicalJustification().getText().length();
 
-            if (scientificLength < justificationsLengthCheck) {
+            //reminder: cannot save an empty string in justification text so an "empty" justification has 1 character
+            if (scientificLength < 2) {
+                error.append("No scientific justification text written.<br/>");
+                valid = false;
+            } else if (scientificLength < justificationsLengthCheck) {
                 warn.append("Scientific justification text has ")
                         .append(scientificLength)
                         .append(" characters only. If this is correct please ignore this warning else check your scientific justification.<br/>");
             }
-            if (technicalLength < justificationsLengthCheck) {
+
+            if  (technicalLength < 2) {
+                error.append("No technical justification text written.<br/>");
+                valid = false;
+            } else if (technicalLength < justificationsLengthCheck) {
                 warn.append("Technical justification text has ")
                         .append(technicalLength)
                         .append(" characters only. If this is correct please ignore this warning else check your technical justification.<br/>");
