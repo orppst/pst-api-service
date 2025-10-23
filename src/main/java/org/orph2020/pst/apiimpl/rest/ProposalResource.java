@@ -264,7 +264,7 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
         String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
-        StringBuilder warn = new StringBuilder();
+        String warn = ""; //ProposalValidation requires a 'warnings' string, but we currently have nothing to warn about
         StringBuilder error = new StringBuilder();
         //Count the targets
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
@@ -284,7 +284,6 @@ public class ProposalResource extends ObjectResourceBase {
             valid = false;
             error.append("No observations defined.<br/>");
         } else if(cycleId != 0) {
-            //Compare timing windows with cycle dates and times.
             ProposalCycleSynopsis theCycleDates = proposalCyclesResource.getProposalCycleDetails(cycleId);
 
             //Has proposal cycle submission deadline passed?
@@ -292,37 +291,6 @@ public class ProposalResource extends ObjectResourceBase {
             if(now.after(theCycleDates.submissionDeadline)) {
                 valid = false;
                 error.append("The submission deadline has passed.<br/>");
-            } else {
-                for (ObjectIdentifier observation : observations) {
-                    List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
-                    if (timingWindows.isEmpty()) {
-                        valid = false;
-                        error.append("No timing windows defined.<br/>");
-                    } else {
-                        for (ObservingConstraint timingWindow : timingWindows) {
-                            TimingWindow theWindow = (TimingWindow) timingWindow;
-                            if (theWindow.getIsAvoidConstraint()) {
-                                if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                                        && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' excludes this entire session.<br/>");
-                                }
-                            } else {
-                                if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' ends before this session begins.<br/>");
-                                }
-                                if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' begins after this session has ended.<br/>");
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
 
@@ -336,7 +304,7 @@ public class ProposalResource extends ObjectResourceBase {
         if(!valid) {
             info = "Your proposal is not ready for submission";
         }
-        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn.toString(), error.toString()));
+        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn, error.toString()));
     }
 
     @PUT
