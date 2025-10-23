@@ -264,8 +264,11 @@ public class ProposalResource extends ObjectResourceBase {
         ObservingProposal proposal = singleObservingProposal(proposalCode);
         boolean valid = true;
         String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
-        String warn = ""; //ProposalValidation requires a 'warnings' string, but we currently have nothing to warn about
+        StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
+
+        int justificationsLengthCheck = 256;
+
         //Count the targets
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
         if(targets.isEmpty()) {
@@ -295,7 +298,23 @@ public class ProposalResource extends ObjectResourceBase {
         }
 
         try {
+            //checks for the existence of a compiled Justifications PDF
             justificationsResource.downloadLatexPdf(proposalCode);
+
+            //if here PDF exists - check the lengths of the Justifications
+            int scientificLength = proposal.getScientificJustification().getText().length();
+            int technicalLength = proposal.getTechnicalJustification().getText().length();
+
+            if (scientificLength < justificationsLengthCheck) {
+                warn.append("Scientific justification text has ")
+                        .append(scientificLength)
+                        .append(" characters only. If this is correct please ignore this warning else check your scientific justification.<br/>");
+            }
+            if (technicalLength < justificationsLengthCheck) {
+                warn.append("Technical justification text has ")
+                        .append(technicalLength)
+                        .append(" characters only. If this is correct please ignore this warning else check your technical justification.<br/>");
+            }
         } catch (WebApplicationException e) {
             valid = false;
             error.append("Justification PDF has not been generated.<br/>");
@@ -304,7 +323,7 @@ public class ProposalResource extends ObjectResourceBase {
         if(!valid) {
             info = "Your proposal is not ready for submission";
         }
-        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn, error.toString()));
+        return (new ProposalValidation(proposalCode, proposal.getTitle(), valid, info, warn.toString(), error.toString()));
     }
 
     @PUT
