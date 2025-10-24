@@ -152,8 +152,6 @@ public class JustificationsResource extends ObjectResourceBase {
     static final String endTable = "\\end{tabular}\n";
     private String latexEsc(String input)
     {
-        //String output = input.replaceAll("\\", "\\\\");
-        //output = output.replaceAll("&", "\\&");
         if(input == null || input.isEmpty()) {
             return "Not set";
         }
@@ -201,7 +199,7 @@ public class JustificationsResource extends ObjectResourceBase {
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
         StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
         proposalTechnicalGoals.append(tableLine
-                + " Angular Resolution & Largest scale & Sensitivity & Dynamic range & "
+                + " Angular Resolution & Largest scale & Sensitivity & Dynamic range "
                 + endLine + tableLine);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
@@ -232,7 +230,7 @@ public class JustificationsResource extends ObjectResourceBase {
                     .append(endLine).append(tableLine);
         }
         proposalTechnicalGoals.append(endTable);
-        System.out.println(proposalTechnicalGoals.toString());
+        //System.out.println(proposalTechnicalGoals.toString());
         return proposalTechnicalGoals.toString();
     }
 
