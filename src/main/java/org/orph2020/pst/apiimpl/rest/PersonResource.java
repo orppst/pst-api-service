@@ -37,6 +37,18 @@ public class PersonResource extends ObjectResourceBase {
    }
 
    @GET
+   @Path("email/{email}")
+   @RolesAllowed("default-roles-orppst")
+   @Operation(summary = "get a Person with the provided email address, no match returns id:0 name:Not found")
+   public ObjectIdentifier getPersonByEmail(@RestQuery String email)
+   {
+       List<ObjectIdentifier> people = getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o Where o.eMail = '" + email + "'");
+      if(people.isEmpty())
+          return new ObjectIdentifier(0, "Not found");
+       return people.get(0);
+   }
+
+   @GET
    @Path("{id}")
    @Operation(summary = "get the specified Person")
    public Person getPerson(@PathParam("id") Long id) {

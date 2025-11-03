@@ -266,6 +266,9 @@ public class ProposalResource extends ObjectResourceBase {
         String info = "Your proposal has passed preliminary checks, please now select modes for your observations.";
         StringBuilder warn = new StringBuilder();
         StringBuilder error = new StringBuilder();
+
+        int justificationsLengthCheck = 256;
+
         //Count the targets
         List<ObjectIdentifier> targets = getTargets(proposalCode, null);
         if(targets.isEmpty()) {
@@ -284,7 +287,6 @@ public class ProposalResource extends ObjectResourceBase {
             valid = false;
             error.append("No observations defined.<br/>");
         } else if(cycleId != 0) {
-            //Compare timing windows with cycle dates and times.
             ProposalCycleSynopsis theCycleDates = proposalCyclesResource.getProposalCycleDetails(cycleId);
 
             //Has proposal cycle submission deadline passed?
@@ -292,42 +294,35 @@ public class ProposalResource extends ObjectResourceBase {
             if(now.after(theCycleDates.submissionDeadline)) {
                 valid = false;
                 error.append("The submission deadline has passed.<br/>");
-            } else {
-                for (ObjectIdentifier observation : observations) {
-                    List<ObservingConstraint> timingWindows = observationResource.getConstraints(proposalCode, observation.dbid);
-                    if (timingWindows.isEmpty()) {
-                        valid = false;
-                        error.append("No timing windows defined.<br/>");
-                    } else {
-                        for (ObservingConstraint timingWindow : timingWindows) {
-                            TimingWindow theWindow = (TimingWindow) timingWindow;
-                            if (theWindow.getIsAvoidConstraint()) {
-                                if (theCycleDates.observationSessionStart.after(theWindow.getStartTime())
-                                        && theCycleDates.observationSessionEnd.before(theWindow.getEndTime())) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' excludes this entire session.<br/>");
-                                }
-                            } else {
-                                if (theWindow.getEndTime().before(theCycleDates.observationSessionStart)) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' ends before this session begins.<br/>");
-                                }
-                                if (theWindow.getStartTime().after(theCycleDates.observationSessionEnd)) {
-                                    warn.append("A timing window for the observation of '")
-                                            .append(observation.name)
-                                            .append("' begins after this session has ended.<br/>");
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
 
         try {
+            //checks for the existence of a compiled Justifications PDF
             justificationsResource.downloadLatexPdf(proposalCode);
+
+            //if here PDF exists - check the lengths of the Justifications
+            int scientificLength = proposal.getScientificJustification().getText().length();
+            int technicalLength = proposal.getTechnicalJustification().getText().length();
+
+            //reminder: cannot save an empty string in justification text so an "empty" justification has 1 character
+            if (scientificLength < 2) {
+                error.append("No scientific justification text written.<br/>");
+                valid = false;
+            } else if (scientificLength < justificationsLengthCheck) {
+                warn.append("Scientific justification text has ")
+                        .append(scientificLength)
+                        .append(" characters only. If this is correct please ignore this warning else check your scientific justification.<br/>");
+            }
+
+            if  (technicalLength < 2) {
+                error.append("No technical justification text written.<br/>");
+                valid = false;
+            } else if (technicalLength < justificationsLengthCheck) {
+                warn.append("Technical justification text has ")
+                        .append(technicalLength)
+                        .append(" characters only. If this is correct please ignore this warning else check your technical justification.<br/>");
+            }
         } catch (WebApplicationException e) {
             valid = false;
             error.append("Justification PDF has not been generated.<br/>");
