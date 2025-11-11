@@ -10,12 +10,12 @@ import jakarta.ws.rs.core.Response;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import java.io.*;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -158,6 +158,25 @@ public class JustificationsResource extends ObjectResourceBase {
         return input.replaceAll("&", "\\&");
     }
 
+    private String unitAsShortString(RealQuantity unit) {
+        if(unit.getUnit().value().length() <= 4) {
+            return unit.getUnit().value();
+        }
+        return unit.getUnit().value().substring(0, 4);
+    }
+
+    private String quantityString(RealQuantity quantity) {
+        if(quantity == null) {
+            return "Not set";
+        }
+
+        StringBuilder quant = new StringBuilder();
+        quant.append(quantity.getValue().toString());
+        quant.append("  ");
+        quant.append(unitAsShortString(quantity));
+        return (quant.toString());
+    }
+
     private String targetsTable(List<Target> targets) {
         StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
         proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
@@ -192,56 +211,62 @@ public class JustificationsResource extends ObjectResourceBase {
         return proposalInvestigators.toString();
     }
 
-    private String spectralWindowTable(ScienceSpectralWindow window) {
-        return "Blank " + window.toString();
+    private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
+        StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
+        spectralTable.append(tableLine + " Start & End & Resolution" + endLine + tableLine);
+        for(ScienceSpectralWindow window : windows) {
+            spectralTable.append(" ")
+                .append(window.getSpectralWindowSetup().getStart().getValue().toString())
+                .append(" & ")
+                .append(window.getSpectralWindowSetup().getEnd().getValue().toString())
+                .append(" & ")
+                .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution()))
+                .append(endLine).append(tableLine);
+        }
+        spectralTable.append("\\end{tabular}");
+        //System.out.println(spectralTable.toString());
+        return spectralTable.toString();
     }
 
+
+
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
-        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
+        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|c|c|}\n");
         proposalTechnicalGoals.append(tableLine
-                + " Angular Resolution & Largest scale & Sensitivity & Dynamic range "
+                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Window"
                 + endLine + tableLine);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
             proposalTechnicalGoals.append(" ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredAngularResolution()!=null?
-                            technicalGoal.getPerformance().getDesiredAngularResolution().getValue().toString():""))
-                    .append(" ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredAngularResolution()!=null?
-                            technicalGoal.getPerformance().getDesiredAngularResolution().getUnit().value():""))
+                    .append(technicalGoal.getId())
                     .append(" & ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredLargestScale()!=null?
-                            technicalGoal.getPerformance().getDesiredLargestScale().getValue().toString():""))
-                    .append(" ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredLargestScale()!=null?
-                            technicalGoal.getPerformance().getDesiredLargestScale().getUnit().value():""))
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredAngularResolution()))
                     .append(" & ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredSensitivity()!=null?
-                            technicalGoal.getPerformance().getDesiredSensitivity().getValue().toString():""))
-                    .append(" ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredSensitivity()!=null?
-                            technicalGoal.getPerformance().getDesiredSensitivity().getUnit().value():""))
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredLargestScale()))
                     .append(" & ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredDynamicRange()!=null?
-                            technicalGoal.getPerformance().getDesiredDynamicRange().getValue().toString():""))
-                    .append(" ")
-                    .append(latexEsc(technicalGoal.getPerformance().getDesiredDynamicRange()!=null?
-                            technicalGoal.getPerformance().getDesiredDynamicRange().getUnit().value():""))
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredSensitivity()))
+                    .append(" & ")
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredDynamicRange()))
+                    .append(" & ")
+                    .append(spectralWindowTable(technicalGoal.getSpectrum()))
                     .append(endLine).append(tableLine);
         }
         proposalTechnicalGoals.append(endTable);
-        //System.out.println(proposalTechnicalGoals.toString());
+        System.out.println(proposalTechnicalGoals.toString());
         return proposalTechnicalGoals.toString();
     }
 
     private String observationsTable(List<Observation> observations) {
-        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|}\n");
-        proposalObservations.append(tableLine + " Name " + endLine + tableLine);
+        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|}\n");
+        proposalObservations.append(tableLine + " 1st Target &  Technical Goal id" + endLine + tableLine);
         for(Observation observation : observations) {
             proposalObservations.append(" ").append(observation.getTarget().get(0).getSourceName())
+                    .append(" & ")
+                    .append(observation.getTechnicalGoal().getId())
                     .append(endLine).append(tableLine);
         }
         proposalObservations.append(endTable);
+        System.out.println(proposalObservations.toString());
         return proposalObservations.toString();
     }
 
@@ -254,7 +279,7 @@ public class JustificationsResource extends ObjectResourceBase {
                                    @RestQuery Boolean warningsAsErrors,
                                    @RestQuery Boolean submittedProposal
     )
-            throws WebApplicationException, IOException, URISyntaxException {
+            throws WebApplicationException, IOException {
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
         // Errors are flagged back to the user as a simple string message containing the list of issues.
