@@ -158,11 +158,29 @@ public class JustificationsResource extends ObjectResourceBase {
         return input.replaceAll("&", "\\&");
     }
 
+    static HashMap<String, String> unitAbbr = new HashMap<String, String >();
+
     private String unitAsShortString(RealQuantity unit) {
+        if(unitAbbr.isEmpty()) {
+            unitAbbr.put("microarcsec", "uas");
+            unitAbbr.put("milliarcsec", "mas");
+            unitAbbr.put("arcsec", "arcsec");
+            unitAbbr.put("arcmin", "arcmin");
+            unitAbbr.put("milliradians", "mrad");
+            unitAbbr.put("degrees", "degrees");
+            unitAbbr.put("microJansky", "uJy");
+            unitAbbr.put("milliJansky", "mJyrees");
+            unitAbbr.put("Jansky", "Jy");
+        }
+
         if(unit.getUnit().value().length() <= 4) {
             return unit.getUnit().value();
         }
-        return unit.getUnit().value().substring(0, 4);
+        if(unitAbbr.containsKey(unit.getUnit().value())) {
+            return unitAbbr.get(unit.getUnit().value());
+        } else {
+            return unit.getUnit().value();
+        }
     }
 
     private String quantityString(RealQuantity quantity) {
@@ -170,11 +188,9 @@ public class JustificationsResource extends ObjectResourceBase {
             return "Not set";
         }
 
-        StringBuilder quant = new StringBuilder();
-        quant.append(quantity.getValue().toString());
-        quant.append("  ");
-        quant.append(unitAsShortString(quantity));
-        return (quant.toString());
+        return (quantity.getValue().toString() +
+                "  " +
+                unitAsShortString(quantity));
     }
 
     private String targetsTable(List<Target> targets) {
@@ -204,7 +220,7 @@ public class JustificationsResource extends ObjectResourceBase {
                     .append(latexEsc(investigator.getPerson().getFullName()))
                     .append(" & ").append(latexEsc(investigator.getPerson().getEMail()))
                     .append(" & ").append(latexEsc(investigator.getPerson().getHomeInstitute().getName()))
-                    .append(" & ").append(investigator.getForPhD())
+                    .append(" & ").append(investigator.getForPhD()!=null?investigator.getForPhD()==true?"Yes":"No":"No")
                     .append(endLine).append(tableLine);
         }
         proposalInvestigators.append(endTable);
@@ -212,19 +228,21 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
+        if(windows.size() == 0) {
+            return "Not set";
+        }
         StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
         spectralTable.append(tableLine + " Start & End & Resolution" + endLine + tableLine);
         for(ScienceSpectralWindow window : windows) {
             spectralTable.append(" ")
-                .append(window.getSpectralWindowSetup().getStart().getValue().toString())
+                .append(quantityString(window.getSpectralWindowSetup().getStart()))
                 .append(" & ")
-                .append(window.getSpectralWindowSetup().getEnd().getValue().toString())
+                .append(quantityString(window.getSpectralWindowSetup().getEnd()))
                 .append(" & ")
                 .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution()))
                 .append(endLine).append(tableLine);
         }
         spectralTable.append("\\end{tabular}");
-        //System.out.println(spectralTable.toString());
         return spectralTable.toString();
     }
 
@@ -233,7 +251,7 @@ public class JustificationsResource extends ObjectResourceBase {
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
         StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|c|c|}\n");
         proposalTechnicalGoals.append(tableLine
-                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Window"
+                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Window(s)"
                 + endLine + tableLine);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
@@ -252,21 +270,62 @@ public class JustificationsResource extends ObjectResourceBase {
                     .append(endLine).append(tableLine);
         }
         proposalTechnicalGoals.append(endTable);
-        System.out.println(proposalTechnicalGoals.toString());
         return proposalTechnicalGoals.toString();
     }
 
+    private String targetNamesTable(List<Target> targets) {
+        StringBuilder namesTable = new StringBuilder(startTable).append("{c}\n");
+        for(Target target : targets) {
+            if(target.getClass() == CelestialTarget.class) {
+                CelestialTarget tt = (CelestialTarget) target;
+                namesTable.append(" ")
+                        .append(latexEsc(tt.getSourceName()))
+                        .append(endLine);
+            }
+        }
+        namesTable.append(endTable);
+
+        return namesTable.toString();
+    }
+
+    private String timingWindowsTable(List<ObservingConstraint> timings) {
+        if(timings.size() == 0) {
+            return "None";
+        }
+        StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
+        timingsTable.append(tableLine + " Start & End & Exclude? & Notes" + endLine + tableLine);
+        for(ObservingConstraint constraint : timings) {
+            if(constraint.getClass() == TimingWindow.class) {
+                TimingWindow window = (TimingWindow) constraint;
+                timingsTable.append(" ")
+                        .append(window.getStartTime())
+                        .append(" & ")
+                        .append(window.getEndTime())
+                        .append(" & ")
+                        .append(window.getIsAvoidConstraint() ? "Yes" : "No")
+                        .append(" & ")
+                        .append(latexEsc(window.getNote()))
+                        .append(endLine).append(tableLine);
+            }
+        }
+
+        timingsTable.append(endTable);
+        return timingsTable.toString();
+    }
+
     private String observationsTable(List<Observation> observations) {
-        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|}\n");
-        proposalObservations.append(tableLine + " 1st Target &  Technical Goal id" + endLine + tableLine);
+        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|c|}\n");
+        proposalObservations.append(tableLine + " Technical Goal id & Target(s) & Timing window(s)" + endLine + tableLine);
         for(Observation observation : observations) {
-            proposalObservations.append(" ").append(observation.getTarget().get(0).getSourceName())
-                    .append(" & ")
+            proposalObservations.append(" ")
                     .append(observation.getTechnicalGoal().getId())
+                    .append(" & ")
+                    .append(targetNamesTable(observation.getTarget()))
+                    .append(" & ")
+                    .append(timingWindowsTable(observation.getConstraints()))
                     .append(endLine).append(tableLine);
         }
         proposalObservations.append(endTable);
-        System.out.println(proposalObservations.toString());
         return proposalObservations.toString();
     }
 
