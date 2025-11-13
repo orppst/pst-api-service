@@ -36,7 +36,10 @@ import java.util.regex.Pattern;
 public class JustificationsResource extends ObjectResourceBase {
 
     //singular file names for LaTeX and RST justifications
-    String texFileName = "main.tex";
+    String texFileName = "mainTemplate.tex";
+    String texReviewFileName = "mainTemplate.review.tex";
+    String texAdminFileName = "mainTemplate.admin.tex";
+    String mainTexFileName = "main.tex";
     String jobName = "compiledJustification";
 
     @Inject
@@ -214,7 +217,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     private String investigatorsTable(List<Investigator> investigators) {
         StringBuilder proposalInvestigators = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
-        proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD?" + endLine + tableLine);
+        proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD" + endLine + tableLine);
         for(Investigator investigator : investigators) {
             proposalInvestigators.append(" ")
                     .append(latexEsc(investigator.getPerson().getFullName()))
@@ -251,7 +254,7 @@ public class JustificationsResource extends ObjectResourceBase {
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
         StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|c|c|}\n");
         proposalTechnicalGoals.append(tableLine
-                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Window(s)"
+                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Windows"
                 + endLine + tableLine);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
@@ -293,7 +296,7 @@ public class JustificationsResource extends ObjectResourceBase {
             return "None";
         }
         StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
-        timingsTable.append(tableLine + " Start & End & Exclude? & Notes" + endLine + tableLine);
+        timingsTable.append(tableLine + " Start & End & Exclude range" + endLine + tableLine);
         for(ObservingConstraint constraint : timings) {
             if(constraint.getClass() == TimingWindow.class) {
                 TimingWindow window = (TimingWindow) constraint;
@@ -303,9 +306,12 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append(window.getEndTime())
                         .append(" & ")
                         .append(window.getIsAvoidConstraint() ? "Yes" : "No")
-                        .append(" & ")
-                        .append(latexEsc(window.getNote()))
                         .append(endLine).append(tableLine);
+                if(window.getNote().length() >0 ) {
+                    timingsTable.append("\\multicolumn{3}{|c|}{")
+                            .append(window.getNote())
+                            .append("}").append(endLine).append(tableLine);
+                }
             }
         }
 
@@ -315,7 +321,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     private String observationsTable(List<Observation> observations) {
         StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|c|}\n");
-        proposalObservations.append(tableLine + " Technical Goal id & Target(s) & Timing window(s)" + endLine + tableLine);
+        proposalObservations.append(tableLine + " Technical Goal & Targets & Timing windows" + endLine + tableLine);
         for(Observation observation : observations) {
             proposalObservations.append(" ")
                     .append(observation.getTechnicalGoal().getId())
@@ -330,6 +336,32 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     @POST
+    @Path("AdminPdf")
+    @RolesAllowed("tac_admin")
+    @Operation(summary = "create a PDF summary of the whole proposal, for TAC administrators only")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createTACAdminPDF(@PathParam("proposalCode") Long proposalCode)
+        throws WebApplicationException, IOException
+    {
+        // Access permission check here, is this user an admin for this cycle's observatory?
+        return createPDFfile(proposalCode, false, true, texAdminFileName);
+    }
+
+    @POST
+    @Path("ReviewPdf")
+    @RolesAllowed({"tac_member"})
+    @Operation(summary = "create an anonymised PDF summary of the whole proposal, for reviewers only")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createReviewPDF(@PathParam("proposalCode") Long proposalCode)
+            throws WebApplicationException, IOException
+    {
+        // Access permission check, is this user a reviewer for this submitted proposal?
+        return createPDFfile(proposalCode, false, true, texReviewFileName);
+    }
+
+    @POST
     @Path("latexPdf")
     @Operation(summary = "create PDF of the LaTex Justification from supplied files, we recommend using 'warningsAsErrors=true'")
     @Produces(MediaType.APPLICATION_JSON)
@@ -339,6 +371,15 @@ public class JustificationsResource extends ObjectResourceBase {
                                    @RestQuery Boolean submittedProposal
     )
             throws WebApplicationException, IOException {
+        // Access permission check, is this user an investigator in this proposal?
+        return createPDFfile(proposalCode, warningsAsErrors, submittedProposal, texFileName);
+
+    }
+
+    private Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
+        throws WebApplicationException, IOException {
+
+
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
         // Errors are flagged back to the user as a simple string message containing the list of issues.
@@ -353,26 +394,10 @@ public class JustificationsResource extends ObjectResourceBase {
 
         AbstractProposal proposal = findObject(AbstractProposal.class, proposalCode);
         
-        String proposalTitle = proposal.getTitle();
-        
         String observingCycleName = submittedProposal ?
                 findObject(SubmittedProposal.class, proposalCode).getProposalCode() : 
                 null;
         
-        String scientificText = proposal.getScientificJustification().getText();
-
-        String technicalText = proposal.getTechnicalJustification().getText();
-
-        String proposalSummary = proposal.getSummary();
-
-        String proposalTargets = targetsTable(proposal.getTargets());
-
-        String proposalInvestigators = investigatorsTable(proposal.getInvestigators());
-
-        String proposalTechnicalGoals = technicalGoalsTable(proposal.getTechnicalGoals());
-
-        String proposalObservations = observationsTable(proposal.getObservations());
-
         Set<String> bibFileList = proposalDocumentStore.listFilesIn(
                 proposalDocumentStore.getSupportingDocumentsPath(proposalCode), Collections.singletonList("bib")
         );
@@ -385,24 +410,25 @@ public class JustificationsResource extends ObjectResourceBase {
         //Gather together everything needed to successfully compile PDF output
         String workingDirectory = proposalDocumentStore.createLatexWorkingDirectory(
                 proposalCode,
-                proposalTitle,
-                proposalSummary,
-                proposalInvestigators,
-                proposalTargets,
-                proposalTechnicalGoals,
-                proposalObservations,
+                proposal.getTitle(),
+                proposal.getSummary(),
+                investigatorsTable(proposal.getInvestigators()),
+                targetsTable(proposal.getTargets()),
+                technicalGoalsTable(proposal.getTechnicalGoals()),
+                observationsTable(proposal.getObservations()),
                 observingCycleName,
-                scientificText,
-                technicalText,
+                proposal.getScientificJustification().getText(),
+                proposal.getTechnicalJustification().getText(),
+                texFileName,
                 bibFileList.isEmpty() ? null : bibFileList.iterator().next()
         );
 
         justificationIsLatex(proposalCode);
 
-        File mainTex = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/" + texFileName);
+        File mainTex = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/" + mainTexFileName);
 
         if (!mainTex.exists()) {
-            throw new WebApplicationException(String.format("%s file not found", texFileName));
+            throw new WebApplicationException(String.format("%s file not found", mainTexFileName));
         }
 
         ProcessBuilder processBuilder = getLatexmkProcessBuilder(mainTex.getAbsolutePath());

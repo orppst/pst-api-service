@@ -77,6 +77,7 @@ public class ProposalDocumentStore {
             String observingCycleName,
             String scientificText,
             String technicalText,
+            String templateFilename,
             String referencesFilename
     ) throws IOException {
 
@@ -89,7 +90,7 @@ public class ProposalDocumentStore {
 
         //copy the LaTex main file for Justifications to the working directory
         Files.copy(
-                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/TacTemplate.tex")),
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/" + templateFilename)),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         justificationsPath, "main.tex"),
                 REPLACE_EXISTING
