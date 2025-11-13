@@ -378,8 +378,6 @@ public class JustificationsResource extends ObjectResourceBase {
 
     private Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
         throws WebApplicationException, IOException {
-
-
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
         // Errors are flagged back to the user as a simple string message containing the list of issues.
@@ -445,32 +443,31 @@ public class JustificationsResource extends ObjectResourceBase {
 
             StringBuilder errorsStringBuilder = new StringBuilder();
 
-            //if the user selects 'warningsAsErrors', then we need to feed back the warnings along
-            //with potential errors for them to attempt to fix the issues, potentially in one go.
-            if (warningsAsErrors && !warnings.isEmpty()) {
-                errorsStringBuilder
-                        .append("You have LaTeX compilation warnings:\n")
-                        .append(String.join("\n", warnings))
-                        .append("\n\n");
-            }
+            //errors need to be fixed before warnings, as some errors can cause warnings.
 
-            //check 'latexmk' exit code
+            //if there are  latex errors, stop and return to user
             if (exitCode != 0) {
                 List<String> errors = scanLogForErrors(logFile);
 
                 errorsStringBuilder
                         .append("You have LaTeX compilation errors:\n")
                         .append(String.join("\n", errors));
-
                 FileUtils.deleteDirectory(new File(workingDirectory)); //clean up latex working directory
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
-            // the exit code is zero here, but there may be warnings
+            //here exitCode is zero i.e., no errors
+
+            //if the user selects 'warningsAsErrors' and there are warnings, stop and return to user
             if (warningsAsErrors && !warnings.isEmpty()) {
+                errorsStringBuilder
+                        .append("You have LaTeX compilation warnings:\n")
+                        .append(String.join("\n", warnings))
+                        .append("\n\n");
                 FileUtils.deleteDirectory(new File(workingDirectory)); //clean up latex working directory
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
+
 
         } catch (IOException | InterruptedException e) {
             throw new WebApplicationException(e.getMessage());
