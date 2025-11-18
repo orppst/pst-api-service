@@ -37,8 +37,8 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //singular file names for LaTeX and RST justifications
     String texFileName = "mainTemplate.tex";
-    String texReviewFileName = "mainTemplate.review.tex";
-    String texAdminFileName = "mainTemplate.admin.tex";
+    String texReviewFileName = "mainTemplate.Review.tex";
+    String texAdminFileName = "mainTemplate.Admin.tex";
     String mainTexFileName = "main.tex";
     String jobName = "compiledJustification";
 
@@ -337,7 +337,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @POST
     @Path("AdminPdf")
-    @RolesAllowed("tac_admin")
+    @RolesAllowed({"tac_admin"})
     @Operation(summary = "create a PDF summary of the whole proposal, for TAC administrators only")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -558,7 +558,7 @@ public class JustificationsResource extends ObjectResourceBase {
      * @return the Justification given by the specified parameters, can be null
      */
     private Justification getWhichJustification(Long proposalCode, String which) {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        AbstractProposal observingProposal = findObject(AbstractProposal.class, proposalCode);
         return switch (which) {
             case "technical" -> observingProposal.getTechnicalJustification();
             case "scientific" -> observingProposal.getScientificJustification();
