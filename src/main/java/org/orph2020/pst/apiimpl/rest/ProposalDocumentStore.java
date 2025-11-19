@@ -88,10 +88,6 @@ public class ProposalDocumentStore {
                 justificationsPath
         ));
 
-        System.out.println("About to copy " +
-                templateFilename + " to " + proposalStoreRoot +
-                proposalCode.toString() + justificationsPath + "main.tex");
-
         //copy the LaTex main file for Justifications to the working directory
         Files.copy(
                 Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/" + templateFilename)),

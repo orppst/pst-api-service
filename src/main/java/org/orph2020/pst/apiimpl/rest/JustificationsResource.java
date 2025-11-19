@@ -350,7 +350,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @POST
     @Path("ReviewPdf")
-    @RolesAllowed({"tac_member"})
+    @RolesAllowed({"tac_member", "tac_admin"})
     @Operation(summary = "create an anonymised PDF summary of the whole proposal, for reviewers only")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
