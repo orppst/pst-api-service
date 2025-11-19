@@ -439,31 +439,63 @@ public class JustificationsResource extends ObjectResourceBase {
             File logFile = proposalDocumentStore
                     .fetchFile(justificationsPath(proposalCode) + "/out/" + jobName + ".log");
 
-            List<String> warnings = findWarnings(Files.readString(logFile.toPath()));
+            List<String> warnings = findLatexWarnings(Files.readString(logFile.toPath()));
+            List<String> bibWarnings = findNatBibWarnings(Files.readString(logFile.toPath()));
 
             StringBuilder errorsStringBuilder = new StringBuilder();
 
             //errors need to be fixed before warnings, as some errors can cause warnings.
 
-            //if there are  latex errors, stop and return to user
+
+            //if there are latex errors, stop and return to user
             if (exitCode != 0) {
+                //find the errors in the main log file
                 List<String> errors = scanLogForErrors(logFile);
 
-                errorsStringBuilder
-                        .append("You have LaTeX compilation errors:\n")
-                        .append(String.join("\n", errors));
+                if (!errors.isEmpty()) {
+                    errorsStringBuilder
+                            .append("You have LaTeX compilation errors:\n")
+                            .append(String.join("\n", errors));
+                }
+
+                //also check the BibTex log file for problems, if it exists
+                File bibTexLogFile = proposalDocumentStore.fetchFile(
+                        justificationsPath(proposalCode) + "/out/" + jobName + ".blg");
+
+                if (bibTexLogFile.exists()) {
+                    List<String> bibTexWarnings = scanBibTexLogForDetails(Files.readString(bibTexLogFile.toPath()));
+
+                    if (!bibTexWarnings.isEmpty()) {
+                        errorsStringBuilder
+                                .append("Your bibliography file has issues (renamed to 'refs.bib' for compilation):\n")
+                                .append(String.join("\n", bibTexWarnings));
+                    }
+                }
                 FileUtils.deleteDirectory(new File(workingDirectory)); //clean up latex working directory
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
 
             //here exitCode is zero i.e., no errors
-
             //if the user selects 'warningsAsErrors' and there are warnings, stop and return to user
-            if (warningsAsErrors && !warnings.isEmpty()) {
-                errorsStringBuilder
-                        .append("You have LaTeX compilation warnings:\n")
-                        .append(String.join("\n", warnings))
-                        .append("\n\n");
+            if (warningsAsErrors && (!warnings.isEmpty() || !bibWarnings.isEmpty())) {
+                if (!warnings.isEmpty() ) {
+                    errorsStringBuilder
+                            .append("You have LaTeX compilation warnings:\n")
+                            .append(String.join("\n", warnings))
+                            .append("\n\n");
+                }
+
+                if (!bibWarnings.isEmpty() ) {
+                    if (bibFileList.isEmpty()) {
+                        errorsStringBuilder
+                                .append("No Bibliography (.bib) file found, hence ...\n");
+                    }
+                    errorsStringBuilder
+                            .append("You have BibTex warnings:\n")
+                            .append(String.join("\n", bibWarnings))
+                            .append("\n\n");
+                }
+
                 FileUtils.deleteDirectory(new File(workingDirectory)); //clean up latex working directory
                 return responseWrapper(errorsStringBuilder.toString(), 200);
             }
@@ -594,7 +626,7 @@ public class JustificationsResource extends ObjectResourceBase {
      * @param searchStr String to search
      * @return List of Strings containing distinct warnings
      */
-    private List<String> findWarnings(String searchStr) {
+    private List<String> findLatexWarnings(String searchStr) {
         Matcher matcher = Pattern
                 .compile("^LaTeX Warning.*$", Pattern.MULTILINE)
                 .matcher(searchStr);
@@ -602,6 +634,25 @@ public class JustificationsResource extends ObjectResourceBase {
         //"LaTex Warning"s have the details on the same line
         while (matcher.find()) {
             list.add(matcher.group());
+        }
+        return list.stream().distinct().toList();
+    }
+
+    /**
+     * Function to find the "package natbib warning"s in the provided string. The input string should
+     * be specifically obtained from the output log file of 'latexmk'
+     *
+     * @param searchStr String to search
+     * @return List of Strings containing distinct warnings
+     */
+    private List<String> findNatBibWarnings(String searchStr) {
+        Matcher matcher = Pattern
+                .compile("^Package natbib Warning.*\\s.*\\.$", Pattern.MULTILINE)
+                .matcher(searchStr);
+        List<String> list = new ArrayList<>();
+        //remove any literal newlines
+        while (matcher.find()) {
+            list.add(matcher.group().replaceAll("\n", ""));
         }
         return list.stream().distinct().toList();
     }
@@ -619,7 +670,7 @@ public class JustificationsResource extends ObjectResourceBase {
         Scanner scanner = new Scanner(file);
         while (scanner.hasNextLine()) {
             String line = scanner.nextLine();
-            //all errors start with "! "
+            //most errors start with "! " - "Runaway argument?" does not
             if (line.contains("! ")) {
                 if (line.contains("LaTeX Error")) {
                     // "LaTeX Error"s contain the details on the current line
@@ -628,6 +679,8 @@ public class JustificationsResource extends ObjectResourceBase {
                     // other errors have the details on the next line
                     list.add(line + ": " + scanner.nextLine());
                 }
+            } else if (line.contains("Runaway argument?")) {
+                list.add(line + " - " + scanner.nextLine() + " - have you forgotten a '}'?");
             }
         }
         scanner.close();
@@ -659,6 +712,18 @@ public class JustificationsResource extends ObjectResourceBase {
         } catch (FileNotFoundException e) {
             throw new WebApplicationException(e);
         }
+    }
+
+    private List<String> scanBibTexLogForDetails(String searchStr) throws WebApplicationException {
+        Matcher matcher = Pattern
+                .compile("^I was expecting .*$", Pattern.MULTILINE)
+                .matcher(searchStr);
+        List<String> list = new ArrayList<>();
+        //the message is on the same line
+        while (matcher.find()) {
+            list.add(matcher.group());
+        }
+        return list.stream().distinct().toList();
     }
 
 
