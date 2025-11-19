@@ -69,9 +69,15 @@ public class ProposalDocumentStore {
     public String createLatexWorkingDirectory(
             Long proposalCode,
             String proposalTitle,
+            String proposalSummary,
+            String proposalInvestigators,
+            String proposalTargets,
+            String proposalTechnicalGoals,
+            String proposalObservations,
             String observingCycleName,
             String scientificText,
             String technicalText,
+            String templateFilename,
             String referencesFilename
     ) throws IOException {
 
@@ -84,7 +90,7 @@ public class ProposalDocumentStore {
 
         //copy the LaTex main file for Justifications to the working directory
         Files.copy(
-                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/mainTemplate.tex")),
+                Objects.requireNonNull(ProposalDocumentStore.class.getResourceAsStream("/" + templateFilename)),
                 Paths.get(proposalStoreRoot, proposalCode.toString(),
                         justificationsPath, "main.tex"),
                 REPLACE_EXISTING
@@ -125,6 +131,22 @@ public class ProposalDocumentStore {
 
         writeStringToFile(technicalText, proposalCode + "/" + justificationsPath
                 + "technicalJustification.tex");
+
+        //Summary
+        writeStringToFile(proposalSummary, proposalCode + "/" + justificationsPath
+                + "summary.tex");
+        //Investigators
+        writeStringToFile(proposalInvestigators, proposalCode + "/" + justificationsPath
+                + "investigators.tex");
+        //Targets
+        writeStringToFile(proposalTargets, proposalCode + "/" + justificationsPath
+                + "targets.tex");
+        //Technical Goals
+        writeStringToFile(proposalTechnicalGoals, proposalCode + "/" + justificationsPath
+                 + "technicalGoals.tex");
+        //Observations
+        writeStringToFile(proposalObservations, proposalCode + "/" + justificationsPath
+                + "observations.tex");
 
         //image files are found using the '\graphicspath' latex command in "main.tex"
 

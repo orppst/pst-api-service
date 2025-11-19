@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.*;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -35,7 +36,10 @@ import java.util.regex.Pattern;
 public class JustificationsResource extends ObjectResourceBase {
 
     //singular file names for LaTeX and RST justifications
-    String texFileName = "main.tex";
+    String texFileName = "mainTemplate.tex";
+    String texReviewFileName = "mainTemplate.Review.tex";
+    String texAdminFileName = "mainTemplate.Admin.tex";
+    String mainTexFileName = "main.tex";
     String jobName = "compiledJustification";
 
     @Inject
@@ -145,6 +149,217 @@ public class JustificationsResource extends ObjectResourceBase {
         );
     }
 
+    static final String tableLine = " \\hline\n";
+    static final String endLine = " \\\\\n";
+    static final String startTable = "\\begin{tabular}";
+    static final String endTable = "\\end{tabular}\n";
+    private String latexEsc(String input)
+    {
+        if(input == null || input.isEmpty()) {
+            return "Not set";
+        }
+        return input.replaceAll("&", "\\&");
+    }
+
+    static HashMap<String, String> unitAbbr = new HashMap<String, String >();
+
+    private String unitAsShortString(RealQuantity unit) {
+        if(unitAbbr.isEmpty()) {
+            unitAbbr.put("microarcsec", "uas");
+            unitAbbr.put("milliarcsec", "mas");
+            unitAbbr.put("arcsec", "arcsec");
+            unitAbbr.put("arcmin", "arcmin");
+            unitAbbr.put("milliradians", "mrad");
+            unitAbbr.put("degrees", "degrees");
+            unitAbbr.put("microJansky", "uJy");
+            unitAbbr.put("milliJansky", "mJyrees");
+            unitAbbr.put("Jansky", "Jy");
+        }
+
+        if(unit.getUnit().value().length() <= 4) {
+            return unit.getUnit().value();
+        }
+        if(unitAbbr.containsKey(unit.getUnit().value())) {
+            return unitAbbr.get(unit.getUnit().value());
+        } else {
+            return unit.getUnit().value();
+        }
+    }
+
+    private String quantityString(RealQuantity quantity) {
+        if(quantity == null) {
+            return "Not set";
+        }
+
+        return (quantity.getValue().toString() +
+                "  " +
+                unitAsShortString(quantity));
+    }
+
+    private String targetsTable(List<Target> targets) {
+        StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
+        proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
+        for(Target target : targets) {
+            if(target.getClass() == CelestialTarget.class) {
+                CelestialTarget tt = (CelestialTarget) target;
+                proposalTargets.append(" ")
+                        .append(latexEsc(tt.getSourceName())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame())).append(" & ")
+                        .append(latexEsc(tt.getPositionEpoch().value())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(" & ")
+                        .append(latexEsc(tt.getSourceCoordinates().getLon().getValue().toString()))
+                        .append(endLine).append(tableLine);
+            }
+        }
+        proposalTargets.append(endTable);
+        return proposalTargets.toString();
+    }
+
+    private String investigatorsTable(List<Investigator> investigators) {
+        StringBuilder proposalInvestigators = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
+        proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD" + endLine + tableLine);
+        for(Investigator investigator : investigators) {
+            proposalInvestigators.append(" ")
+                    .append(latexEsc(investigator.getPerson().getFullName()))
+                    .append(" & ").append(latexEsc(investigator.getPerson().getEMail()))
+                    .append(" & ").append(latexEsc(investigator.getPerson().getHomeInstitute().getName()))
+                    .append(" & ").append(investigator.getForPhD()!=null?investigator.getForPhD()==true?"Yes":"No":"No")
+                    .append(endLine).append(tableLine);
+        }
+        proposalInvestigators.append(endTable);
+        return proposalInvestigators.toString();
+    }
+
+    private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
+        if(windows.size() == 0) {
+            return "Not set";
+        }
+        StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
+        spectralTable.append(tableLine + " Start & End & Resolution" + endLine + tableLine);
+        for(ScienceSpectralWindow window : windows) {
+            spectralTable.append(" ")
+                .append(quantityString(window.getSpectralWindowSetup().getStart()))
+                .append(" & ")
+                .append(quantityString(window.getSpectralWindowSetup().getEnd()))
+                .append(" & ")
+                .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution()))
+                .append(endLine).append(tableLine);
+        }
+        spectralTable.append("\\end{tabular}");
+        return spectralTable.toString();
+    }
+
+
+
+    private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
+        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|c|c|}\n");
+        proposalTechnicalGoals.append(tableLine
+                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Windows"
+                + endLine + tableLine);
+
+        for(TechnicalGoal technicalGoal : technicalGoals) {
+            proposalTechnicalGoals.append(" ")
+                    .append(technicalGoal.getId())
+                    .append(" & ")
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredAngularResolution()))
+                    .append(" & ")
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredLargestScale()))
+                    .append(" & ")
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredSensitivity()))
+                    .append(" & ")
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredDynamicRange()))
+                    .append(" & ")
+                    .append(spectralWindowTable(technicalGoal.getSpectrum()))
+                    .append(endLine).append(tableLine);
+        }
+        proposalTechnicalGoals.append(endTable);
+        return proposalTechnicalGoals.toString();
+    }
+
+    private String targetNamesTable(List<Target> targets) {
+        StringBuilder namesTable = new StringBuilder(startTable).append("{c}\n");
+        for(Target target : targets) {
+            if(target.getClass() == CelestialTarget.class) {
+                CelestialTarget tt = (CelestialTarget) target;
+                namesTable.append(" ")
+                        .append(latexEsc(tt.getSourceName()))
+                        .append(endLine);
+            }
+        }
+        namesTable.append(endTable);
+
+        return namesTable.toString();
+    }
+
+    private String timingWindowsTable(List<ObservingConstraint> timings) {
+        if(timings.size() == 0) {
+            return "None";
+        }
+        StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
+        timingsTable.append(tableLine + " Start & End & Exclude range" + endLine + tableLine);
+        for(ObservingConstraint constraint : timings) {
+            if(constraint.getClass() == TimingWindow.class) {
+                TimingWindow window = (TimingWindow) constraint;
+                timingsTable.append(" ")
+                        .append(window.getStartTime())
+                        .append(" & ")
+                        .append(window.getEndTime())
+                        .append(" & ")
+                        .append(window.getIsAvoidConstraint() ? "Yes" : "No")
+                        .append(endLine).append(tableLine);
+                if(window.getNote().length() >0 ) {
+                    timingsTable.append("\\multicolumn{3}{|c|}{")
+                            .append(window.getNote())
+                            .append("}").append(endLine).append(tableLine);
+                }
+            }
+        }
+
+        timingsTable.append(endTable);
+        return timingsTable.toString();
+    }
+
+    private String observationsTable(List<Observation> observations) {
+        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|c|}\n");
+        proposalObservations.append(tableLine + " Technical Goal & Targets & Timing windows" + endLine + tableLine);
+        for(Observation observation : observations) {
+            proposalObservations.append(" ")
+                    .append(observation.getTechnicalGoal().getId())
+                    .append(" & ")
+                    .append(targetNamesTable(observation.getTarget()))
+                    .append(" & ")
+                    .append(timingWindowsTable(observation.getConstraints()))
+                    .append(endLine).append(tableLine);
+        }
+        proposalObservations.append(endTable);
+        return proposalObservations.toString();
+    }
+
+    @POST
+    @Path("AdminPdf")
+    @RolesAllowed({"tac_admin"})
+    @Operation(summary = "create a PDF summary of the whole proposal, for TAC administrators only")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createTACAdminPDF(@PathParam("proposalCode") Long proposalCode)
+        throws WebApplicationException, IOException
+    {
+        // Access permission check here, is this user an admin for this cycle's observatory?
+        return createPDFfile(proposalCode, false, true, texAdminFileName);
+    }
+
+    @POST
+    @Path("ReviewPdf")
+    @RolesAllowed({"tac_member", "tac_admin"})
+    @Operation(summary = "create an anonymised PDF summary of the whole proposal, for reviewers only")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response createReviewPDF(@PathParam("proposalCode") Long proposalCode)
+            throws WebApplicationException, IOException
+    {
+        // Access permission check, is this user a reviewer for this submitted proposal?
+        return createPDFfile(proposalCode, false, true, texReviewFileName);
+    }
 
     @POST
     @Path("latexPdf")
@@ -156,6 +371,13 @@ public class JustificationsResource extends ObjectResourceBase {
                                    @RestQuery Boolean submittedProposal
     )
             throws WebApplicationException, IOException {
+        // Access permission check, is this user an investigator in this proposal?
+        return createPDFfile(proposalCode, warningsAsErrors, submittedProposal, texFileName);
+
+    }
+
+    private Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
+        throws WebApplicationException, IOException {
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
         // Errors are flagged back to the user as a simple string message containing the list of issues.
@@ -170,16 +392,10 @@ public class JustificationsResource extends ObjectResourceBase {
 
         AbstractProposal proposal = findObject(AbstractProposal.class, proposalCode);
         
-        String proposalTitle = proposal.getTitle();
-        
         String observingCycleName = submittedProposal ?
                 findObject(SubmittedProposal.class, proposalCode).getProposalCode() : 
                 null;
         
-        String scientificText = proposal.getScientificJustification().getText();
-
-        String technicalText = proposal.getTechnicalJustification().getText();
-
         Set<String> bibFileList = proposalDocumentStore.listFilesIn(
                 proposalDocumentStore.getSupportingDocumentsPath(proposalCode), Collections.singletonList("bib")
         );
@@ -192,19 +408,25 @@ public class JustificationsResource extends ObjectResourceBase {
         //Gather together everything needed to successfully compile PDF output
         String workingDirectory = proposalDocumentStore.createLatexWorkingDirectory(
                 proposalCode,
-                proposalTitle,
+                proposal.getTitle(),
+                proposal.getSummary(),
+                investigatorsTable(proposal.getInvestigators()),
+                targetsTable(proposal.getTargets()),
+                technicalGoalsTable(proposal.getTechnicalGoals()),
+                observationsTable(proposal.getObservations()),
                 observingCycleName,
-                scientificText,
-                technicalText,
+                proposal.getScientificJustification().getText(),
+                proposal.getTechnicalJustification().getText(),
+                texFileName,
                 bibFileList.isEmpty() ? null : bibFileList.iterator().next()
         );
 
         justificationIsLatex(proposalCode);
 
-        File mainTex = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/" + texFileName);
+        File mainTex = proposalDocumentStore.fetchFile(justificationsPath(proposalCode) + "/" + mainTexFileName);
 
         if (!mainTex.exists()) {
-            throw new WebApplicationException(String.format("%s file not found", texFileName));
+            throw new WebApplicationException(String.format("%s file not found", mainTexFileName));
         }
 
         ProcessBuilder processBuilder = getLatexmkProcessBuilder(mainTex.getAbsolutePath());
@@ -336,7 +558,7 @@ public class JustificationsResource extends ObjectResourceBase {
      * @return the Justification given by the specified parameters, can be null
      */
     private Justification getWhichJustification(Long proposalCode, String which) {
-        ObservingProposal observingProposal = findObject(ObservingProposal.class, proposalCode);
+        AbstractProposal observingProposal = findObject(AbstractProposal.class, proposalCode);
         return switch (which) {
             case "technical" -> observingProposal.getTechnicalJustification();
             case "scientific" -> observingProposal.getScientificJustification();

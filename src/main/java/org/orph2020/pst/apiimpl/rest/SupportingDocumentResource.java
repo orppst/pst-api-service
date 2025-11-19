@@ -7,6 +7,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.prop.AbstractProposal;
 import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.dm.proposal.prop.SupportingDocument;
 import org.jboss.resteasy.reactive.PartType;
@@ -70,9 +71,9 @@ public class SupportingDocumentResource extends ObjectResourceBase {
             throws WebApplicationException
     {
         if (title == null) {
-            return getObjectIdentifiers("SELECT s._id,s.title FROM ObservingProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" ORDER BY s.title");
+            return getObjectIdentifiers("SELECT s._id,s.title FROM AbstractProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" ORDER BY s.title");
         } else {
-            return getObjectIdentifiers("SELECT s._id,s.title FROM ObservingProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" and s.title like '"+title+"' ORDER BY s.title");
+            return getObjectIdentifiers("SELECT s._id,s.title FROM AbstractProposal o Inner Join o.supportingDocuments s WHERE o._id = "+proposalCode+" and s.title like '"+title+"' ORDER BY s.title");
         }
     }
 
@@ -240,7 +241,7 @@ public class SupportingDocumentResource extends ObjectResourceBase {
     public Response downloadSupportingDocument(@PathParam("proposalCode") Long proposalCode,
                                                @PathParam("id") Long id)
     {
-        SupportingDocument supportingDocument = findChildByQuery(ObservingProposal.class,
+        SupportingDocument supportingDocument = findChildByQuery(AbstractProposal.class,
                 SupportingDocument.class, "supportingDocuments", proposalCode, id);
 
         File fileDownload = new File(supportingDocument.getLocation());
