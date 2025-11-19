@@ -42,7 +42,7 @@ public class PersonResource extends ObjectResourceBase {
    @Operation(summary = "get a Person with the provided email address, no match returns id:0 name:Not found")
    public ObjectIdentifier getPersonByEmail(@RestQuery String email)
    {
-       List<ObjectIdentifier> people = getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o Where o.eMail = '" + email + "'");
+       List<ObjectIdentifier> people = getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o Where lower(o.eMail) = lower('" + email + "')");
       if(people.isEmpty())
           return new ObjectIdentifier(0, "Not found");
        return people.get(0);
