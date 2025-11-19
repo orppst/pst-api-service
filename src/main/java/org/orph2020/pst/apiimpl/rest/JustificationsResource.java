@@ -453,12 +453,12 @@ public class JustificationsResource extends ObjectResourceBase {
                 if (line.contains("LaTeX Error")) {
                     // "LaTeX Error"s contain the details on the current line
                     list.add(line);
-                } else if (line.contains("Runaway argument?")) {
-                    list.add(line + " - " + scanner.nextLine() + " - have you forgotten a '}'?");
                 } else if (scanner.hasNextLine()) {
                     // other errors have the details on the next line
                     list.add(line + ": " + scanner.nextLine());
                 }
+            } else if (line.contains("Runaway argument?")) {
+                list.add(line + " - " + scanner.nextLine() + " - have you forgotten a '}'?");
             }
         }
         scanner.close();
