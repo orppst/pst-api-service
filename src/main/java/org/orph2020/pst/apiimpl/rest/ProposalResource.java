@@ -14,6 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
+import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.*;
 import org.ivoa.dm.stc.coords.SpaceSys;
 import org.jboss.logging.Logger;
@@ -683,7 +684,7 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot+"/export")
     public Response exportProposal(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException {
-        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
 
         return Response
                 .status(Response.Status.OK)
@@ -692,54 +693,80 @@ public class ProposalResource extends ObjectResourceBase {
                 .build();
     }
 
+    public File CreateZipFile(String zipFileName, AbstractProposal proposal) throws IOException {
+        // Create zip file
+        File myZipFile = new File(zipFileName);
+        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
+        String jsonFilename = "proposal.json";
+
+        // Write proposal data (if given)
+        if(proposal != null) {
+            //json of Proposal
+            ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
+            if (proposal instanceof SubmittedProposal) {
+                jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
+                        + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
+                        + ".json";
+            }
+
+            zipOs.putNextEntry(new ZipEntry(jsonFilename));
+
+            byte[] bytes = new byte[1024];
+            int length;
+            while ((length = bais.read(bytes)) >= 0) {
+                zipOs.write(bytes, 0, length);
+            }
+            bais.close();
+
+            zipOs.flush();
+            zipOs.closeEntry();
+        }
+
+        // Add all supporting documents
+        for(SupportingDocument doc: proposal.getSupportingDocuments()) {
+            if(proposal instanceof SubmittedProposal && doc.getTitle().equals("compiledJustification.pdf"))
+                continue;
+            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+            Files.copy(proposalDocumentStore
+                            .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                    + doc.getTitle()).toPath(),
+                    zipOs);
+            zipOs.flush();
+            zipOs.closeEntry();
+        }
+/*
+        for(File additional: additionalFiles) {
+            zipOs.putNextEntry(new ZipEntry(additional.getName()));
+            Files.copy(additional.toPath(), zipOs);
+            zipOs.flush();
+            zipOs.closeEntry();
+        }
+*/
+        zipOs.finish();
+
+
+        return myZipFile;
+    }
+
     @GET
     @Operation(summary="export a proposal and any supporting documents as a zip file")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Path(proposalRoot+"/exportZip")
     public Response exportProposalZip(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException, IOException {
-        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+        ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
         String filename = "/Export."
                 + proposalForExport.getTitle().substring(0,  Math.min(proposalForExport.getTitle().length(), 31))
                 + ".zip";
 
-        File myZipFile = new File(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
-                + filename);
+        File myZipFile = CreateZipFile(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
+                + filename,  proposalForExport);
 
-        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
-
-        //json of Proposal
-        ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposalForExport).getBytes());
-        zipOs.putNextEntry(new ZipEntry("proposal.json"));
-
-        byte[] bytes = new byte[1024];
-        int length;
-        while((length = bais.read(bytes)) >= 0 ) {
-            zipOs.write(bytes, 0, length);
-        }
-        bais.close();
-
-        zipOs.flush();
-        zipOs.closeEntry();
-
-        //Attach each supporting document
-        for(SupportingDocument doc: proposalForExport.getSupportingDocuments()) {
-            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-            Files.copy(proposalDocumentStore
-                    .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposalCode)
-                            + doc.getTitle()).toPath(),
-                    zipOs);
-            zipOs.flush();
-            zipOs.closeEntry();
-        }
-        zipOs.finish();
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + filename.substring(1))
                 .build();
     }
-
-
 
     //********************** IMPORT ***************************
     @POST

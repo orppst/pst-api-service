@@ -8,7 +8,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.RealQuantity;
@@ -21,8 +20,6 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /*
     Dev note: there are two "types" of Justification: 'scientific' and 'technical', and these
@@ -47,6 +44,8 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+    @Inject
+    ProposalResource proposalResource;
 
     @GET
     @Path("{which}")
@@ -578,17 +577,18 @@ public class JustificationsResource extends ObjectResourceBase {
     @RolesAllowed({"tac_admin"})
     public Response downloadAdminZip(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException, IOException {
-        File myZipFile = new File(proposalDocumentStore.getStoreRoot() + proposalCode.toString() + "/Example.zip");
 
-        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
+        SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
 
-        File overview = proposalDocumentStore
-                .fetchFile(supportingDocumentsPath(proposalCode) + jobName + ".pdf");
+        String filename = "/"
+                + proposal.getProposalCode()
+                + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
+                + ".zip";
 
-        zipOs.putNextEntry(new ZipEntry(overview.getName()));
-        Files.copy(overview.toPath(), zipOs);
-        zipOs.finish();
-        zipOs.closeEntry();
+        // Generate the Admin's pdf view of this submitted proposal
+        createPDFfile(proposalCode, false, true, texAdminFileName);
+
+        File myZipFile = proposalResource.CreateZipFile(filename, proposal);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + "Example.zip")
