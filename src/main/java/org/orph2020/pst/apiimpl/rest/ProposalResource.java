@@ -34,8 +34,11 @@ import jakarta.ws.rs.core.Response;
 
 import org.orph2020.pst.common.json.ProposalValidation;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /*
    For use cases see:
@@ -688,6 +691,54 @@ public class ProposalResource extends ObjectResourceBase {
                 .entity(writeAsJsonString(proposalForExport))
                 .build();
     }
+
+    @GET
+    @Operation(summary="export a proposal and any supporting documents as a zip file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path(proposalRoot+"/exportZip")
+    public Response exportProposalZip(@PathParam("proposalCode")Long proposalCode)
+            throws WebApplicationException, IOException {
+        ObservingProposal proposalForExport = findObject(ObservingProposal.class, proposalCode);
+        String filename = "/Export."
+                + proposalForExport.getTitle().substring(0,  Math.min(proposalForExport.getTitle().length(), 31))
+                + ".zip";
+
+        File myZipFile = new File(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
+                + filename);
+
+        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
+
+        //json of Proposal
+        ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposalForExport).getBytes());
+        zipOs.putNextEntry(new ZipEntry("proposal.json"));
+
+        byte[] bytes = new byte[1024];
+        int length;
+        while((length = bais.read(bytes)) >= 0 ) {
+            zipOs.write(bytes, 0, length);
+        }
+        bais.close();
+
+        zipOs.flush();
+        zipOs.closeEntry();
+
+        //Attach each supporting document
+        for(SupportingDocument doc: proposalForExport.getSupportingDocuments()) {
+            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+            Files.copy(proposalDocumentStore
+                    .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposalCode)
+                            + doc.getTitle()).toPath(),
+                    zipOs);
+            zipOs.flush();
+            zipOs.closeEntry();
+        }
+        zipOs.finish();
+
+        return Response.ok(myZipFile)
+                .header("Content-Disposition", "attachment; filename=" + filename.substring(1))
+                .build();
+    }
+
 
 
     //********************** IMPORT ***************************

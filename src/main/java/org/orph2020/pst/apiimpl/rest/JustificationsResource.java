@@ -8,6 +8,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.ivoa.RealQuantity;
@@ -20,6 +21,8 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /*
     Dev note: there are two "types" of Justification: 'scientific' and 'technical', and these
@@ -161,7 +164,7 @@ public class JustificationsResource extends ObjectResourceBase {
         return input.replaceAll("&", "\\&");
     }
 
-    static HashMap<String, String> unitAbbr = new HashMap<String, String >();
+    static HashMap<String, String> unitAbbr = new HashMap<>();
 
     private String unitAsShortString(RealQuantity unit) {
         if(unitAbbr.isEmpty()) {
@@ -231,7 +234,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
-        if(windows.size() == 0) {
+        if(windows.isEmpty()) {
             return "Not set";
         }
         StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
@@ -292,7 +295,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String timingWindowsTable(List<ObservingConstraint> timings) {
-        if(timings.size() == 0) {
+        if(timings.isEmpty()) {
             return "None";
         }
         StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
@@ -307,7 +310,7 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append(" & ")
                         .append(window.getIsAvoidConstraint() ? "Yes" : "No")
                         .append(endLine).append(tableLine);
-                if(window.getNote().length() >0 ) {
+                if(!window.getNote().isEmpty()) {
                     timingsTable.append("\\multicolumn{3}{|c|}{")
                             .append(window.getNote())
                             .append("}").append(endLine).append(tableLine);
@@ -565,6 +568,30 @@ public class JustificationsResource extends ObjectResourceBase {
 
         return Response.ok(output)
                 .header("Content-Disposition", "attachment; filename=" + output.getName())
+                .build();
+    }
+
+    @GET
+    @Path("getAdminZipFile")
+    @Operation(summary = "Download a zip file of the proposal including TAC Admin's pdf and all supporting documents")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @RolesAllowed({"tac_admin"})
+    public Response downloadAdminZip(@PathParam("proposalCode") Long proposalCode)
+            throws WebApplicationException, IOException {
+        File myZipFile = new File(proposalDocumentStore.getStoreRoot() + proposalCode.toString() + "/Example.zip");
+
+        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
+
+        File overview = proposalDocumentStore
+                .fetchFile(supportingDocumentsPath(proposalCode) + jobName + ".pdf");
+
+        zipOs.putNextEntry(new ZipEntry(overview.getName()));
+        Files.copy(overview.toPath(), zipOs);
+        zipOs.finish();
+        zipOs.closeEntry();
+
+        return Response.ok(myZipFile)
+                .header("Content-Disposition", "attachment; filename=" + "Example.zip")
                 .build();
     }
 
