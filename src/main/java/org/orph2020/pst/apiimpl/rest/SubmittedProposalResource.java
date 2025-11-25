@@ -24,6 +24,7 @@ import org.orph2020.pst.apiimpl.entities.SubmissionConfiguration;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 import org.orph2020.pst.common.json.SubmittedProposalMailData;
 
+import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -50,6 +51,11 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Inject
     SubjectMapResource subjectMapResource;
 
+    @Inject
+    ProposalResource proposalResource;
+
+    @Inject
+    JustificationsResource justificationsResource;
 
     @CheckedTemplate
     static class Templates {
@@ -346,6 +352,34 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         submittedProposal.setReviewsCompleteDate(new Date(0L));
 
         return responseWrapper(submittedProposal, 200);
+    }
+
+    @GET
+    @Path("/{submittedProposalId}/getAdminZipFile")
+    @Operation(summary = "Download a zip file of the proposal including TAC Admin's pdf and all supporting documents")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @RolesAllowed({"tac_admin"})
+    public Response downloadAdminZip(@PathParam("submittedProposalId") Long submittedProposalId)
+            throws WebApplicationException, IOException {
+
+        SubmittedProposal proposal = findObject(SubmittedProposal.class, submittedProposalId);
+
+        String filename = proposal.getProposalCode()
+                + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
+                + ".zip";
+
+        // Generate the Admin's pdf view of this submitted proposal
+        justificationsResource.createPDFfile(submittedProposalId,
+                false,
+                true,
+                justificationsResource.texAdminFileName);
+
+        File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
+                + submittedProposalId + "/" + filename, proposal);
+
+        return Response.ok(myZipFile)
+                .header("Content-Disposition", "attachment; filename=" + "Example.zip")
+                .build();
     }
 
     @GET

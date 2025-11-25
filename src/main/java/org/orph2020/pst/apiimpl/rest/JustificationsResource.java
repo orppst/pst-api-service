@@ -44,8 +44,6 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
-    @Inject
-    ProposalResource proposalResource;
 
     @GET
     @Path("{which}")
@@ -378,7 +376,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     }
 
-    private Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
+    public Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
         throws WebApplicationException, IOException {
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
@@ -567,31 +565,6 @@ public class JustificationsResource extends ObjectResourceBase {
 
         return Response.ok(output)
                 .header("Content-Disposition", "attachment; filename=" + output.getName())
-                .build();
-    }
-
-    @GET
-    @Path("getAdminZipFile")
-    @Operation(summary = "Download a zip file of the proposal including TAC Admin's pdf and all supporting documents")
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @RolesAllowed({"tac_admin"})
-    public Response downloadAdminZip(@PathParam("proposalCode") Long proposalCode)
-            throws WebApplicationException, IOException {
-
-        SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
-
-        String filename = proposal.getProposalCode()
-                + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
-                + ".zip";
-
-        // Generate the Admin's pdf view of this submitted proposal
-        createPDFfile(proposalCode, false, true, texAdminFileName);
-
-        File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
-                + proposalCode + "/" + filename, proposal);
-
-        return Response.ok(myZipFile)
-                .header("Content-Disposition", "attachment; filename=" + "Example.zip")
                 .build();
     }
 
