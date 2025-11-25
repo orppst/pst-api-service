@@ -724,8 +724,6 @@ public class ProposalResource extends ObjectResourceBase {
 
         // Add all supporting documents
         for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-            if(proposal instanceof SubmittedProposal && doc.getTitle().equals("compiledJustification.pdf"))
-                continue;
             zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
             Files.copy(proposalDocumentStore
                             .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
@@ -734,16 +732,8 @@ public class ProposalResource extends ObjectResourceBase {
             zipOs.flush();
             zipOs.closeEntry();
         }
-/*
-        for(File additional: additionalFiles) {
-            zipOs.putNextEntry(new ZipEntry(additional.getName()));
-            Files.copy(additional.toPath(), zipOs);
-            zipOs.flush();
-            zipOs.closeEntry();
-        }
-*/
-        zipOs.finish();
 
+        zipOs.finish();
 
         return myZipFile;
     }
@@ -752,19 +742,19 @@ public class ProposalResource extends ObjectResourceBase {
     @Operation(summary="export a proposal and any supporting documents as a zip file")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Path(proposalRoot+"/exportZip")
+    @RolesAllowed("default-roles-orppst")
     public Response exportProposalZip(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException, IOException {
         ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
-        String filename = "/Export."
+        String filename = "Export."
                 + proposalForExport.getTitle().substring(0,  Math.min(proposalForExport.getTitle().length(), 31))
                 + ".zip";
 
         File myZipFile = CreateZipFile(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
-                + filename,  proposalForExport);
-
+                + "/" + filename,  proposalForExport);
 
         return Response.ok(myZipFile)
-                .header("Content-Disposition", "attachment; filename=" + filename.substring(1))
+                .header("Content-Disposition", "attachment; filename=" + filename)
                 .build();
     }
 

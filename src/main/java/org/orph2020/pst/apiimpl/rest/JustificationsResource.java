@@ -580,15 +580,15 @@ public class JustificationsResource extends ObjectResourceBase {
 
         SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
 
-        String filename = "/"
-                + proposal.getProposalCode()
+        String filename = proposal.getProposalCode()
                 + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
                 + ".zip";
 
         // Generate the Admin's pdf view of this submitted proposal
         createPDFfile(proposalCode, false, true, texAdminFileName);
 
-        File myZipFile = proposalResource.CreateZipFile(filename, proposal);
+        File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
+                + proposalCode + "/" + filename, proposal);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + "Example.zip")
