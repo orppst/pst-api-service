@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -23,7 +24,11 @@ public class ReviewerResource extends ObjectResourceBase{
     public List<ObjectIdentifier> getReviewers()
         throws WebApplicationException
     {
-        return getObjectIdentifiers("select r._id,r.person.fullName from Reviewer r");
+        // 3 argument ObjectIdentifier is Long, String, String
+        String qlString = "select r._id,cast(r.person._id as string),r.person.fullName from Reviewer r";
+
+        Query query = em.createQuery(qlString);
+        return getObjectIdentifiersAlt(query);
     }
 
     @GET
