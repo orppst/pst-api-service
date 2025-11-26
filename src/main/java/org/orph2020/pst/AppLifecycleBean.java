@@ -79,7 +79,6 @@ public class AppLifecycleBean {
             for (Person p : pq.getResultList()) {
                 switch (p.getEMail()) {
                     case "pi@unreal.not.email":
-
                         em.persist(new SubjectMap(p, "bb0b065f-6dc3-4062-9b3e-525c1a1a9bec"));
                         break;
                     case "reviewer@unreal.not.email":
@@ -90,6 +89,10 @@ public class AppLifecycleBean {
                         break;
                     case "coi@unreal.not.email":
                         em.persist(new SubjectMap(p, "33767eee-35a1-4fef-b32a-f9b6fa6b36e6"));
+                        break;
+                        //this typo comes from the data model (member)
+                    case "tacmamber@unreal.not.email":
+                        em.persist(new SubjectMap(p, "26da8f8f-5a10-4606-89a6-391979a7624b"));
                         break;
                     default:
                         //do nothing
