@@ -161,7 +161,7 @@ public class JustificationsResource extends ObjectResourceBase {
         return input.replaceAll("&", "\\&");
     }
 
-    static HashMap<String, String> unitAbbr = new HashMap<String, String >();
+    static HashMap<String, String> unitAbbr = new HashMap<>();
 
     private String unitAsShortString(RealQuantity unit) {
         if(unitAbbr.isEmpty()) {
@@ -231,7 +231,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
-        if(windows.size() == 0) {
+        if(windows.isEmpty()) {
             return "Not set";
         }
         StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
@@ -292,7 +292,7 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String timingWindowsTable(List<ObservingConstraint> timings) {
-        if(timings.size() == 0) {
+        if(timings.isEmpty()) {
             return "None";
         }
         StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
@@ -307,7 +307,7 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append(" & ")
                         .append(window.getIsAvoidConstraint() ? "Yes" : "No")
                         .append(endLine).append(tableLine);
-                if(window.getNote().length() >0 ) {
+                if(!window.getNote().isEmpty()) {
                     timingsTable.append("\\multicolumn{3}{|c|}{")
                             .append(window.getNote())
                             .append("}").append(endLine).append(tableLine);
@@ -376,7 +376,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     }
 
-    private Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
+    public Response createPDFfile(Long proposalCode, Boolean warningsAsErrors, Boolean submittedProposal, String texFileName)
         throws WebApplicationException, IOException {
         // NOTICE: we return "Response.ok" regardless of the exit status of the Latex command because
         // this API call has functioned correctly; it is the user-defined files that need attention.
