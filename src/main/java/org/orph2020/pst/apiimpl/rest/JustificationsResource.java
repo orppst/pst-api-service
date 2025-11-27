@@ -197,22 +197,42 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String targetsTable(List<Target> targets) {
-        StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
-        proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
-        for(Target target : targets) {
-            if(target.getClass() == CelestialTarget.class) {
-                CelestialTarget tt = (CelestialTarget) target;
-                proposalTargets.append(" ")
-                        .append(latexEsc(tt.getSourceName())).append(" & ")
-                        .append(latexEsc(tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame())).append(" & ")
-                        .append(latexEsc(tt.getPositionEpoch().value())).append(" & ")
-                        .append(latexEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(" & ")
-                        .append(latexEsc(tt.getSourceCoordinates().getLon().getValue().toString()))
-                        .append(endLine).append(tableLine);
+        try {
+            StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
+            proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
+            for (Target target : targets) {
+                if (target.getClass() == CelestialTarget.class) {
+                    CelestialTarget tt = (CelestialTarget) target;
+                    proposalTargets.append(" ")
+                            .append(latexEsc(tt.getSourceName())).append(" & ");
+
+                    if (tt.getSourceCoordinates().getCoordSys() != null
+                            && tt.getSourceCoordinates().getCoordSys().getFrame() != null
+                            && tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame() != null)
+                        proposalTargets.append(
+                                        latexEsc(tt.getSourceCoordinates()
+                                                .getCoordSys()
+                                                .getFrame()
+                                                .getSpaceRefFrame()))
+                                .append(" & ");
+                    else
+                        proposalTargets.append("Unknown & ");
+
+                    proposalTargets.append(latexEsc(tt.getPositionEpoch().value())).append(" & ")
+                            .append(latexEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(" & ")
+                            .append(latexEsc(tt.getSourceCoordinates().getLon().getValue().toString()))
+                            .append(endLine).append(tableLine);
+                } else {
+                    proposalTargets.append(" Unknown & Unknown & Unknown & Unknown & Unknown").append(endLine).append(tableLine);
+                }
             }
+            proposalTargets.append(endTable);
+            return proposalTargets.toString();
         }
-        proposalTargets.append(endTable);
-        return proposalTargets.toString();
+        catch (Exception e) {
+            System.err.println(e.getMessage());
+            return "Unable to generate targets table - please see admin";
+        }
     }
 
     private String investigatorsTable(List<Investigator> investigators) {
