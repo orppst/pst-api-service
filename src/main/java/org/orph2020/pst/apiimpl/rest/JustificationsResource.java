@@ -158,7 +158,7 @@ public class JustificationsResource extends ObjectResourceBase {
         if(input == null || input.isEmpty()) {
             return "Not set";
         }
-        return input.replaceAll("&", "\\&");
+        return input.replaceAll("(&)", "\\\\&").replaceAll("(_)", "\\\\_");
     }
 
     static HashMap<String, String> unitAbbr = new HashMap<>();
@@ -329,7 +329,7 @@ public class JustificationsResource extends ObjectResourceBase {
                         .append(endLine).append(tableLine);
                 if(!window.getNote().isEmpty()) {
                     timingsTable.append("\\multicolumn{3}{|c|}{")
-                            .append(window.getNote())
+                            .append(latexEsc(window.getNote()))
                             .append("}").append(endLine).append(tableLine);
                 }
             }
@@ -411,11 +411,11 @@ public class JustificationsResource extends ObjectResourceBase {
         // pages in length, this is not a problem.
 
         AbstractProposal proposal = findObject(AbstractProposal.class, proposalCode);
-        
+
         String observingCycleName = submittedProposal ?
                 findObject(SubmittedProposal.class, proposalCode).getProposalCode() : 
                 null;
-        
+
         Set<String> bibFileList = proposalDocumentStore.listFilesIn(
                 proposalDocumentStore.getSupportingDocumentsPath(proposalCode), Collections.singletonList("bib")
         );
