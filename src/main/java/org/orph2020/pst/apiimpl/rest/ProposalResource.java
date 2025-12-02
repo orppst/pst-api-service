@@ -709,8 +709,6 @@ public class ProposalResource extends ObjectResourceBase {
                         + ".json";
             }
 
-            System.out.println("About to add "+ jsonFilename);
-
             zipOs.putNextEntry(new ZipEntry(jsonFilename));
 
             byte[] bytes = new byte[1024];
@@ -726,7 +724,6 @@ public class ProposalResource extends ObjectResourceBase {
 
         // Add all supporting documents
         for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-            System.out.println("About to add "+ doc.getTitle());
             zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
             Files.copy(proposalDocumentStore
                             .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
