@@ -1,6 +1,7 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -9,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Reviewer;
+import org.ivoa.dm.proposal.prop.Person;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.List;
@@ -18,6 +20,9 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"tac_admin", "tac_member"})
 public class ReviewerResource extends ObjectResourceBase{
+
+    @Inject
+    SubjectMapResource subjectMapResource;
 
     @GET
     @Operation(summary = "Get a list of Reviewer identities")
@@ -44,10 +49,16 @@ public class ReviewerResource extends ObjectResourceBase{
     @Operation(summary = "add a new Reviewer")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public Reviewer addReviewer(Reviewer reviewer)
+    public Reviewer addReviewer(Person person)
         throws WebApplicationException
     {
-        return persistObject(reviewer);
+        //we want the reviewer object and the 'reviewer' role to be added "atomically"
+
+        Reviewer reviewer = persistObject(new Reviewer(person));
+
+        subjectMapResource.assignReviewerRole(person.getId());
+
+        return reviewer;
     }
 
     @DELETE
@@ -57,7 +68,17 @@ public class ReviewerResource extends ObjectResourceBase{
     public Response removeReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
     {
-        return removeObject(Reviewer.class, reviewerId);
+        //we want the reviewer object and the 'reviewer' role to be removed "atomically"
+
+        Reviewer reviewer = findObject(Reviewer.class, reviewerId);
+
+        Long personId = reviewer.getPerson().getId();
+
+        Response response = removeObject(Reviewer.class, reviewerId);
+
+        subjectMapResource.removeReviewerRole(personId);
+
+        return response;
     }
 
 }

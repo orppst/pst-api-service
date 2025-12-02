@@ -37,14 +37,21 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Inject
     JsonWebToken userInfo;
 
+    private static final String notOnTACmsg = "This endpoint is restricted to TAC members only";
+
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
     }
 
-    public void checkUserOnTAC(ProposalCycle cycle)
+
+    /**
+     * Checks that the current user, i.e. the user making the call, is on the TAC. This is
+     * an additional check over that provided by the "@RolesAllowed" annotation.
+     */
+    public boolean isCurrentUserOnTAC(ProposalCycle cycle)
             throws WebApplicationException
     {
-        // Get the logged in user details.
+        // Get the current user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
 
         // An observatory administrator can do _anything_
@@ -52,7 +59,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             String roleList = userInfo.getClaim("realm_access").toString();
 
             if(roleList != null && roleList.contains("\"obs_administration\"")) {
-                return;
+                return true;
             }
         }
 
@@ -64,11 +71,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                 amIOnTheTAC.set(true);
             }
         });
-
-        if(amIOnTheTAC.get())
-            return;
-
-        throw new WebApplicationException("You are not on the TAC of this proposal cycle", 403);
+        return amIOnTheTAC.get();
     }
 
     @GET
@@ -77,7 +80,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_member", "tac_admin"})
     public List<ObjectIdentifier> getMyTACMemberProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
-        // Get the logged in user details.
+        // Get the current user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<ObjectIdentifier> matchedCycles = new ArrayList<>();
 
@@ -178,7 +181,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
         // See if user is on the TAC
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setTitle(replacementTitle);
 
@@ -213,7 +218,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
         // See if user is on the TAC
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setCode(replacementCode);
 
@@ -248,7 +255,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         throws WebApplicationException
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setTitle(newDetails.title);
         cycle.setCode(newDetails.code);
@@ -276,7 +285,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setSubmissionDeadline(replacementDeadline);
 
@@ -298,7 +309,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setObservationSessionStart(replacementStart);
 
@@ -319,7 +332,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         cycle.setObservationSessionEnd(replacementEnd);
 
@@ -471,7 +486,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     {
         ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
 
-        checkUserOnTAC(cycle);
+        if (!isCurrentUserOnTAC(cycle)){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         List<AllocatedProposal> allocatedProposals = cycle.getAllocatedProposals();
 

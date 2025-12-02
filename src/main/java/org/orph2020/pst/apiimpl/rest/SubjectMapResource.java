@@ -19,7 +19,9 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -165,7 +167,7 @@ public class SubjectMapResource extends ObjectResourceBase {
                         new Person( ur.getFirstName() + " " + ur.getLastName(),
                                     ur.getEmail(),
                                      organization,
-                                    new StringIdentifier("") //fixme: orchid id
+                                    new StringIdentifier("") //fixme: orcid id
                                    
                         )
                 );
@@ -300,4 +302,55 @@ public class SubjectMapResource extends ObjectResourceBase {
         return q.setParameter("id", personId).getSingleResult();
     }
 
+
+    //use PUT semantics here as we are not adding/removing an object only editing an existing Person
+
+    //this implementation was found on StackOverflow
+    // https://stackoverflow.com/questions/49110262/add-a-client-role-to-a-keycloak-user-using-java
+
+    @PUT
+    @Path("{personId}/assignReviewerRole")
+    @Operation(summary = "assign the 'reviewer' role to the specified person")
+    @RolesAllowed("tac_admin")
+    public Response assignReviewerRole(@PathParam("personId") Long personId)
+        throws WebApplicationException
+    {
+        SubjectMap subjectMap = findSubjectMap(personId);
+
+        UserResource userResource = keycloak.realm("orppst").users().get(subjectMap.uid);
+        List<RoleRepresentation> rolesRepresentationList = userResource.roles().realmLevel().listAvailable();
+
+        // if 'reviewer' doesn't exist as a "role" this does nothing
+        for  (RoleRepresentation roleRepresentation : rolesRepresentationList) {
+            if (roleRepresentation.getName().equals("reviewer")) {
+                userResource.roles().realmLevel().add(List.of(roleRepresentation));
+                break;
+            }
+        }
+
+        return emptyResponse204();
+    }
+
+    @PUT
+    @Path("{personId}/removeReviewerRole")
+    @Operation(summary = "remove the 'reviewer' role from the specified person")
+    @RolesAllowed("tac_admin")
+    public Response removeReviewerRole(@PathParam("personId") Long personId)
+        throws WebApplicationException
+    {
+        SubjectMap subjectMap = findSubjectMap(personId);
+
+        UserResource userResource = keycloak.realm("orppst").users().get(subjectMap.uid);
+        List<RoleRepresentation> rolesRepresentationList = userResource.roles().realmLevel().listAvailable();
+
+        // if 'reviewer' doesn't exist as a "role" this does nothing
+        for  (RoleRepresentation roleRepresentation : rolesRepresentationList) {
+            if (roleRepresentation.getName().equals("reviewer")) {
+                userResource.roles().realmLevel().remove(List.of(roleRepresentation));
+                break;
+            }
+        }
+
+        return emptyResponse204();
+    }
 }

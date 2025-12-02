@@ -27,6 +27,8 @@ public class TACResource extends ObjectResourceBase {
     @Inject
     ProposalCyclesResource proposalCyclesResource;
 
+    private static final String notOnTACmsg = "This endpoint is restricted to TAC members only";
+
     @GET
     @Operation(summary = "get the TAC object for the given proposal cycle")
     public TAC getTAC(@PathParam("cycleCode") Long cycleCode)
@@ -91,7 +93,10 @@ public class TACResource extends ObjectResourceBase {
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
-        proposalCyclesResource.checkUserOnTAC(proposalCycle);
+        //check the user making the call - they have to be on the TAC to add another user to the TAC
+        if (!proposalCyclesResource.isCurrentUserOnTAC(findObject(ProposalCycle.class, cycleCode))){
+            throw new WebApplicationException(notOnTACmsg, Response.Status.FORBIDDEN);
+        }
 
         TAC tac = proposalCycle.getTac();
         //CommitteeMember contains a reference to a Reviewer, which in turn contains a reference to a Person
@@ -109,7 +114,7 @@ public class TACResource extends ObjectResourceBase {
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
-        proposalCyclesResource.checkUserOnTAC(proposalCycle);
+        proposalCyclesResource.isCurrentUserOnTAC(proposalCycle);
 
         TAC tac = proposalCycle.getTac();
 
@@ -137,7 +142,7 @@ public class TACResource extends ObjectResourceBase {
     {
         ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
 
-        proposalCyclesResource.checkUserOnTAC(proposalCycle);
+        proposalCyclesResource.isCurrentUserOnTAC(proposalCycle);
 
         TAC tac = proposalCycle.getTac();
 
