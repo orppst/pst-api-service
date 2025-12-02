@@ -5,6 +5,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.TypedQuery;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Organization;
@@ -60,8 +61,22 @@ public class PersonResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Person createPerson(Person person)
+           throws WebApplicationException
    {
-      return persistObject(person);
+
+       String qlString = "select p.eMail from Person p";
+       TypedQuery<String> query = em.createQuery(qlString, String.class);
+
+       List<String> emails = query.getResultList();
+       //check for an existing duplicate email address
+       if (emails.stream().anyMatch(email -> email.equals(person.getEMail()))) {
+           // a new user (Person) must provide a unique email address
+           throw new WebApplicationException(
+                   String.format("email: '%s' is already in use", person.getEMail()),
+                   Response.Status.BAD_REQUEST);
+       }
+
+       return persistObject(person);
    }
 
    @POST
