@@ -18,8 +18,10 @@ import java.util.List;
 @Path("reviewers")
 @Tag(name = "reviewers")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"tac_admin", "tac_member"})
+@RolesAllowed({"tac_admin"})
 public class ReviewerResource extends ObjectResourceBase{
+
+    private final String reviewerRole = "reviewer";
 
     @Inject
     SubjectMapResource subjectMapResource;
@@ -56,7 +58,8 @@ public class ReviewerResource extends ObjectResourceBase{
 
         Reviewer reviewer = persistObject(new Reviewer(person));
 
-        subjectMapResource.assignReviewerRole(person.getId());
+        subjectMapResource.roleManagement(person.getId(), reviewerRole,
+                SubjectMapResource.RoleAction.ASSIGN);
 
         return reviewer;
     }
@@ -76,7 +79,8 @@ public class ReviewerResource extends ObjectResourceBase{
 
         Response response = removeObject(Reviewer.class, reviewerId);
 
-        subjectMapResource.removeReviewerRole(personId);
+        subjectMapResource.roleManagement(personId, reviewerRole,
+                SubjectMapResource.RoleAction.REVOKE);
 
         return response;
     }
