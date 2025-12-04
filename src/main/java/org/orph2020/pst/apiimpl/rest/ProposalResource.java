@@ -13,6 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.*;
@@ -693,7 +694,268 @@ public class ProposalResource extends ObjectResourceBase {
                 .build();
     }
 
-    public File CreateZipFile(String zipFileName, AbstractProposal proposal) throws IOException {
+    private void overviewHTMLDocument(AbstractProposal proposal, boolean excludeInvestigators) throws IOException {
+
+        String html = "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" +
+                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css\" integrity=\"sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm\" crossorigin=\"anonymous\">\n" +
+                "</head>\n" +
+                "<body style=\"padding:2%\">\n" +
+                    "<h1>" + htmlEsc(proposal.getTitle()) + "</h1><br/>\n";
+
+        if (!excludeInvestigators) {
+            html += investigatorsTable(proposal.getInvestigators()) + "<br/>\n";
+
+        }
+
+        html += "<h3>Summary</h3>\n" +
+            "<p>" + htmlEsc(proposal.getSummary()) + "</p><br/>\n" +
+            targetsTable(proposal.getTargets()) + "<br/>\n" +
+            technicalGoalsTable(proposal.getTechnicalGoals()) +  "<br/>\n" +
+            observationsTable(proposal.getObservations()) +
+            "</body>\n" + "</html>\n";
+
+        proposalDocumentStore.writeStringToFile(html, proposal.getId() + "/Overview.html");
+    }
+
+    static final String beginRow = "<tr><td>";
+    static final String tableDelim = "</td><td>";
+    static final String headDelim = "</th><th>";
+    static final String endRow = "</td></tr>\n";
+    static final String startTable = "<table class=\"table\">\n";
+    static final String endTable = "</tbody>\n</table>\n";
+    static final String beginHead = "<thead class=\"thead-light\">\n<tr><th>";
+    static final String endHead = "</th></tr>\n</thead>\n<tbody>\n";
+
+    private String htmlHeader(String input)
+    {
+        return "<h3>" + input + "</h3>\n";
+    }
+
+
+    private String htmlEsc(String input)
+    {
+        if(input == null || input.isEmpty()) {
+            return "Not set";
+        }
+
+        return input.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "\\\"");
+    }
+
+    static HashMap<String, String> unitAbbr = new HashMap<>();
+
+    private String unitAsShortString(RealQuantity unit) {
+        if(unitAbbr.isEmpty()) {
+            unitAbbr.put("microarcsec", "uas");
+            unitAbbr.put("milliarcsec", "mas");
+            unitAbbr.put("arcsec", "arcsec");
+            unitAbbr.put("arcmin", "arcmin");
+            unitAbbr.put("milliradians", "mrad");
+            unitAbbr.put("degrees", "degrees");
+            unitAbbr.put("microJansky", "uJy");
+            unitAbbr.put("milliJansky", "mJyrees");
+            unitAbbr.put("Jansky", "Jy");
+        }
+
+        if(unit.getUnit().value().length() <= 4) {
+            return unit.getUnit().value();
+        }
+        if(unitAbbr.containsKey(unit.getUnit().value())) {
+            return unitAbbr.get(unit.getUnit().value());
+        } else {
+            return unit.getUnit().value();
+        }
+    }
+
+    private String quantityString(RealQuantity quantity) {
+        if(quantity == null) {
+            return "Not set";
+        }
+
+        return (quantity.getValue().toString() +
+                "  " +
+                unitAsShortString(quantity));
+    }
+
+    private String targetsTable(List<Target> targets) {
+        try {
+            StringBuilder proposalTargets = new StringBuilder(startTable);
+            proposalTargets.append(htmlHeader("Targets"));
+            proposalTargets.append(beginHead)
+                    .append("Name").append(headDelim)
+                    .append("Frame").append(headDelim)
+                    .append("Epoc").append(headDelim)
+                    .append("Lat").append(headDelim)
+                    .append("Lon").append(endHead);
+            for (Target target : targets) {
+                if (target.getClass() == CelestialTarget.class) {
+                    CelestialTarget tt = (CelestialTarget) target;
+                    proposalTargets.append(beginRow)
+                            .append(htmlEsc(tt.getSourceName())).append(tableDelim);
+
+                    if (tt.getSourceCoordinates().getCoordSys() != null
+                            && tt.getSourceCoordinates().getCoordSys().getFrame() != null
+                            && tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame() != null)
+                        proposalTargets
+                                .append(htmlEsc(tt.getSourceCoordinates()
+                                        .getCoordSys()
+                                        .getFrame()
+                                        .getSpaceRefFrame()))
+                                .append(tableDelim);
+                    else
+                        proposalTargets.append("Unknown").append(tableDelim);
+
+                    proposalTargets.append(htmlEsc(tt.getPositionEpoch().value())).append(tableDelim)
+                            .append(htmlEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(tableDelim)
+                            .append(htmlEsc(tt.getSourceCoordinates().getLon().getValue().toString())).append(endRow);
+                } else {
+                    proposalTargets.append(beginRow)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(endRow);
+                }
+            }
+            proposalTargets.append(endTable);
+            return proposalTargets.toString();
+        }
+        catch (Exception e) {
+            System.err.println(e.getMessage());
+            return "Unable to generate targets table - please see admin";
+        }
+    }
+
+    private String investigatorsTable(List<Investigator> investigators) {
+        StringBuilder proposalInvestigators = new StringBuilder(startTable);
+        proposalInvestigators.append(htmlHeader("Investigators"));
+        proposalInvestigators.append(beginHead)
+                .append("Name").append(headDelim)
+                .append("email").append(headDelim)
+                .append("Institute").append(headDelim)
+                .append("for PHD").append(endHead);
+        for(Investigator investigator : investigators) {
+            proposalInvestigators.append(beginRow)
+                    .append(htmlEsc(investigator.getPerson().getFullName()))
+                    .append(tableDelim).append(htmlEsc(investigator.getPerson().getEMail()))
+                    .append(tableDelim).append(htmlEsc(investigator.getPerson().getHomeInstitute().getName()))
+                    .append(tableDelim).append(investigator.getForPhD()!=null?investigator.getForPhD()==true?"Yes":"No":"No")
+                    .append(endRow);
+        }
+        proposalInvestigators.append(endTable);
+        return proposalInvestigators.toString();
+    }
+
+    private String spectralWindowTable(List<ScienceSpectralWindow> windows) {
+        if(windows.isEmpty()) {
+            return "Not set";
+        }
+        StringBuilder spectralTable = new StringBuilder(startTable);
+        spectralTable.append(beginHead)
+                .append("Start").append(headDelim)
+                .append("End").append(headDelim)
+                .append("Resolution").append(endHead);
+        for(ScienceSpectralWindow window : windows) {
+            spectralTable.append(beginRow)
+                    .append(quantityString(window.getSpectralWindowSetup().getStart())).append(tableDelim)
+                    .append(quantityString(window.getSpectralWindowSetup().getEnd())).append(tableDelim)
+                    .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution())).append(endRow);
+        }
+        spectralTable.append(endTable);
+        return spectralTable.toString();
+    }
+
+
+
+    private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
+        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable);
+        proposalTechnicalGoals.append(htmlHeader("Technical Goals"));
+        proposalTechnicalGoals.append(beginHead).append("ID").append(headDelim).append("Angular Resolution")
+                .append(headDelim).append("Largest scale</th>")
+                .append("<th>Sensitivity").append(headDelim).append("Dynamic range")
+                .append(headDelim).append("Spectral Windows").append(endHead);
+
+        for(TechnicalGoal technicalGoal : technicalGoals) {
+            proposalTechnicalGoals.append(beginRow)
+                    .append(technicalGoal.getId())
+                    .append(tableDelim)
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredAngularResolution()))
+                    .append(tableDelim)
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredLargestScale()))
+                    .append(tableDelim)
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredSensitivity()))
+                    .append(tableDelim)
+                    .append(quantityString(technicalGoal.getPerformance().getDesiredDynamicRange()))
+                    .append(tableDelim)
+                    .append(spectralWindowTable(technicalGoal.getSpectrum()))
+                    .append(endRow);
+        }
+        proposalTechnicalGoals.append(endTable);
+        return proposalTechnicalGoals.toString();
+    }
+
+    private String targetNamesTable(List<Target> targets) {
+        StringBuilder namesTable = new StringBuilder(startTable);
+        for(Target target : targets) {
+            if(target.getClass() == CelestialTarget.class) {
+                CelestialTarget tt = (CelestialTarget) target;
+                namesTable.append(beginRow)
+                        .append(htmlEsc(tt.getSourceName()))
+                        .append(endRow);
+            }
+        }
+        namesTable.append(endTable);
+
+        return namesTable.toString();
+    }
+
+    private String timingWindowsTable(List<ObservingConstraint> timings) {
+        if(timings.isEmpty()) {
+            return "None";
+        }
+        StringBuilder timingsTable = new StringBuilder(startTable);
+        timingsTable.append(beginHead).append("Start").append(headDelim).append("End")
+                .append(headDelim).append("Exclude range").append(endHead);
+        for(ObservingConstraint constraint : timings) {
+            if(constraint.getClass() == TimingWindow.class) {
+                TimingWindow window = (TimingWindow) constraint;
+                timingsTable.append(beginRow)
+                        .append(window.getStartTime()).append(tableDelim)
+                        .append(window.getEndTime()).append(tableDelim)
+                        .append(window.getIsAvoidConstraint() ? "Yes" : "No").append(endRow);
+                if(!window.getNote().isEmpty()) {
+                    timingsTable.append("<tr><td colspan=\"3\">")
+                            .append(htmlEsc(window.getNote()))
+                            .append(endRow);
+                }
+            }
+        }
+
+        timingsTable.append(endTable);
+        return timingsTable.toString();
+    }
+
+    private String observationsTable(List<Observation> observations) {
+        StringBuilder proposalObservations = new StringBuilder(startTable);
+        proposalObservations.append(htmlHeader("Observations"));
+        proposalObservations.append(beginHead).append("Technical Goal").append(headDelim).append("Targets")
+                .append(headDelim).append("Timing windows").append(endHead);
+        for(Observation observation : observations) {
+            proposalObservations.append(beginRow)
+                    .append(observation.getTechnicalGoal().getId()).append(tableDelim)
+                    .append(targetNamesTable(observation.getTarget())).append(tableDelim)
+                    .append(timingWindowsTable(observation.getConstraints())).append(endRow);
+        }
+        proposalObservations.append(endTable);
+        return proposalObservations.toString();
+    }
+
+
+    public File CreateZipFile(String zipFileName, AbstractProposal proposal, boolean anonymise) throws IOException {
         // Create zip file
         File myZipFile = new File(zipFileName);
         ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
@@ -701,36 +963,47 @@ public class ProposalResource extends ObjectResourceBase {
 
         // Write proposal data (if given)
         if(proposal != null) {
-            //json of Proposal
-            ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
-            if (proposal instanceof SubmittedProposal) {
-                jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
-                        + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
-                        + ".json";
+            if(!anonymise) {
+                //json of Proposal
+                ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
+                if (proposal instanceof SubmittedProposal) {
+                    jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
+                            + proposal.getTitle().substring(0, Math.min(proposal.getTitle().length(), 31))
+                            + ".json";
+                }
+
+                zipOs.putNextEntry(new ZipEntry(jsonFilename));
+
+                byte[] bytes = new byte[1024];
+                int length;
+                while ((length = bais.read(bytes)) >= 0) {
+                    zipOs.write(bytes, 0, length);
+                }
+                bais.close();
+
+                zipOs.flush();
+                zipOs.closeEntry();
             }
 
-            zipOs.putNextEntry(new ZipEntry(jsonFilename));
+            // HTML overview page
+            overviewHTMLDocument(proposal, anonymise);
+            zipOs.putNextEntry(new ZipEntry("Overview.html"));
+            Files.copy(proposalDocumentStore.fetchFile(proposal.getId() + "/Overview.html").toPath(), zipOs);
+            zipOs.flush();
+            zipOs.closeEntry();
 
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = bais.read(bytes)) >= 0) {
-                zipOs.write(bytes, 0, length);
+            // Add all supporting documents unless anonymised, then only add compiled justification
+            for(SupportingDocument doc: proposal.getSupportingDocuments()) {
+                if(!anonymise || doc.getTitle().equals(justificationsResource.jobName+".pdf")) {
+                    zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+                    Files.copy(proposalDocumentStore
+                                    .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                            + doc.getTitle()).toPath(),
+                            zipOs);
+                    zipOs.flush();
+                    zipOs.closeEntry();
+                }
             }
-            bais.close();
-
-            zipOs.flush();
-            zipOs.closeEntry();
-        }
-
-        // Add all supporting documents
-        for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-            Files.copy(proposalDocumentStore
-                            .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
-                                    + doc.getTitle()).toPath(),
-                    zipOs);
-            zipOs.flush();
-            zipOs.closeEntry();
         }
 
         zipOs.finish();
@@ -751,7 +1024,7 @@ public class ProposalResource extends ObjectResourceBase {
                 + ".zip";
 
         File myZipFile = CreateZipFile(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
-                + "/" + filename,  proposalForExport);
+                + "/" + filename,  proposalForExport, false);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + filename)
