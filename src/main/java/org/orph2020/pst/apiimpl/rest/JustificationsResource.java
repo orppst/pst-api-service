@@ -37,8 +37,6 @@ public class JustificationsResource extends ObjectResourceBase {
 
     //singular file names for LaTeX and RST justifications
     String texFileName = "mainTemplate.tex";
-    String texReviewFileName = "mainTemplate.Review.tex";
-    String texAdminFileName = "mainTemplate.Admin.tex";
     String mainTexFileName = "main.tex";
     String jobName = "compiledJustification";
 
@@ -149,16 +147,30 @@ public class JustificationsResource extends ObjectResourceBase {
         );
     }
 
-    static final String tableLine = " \\hline\n";
-    static final String endLine = " \\\\\n";
-    static final String startTable = "\\begin{tabular}";
-    static final String endTable = "\\end{tabular}\n";
-    private String latexEsc(String input)
+    static final String beginRow = "<tr><td>";
+    static final String tableDelim = "</td><td>";
+    static final String headDelim = "</th><th>";
+    static final String endRow = "</td></tr>\n";
+    static final String startTable = "<table class=\"table\">\n";
+    static final String endTable = "</tbody>\n</table>\n";
+    static final String beginHead = "<thead class=\"thead-dark\">\n<tr><th>";
+    static final String endHead = "</th></tr>\n</thead>\n<tbody>\n";
+
+    private String htmlHeader(String input)
+    {
+        return "<h3>" + input + "</h3>\n";
+    }
+
+
+    private String htmlEsc(String input)
     {
         if(input == null || input.isEmpty()) {
             return "Not set";
         }
-        return input.replaceAll("(&)", "\\\\&").replaceAll("(_)", "\\\\_");
+
+        return input.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "\\\"");
     }
 
     static HashMap<String, String> unitAbbr = new HashMap<>();
@@ -198,32 +210,42 @@ public class JustificationsResource extends ObjectResourceBase {
 
     private String targetsTable(List<Target> targets) {
         try {
-            StringBuilder proposalTargets = new StringBuilder(startTable).append("{|c|c|c|c|c|}\n");
-            proposalTargets.append(tableLine + " Name & Frame & Epoc & Lat & Lon" + endLine + tableLine);
+            StringBuilder proposalTargets = new StringBuilder(startTable);
+            proposalTargets.append(htmlHeader("Targets"));
+            proposalTargets.append(beginHead)
+                        .append("Name").append(headDelim)
+                        .append("Frame").append(headDelim)
+                        .append("Epoc").append(headDelim)
+                        .append("Lat").append(headDelim)
+                        .append("Lon").append(endHead);
             for (Target target : targets) {
                 if (target.getClass() == CelestialTarget.class) {
                     CelestialTarget tt = (CelestialTarget) target;
-                    proposalTargets.append(" ")
-                            .append(latexEsc(tt.getSourceName())).append(" & ");
+                    proposalTargets.append(beginRow)
+                            .append(htmlEsc(tt.getSourceName())).append(tableDelim);
 
                     if (tt.getSourceCoordinates().getCoordSys() != null
                             && tt.getSourceCoordinates().getCoordSys().getFrame() != null
                             && tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame() != null)
-                        proposalTargets.append(
-                                        latexEsc(tt.getSourceCoordinates()
+                        proposalTargets
+                                .append(htmlEsc(tt.getSourceCoordinates()
                                                 .getCoordSys()
                                                 .getFrame()
                                                 .getSpaceRefFrame()))
-                                .append(" & ");
+                                .append(tableDelim);
                     else
-                        proposalTargets.append("Unknown & ");
+                        proposalTargets.append("Unknown").append(tableDelim);
 
-                    proposalTargets.append(latexEsc(tt.getPositionEpoch().value())).append(" & ")
-                            .append(latexEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(" & ")
-                            .append(latexEsc(tt.getSourceCoordinates().getLon().getValue().toString()))
-                            .append(endLine).append(tableLine);
+                    proposalTargets.append(htmlEsc(tt.getPositionEpoch().value())).append(tableDelim)
+                            .append(htmlEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(tableDelim)
+                            .append(htmlEsc(tt.getSourceCoordinates().getLon().getValue().toString())).append(endRow);
                 } else {
-                    proposalTargets.append(" Unknown & Unknown & Unknown & Unknown & Unknown").append(endLine).append(tableLine);
+                    proposalTargets.append(beginRow)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(tableDelim)
+                            .append("Unknown").append(endRow);
                 }
             }
             proposalTargets.append(endTable);
@@ -236,15 +258,20 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String investigatorsTable(List<Investigator> investigators) {
-        StringBuilder proposalInvestigators = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
-        proposalInvestigators.append(tableLine + " Name & email & Institute & for PHD" + endLine + tableLine);
+        StringBuilder proposalInvestigators = new StringBuilder(startTable);
+        proposalInvestigators.append(htmlHeader("Investigators"));
+        proposalInvestigators.append(beginHead)
+                .append("Name").append(headDelim)
+                .append("email").append(headDelim)
+                .append("Institute").append(headDelim)
+                .append("for PHD").append(endHead);
         for(Investigator investigator : investigators) {
-            proposalInvestigators.append(" ")
-                    .append(latexEsc(investigator.getPerson().getFullName()))
-                    .append(" & ").append(latexEsc(investigator.getPerson().getEMail()))
-                    .append(" & ").append(latexEsc(investigator.getPerson().getHomeInstitute().getName()))
-                    .append(" & ").append(investigator.getForPhD()!=null?investigator.getForPhD()==true?"Yes":"No":"No")
-                    .append(endLine).append(tableLine);
+            proposalInvestigators.append(beginRow)
+                    .append(htmlEsc(investigator.getPerson().getFullName()))
+                    .append(tableDelim).append(htmlEsc(investigator.getPerson().getEMail()))
+                    .append(tableDelim).append(htmlEsc(investigator.getPerson().getHomeInstitute().getName()))
+                    .append(tableDelim).append(investigator.getForPhD()!=null?investigator.getForPhD()==true?"Yes":"No":"No")
+                    .append(endRow);
         }
         proposalInvestigators.append(endTable);
         return proposalInvestigators.toString();
@@ -254,56 +281,58 @@ public class JustificationsResource extends ObjectResourceBase {
         if(windows.isEmpty()) {
             return "Not set";
         }
-        StringBuilder spectralTable = new StringBuilder(startTable).append("{|c|c|c|}\n");
-        spectralTable.append(tableLine + " Start & End & Resolution" + endLine + tableLine);
+        StringBuilder spectralTable = new StringBuilder(startTable);
+        spectralTable.append(beginHead)
+                .append("Start").append(headDelim)
+                .append("End").append(headDelim)
+                .append("Resolution").append(endHead);
         for(ScienceSpectralWindow window : windows) {
-            spectralTable.append(" ")
-                .append(quantityString(window.getSpectralWindowSetup().getStart()))
-                .append(" & ")
-                .append(quantityString(window.getSpectralWindowSetup().getEnd()))
-                .append(" & ")
-                .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution()))
-                .append(endLine).append(tableLine);
+            spectralTable.append(beginRow)
+                .append(quantityString(window.getSpectralWindowSetup().getStart())).append(tableDelim)
+                .append(quantityString(window.getSpectralWindowSetup().getEnd())).append(tableDelim)
+                .append(quantityString(window.getSpectralWindowSetup().getSpectralResolution())).append(endRow);
         }
-        spectralTable.append("\\end{tabular}");
+        spectralTable.append(endTable);
         return spectralTable.toString();
     }
 
 
 
     private String technicalGoalsTable(List<TechnicalGoal> technicalGoals) {
-        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable).append("{|c|c|c|c|c|c|}\n");
-        proposalTechnicalGoals.append(tableLine
-                + " ID & Angular Resolution & Largest scale & Sensitivity & Dynamic range & Spectral Windows"
-                + endLine + tableLine);
+        StringBuilder proposalTechnicalGoals = new StringBuilder(startTable);
+        proposalTechnicalGoals.append(htmlHeader("Technical Goals"));
+        proposalTechnicalGoals.append(beginHead).append("ID").append(headDelim).append("Angular Resolution")
+                .append(headDelim).append("Largest scale</th>")
+                .append("<th>Sensitivity").append(headDelim).append("Dynamic range")
+                .append(headDelim).append("Spectral Windows").append(endHead);
 
         for(TechnicalGoal technicalGoal : technicalGoals) {
-            proposalTechnicalGoals.append(" ")
+            proposalTechnicalGoals.append(beginRow)
                     .append(technicalGoal.getId())
-                    .append(" & ")
+                    .append(tableDelim)
                     .append(quantityString(technicalGoal.getPerformance().getDesiredAngularResolution()))
-                    .append(" & ")
+                    .append(tableDelim)
                     .append(quantityString(technicalGoal.getPerformance().getDesiredLargestScale()))
-                    .append(" & ")
+                    .append(tableDelim)
                     .append(quantityString(technicalGoal.getPerformance().getDesiredSensitivity()))
-                    .append(" & ")
+                    .append(tableDelim)
                     .append(quantityString(technicalGoal.getPerformance().getDesiredDynamicRange()))
-                    .append(" & ")
+                    .append(tableDelim)
                     .append(spectralWindowTable(technicalGoal.getSpectrum()))
-                    .append(endLine).append(tableLine);
+                    .append(endRow);
         }
         proposalTechnicalGoals.append(endTable);
         return proposalTechnicalGoals.toString();
     }
 
     private String targetNamesTable(List<Target> targets) {
-        StringBuilder namesTable = new StringBuilder(startTable).append("{c}\n");
+        StringBuilder namesTable = new StringBuilder(startTable);
         for(Target target : targets) {
             if(target.getClass() == CelestialTarget.class) {
                 CelestialTarget tt = (CelestialTarget) target;
-                namesTable.append(" ")
-                        .append(latexEsc(tt.getSourceName()))
-                        .append(endLine);
+                namesTable.append(beginRow)
+                        .append(htmlEsc(tt.getSourceName()))
+                        .append(endRow);
             }
         }
         namesTable.append(endTable);
@@ -315,22 +344,20 @@ public class JustificationsResource extends ObjectResourceBase {
         if(timings.isEmpty()) {
             return "None";
         }
-        StringBuilder timingsTable = new StringBuilder(startTable).append("{|c|c|c|c|}\n");
-        timingsTable.append(tableLine + " Start & End & Exclude range" + endLine + tableLine);
+        StringBuilder timingsTable = new StringBuilder(startTable);
+        timingsTable.append(beginHead).append("Start").append(headDelim).append("End")
+                .append(headDelim).append("Exclude range").append(endHead);
         for(ObservingConstraint constraint : timings) {
             if(constraint.getClass() == TimingWindow.class) {
                 TimingWindow window = (TimingWindow) constraint;
-                timingsTable.append(" ")
-                        .append(window.getStartTime())
-                        .append(" & ")
-                        .append(window.getEndTime())
-                        .append(" & ")
-                        .append(window.getIsAvoidConstraint() ? "Yes" : "No")
-                        .append(endLine).append(tableLine);
+                timingsTable.append(beginRow)
+                        .append(window.getStartTime()).append(tableDelim)
+                        .append(window.getEndTime()).append(tableDelim)
+                        .append(window.getIsAvoidConstraint() ? "Yes" : "No").append(endRow);
                 if(!window.getNote().isEmpty()) {
-                    timingsTable.append("\\multicolumn{3}{|c|}{")
-                            .append(latexEsc(window.getNote()))
-                            .append("}").append(endLine).append(tableLine);
+                    timingsTable.append("<tr><td colspan=\"3\">")
+                            .append(htmlEsc(window.getNote()))
+                            .append(endRow);
                 }
             }
         }
@@ -340,16 +367,15 @@ public class JustificationsResource extends ObjectResourceBase {
     }
 
     private String observationsTable(List<Observation> observations) {
-        StringBuilder proposalObservations = new StringBuilder(startTable).append("{|c|c|c|}\n");
-        proposalObservations.append(tableLine + " Technical Goal & Targets & Timing windows" + endLine + tableLine);
+        StringBuilder proposalObservations = new StringBuilder(startTable);
+        proposalObservations.append(htmlHeader("Observations"));
+        proposalObservations.append(beginHead).append("Technical Goal").append(headDelim).append("Targets")
+                .append(headDelim).append("Timing windows").append(endHead);
         for(Observation observation : observations) {
-            proposalObservations.append(" ")
-                    .append(observation.getTechnicalGoal().getId())
-                    .append(" & ")
-                    .append(targetNamesTable(observation.getTarget()))
-                    .append(" & ")
-                    .append(timingWindowsTable(observation.getConstraints()))
-                    .append(endLine).append(tableLine);
+            proposalObservations.append(beginRow)
+                    .append(observation.getTechnicalGoal().getId()).append(tableDelim)
+                    .append(targetNamesTable(observation.getTarget())).append(tableDelim)
+                    .append(timingWindowsTable(observation.getConstraints())).append(endRow);
         }
         proposalObservations.append(endTable);
         return proposalObservations.toString();
@@ -365,7 +391,7 @@ public class JustificationsResource extends ObjectResourceBase {
         throws WebApplicationException, IOException
     {
         // Access permission check here, is this user an admin for this cycle's observatory?
-        return createPDFfile(proposalCode, false, true, texAdminFileName);
+        return createPDFfile(proposalCode, false, true, texFileName);//texAdminFileName);
     }
 
     @POST
@@ -378,7 +404,7 @@ public class JustificationsResource extends ObjectResourceBase {
             throws WebApplicationException, IOException
     {
         // Access permission check, is this user a reviewer for this submitted proposal?
-        return createPDFfile(proposalCode, false, true, texReviewFileName);
+        return createPDFfile(proposalCode, false, true, texFileName);//texReviewFileName);
     }
 
     @POST
@@ -429,11 +455,6 @@ public class JustificationsResource extends ObjectResourceBase {
         String workingDirectory = proposalDocumentStore.createLatexWorkingDirectory(
                 proposalCode,
                 proposal.getTitle(),
-                proposal.getSummary(),
-                investigatorsTable(proposal.getInvestigators()),
-                targetsTable(proposal.getTargets()),
-                technicalGoalsTable(proposal.getTechnicalGoals()),
-                observationsTable(proposal.getObservations()),
                 observingCycleName,
                 proposal.getScientificJustification().getText(),
                 proposal.getTechnicalJustification().getText(),

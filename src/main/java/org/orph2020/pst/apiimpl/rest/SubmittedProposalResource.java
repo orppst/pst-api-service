@@ -369,10 +369,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 + ".zip";
 
         // Generate the Admin's pdf view of this submitted proposal
-        justificationsResource.createPDFfile(submittedProposalId,
-                false,
-                true,
-                justificationsResource.texAdminFileName);
+        justificationsResource.createTACAdminPDF(submittedProposalId);
 
         File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
                 + submittedProposalId + "/" + filename, proposal);

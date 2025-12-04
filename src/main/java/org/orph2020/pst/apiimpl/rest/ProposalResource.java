@@ -720,17 +720,17 @@ public class ProposalResource extends ObjectResourceBase {
 
             zipOs.flush();
             zipOs.closeEntry();
-        }
 
-        // Add all supporting documents
-        for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-            Files.copy(proposalDocumentStore
-                            .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
-                                    + doc.getTitle()).toPath(),
-                    zipOs);
-            zipOs.flush();
-            zipOs.closeEntry();
+            // Add all supporting documents
+            for(SupportingDocument doc: proposal.getSupportingDocuments()) {
+                zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+                Files.copy(proposalDocumentStore
+                                .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                        + doc.getTitle()).toPath(),
+                        zipOs);
+                zipOs.flush();
+                zipOs.closeEntry();
+            }
         }
 
         zipOs.finish();
