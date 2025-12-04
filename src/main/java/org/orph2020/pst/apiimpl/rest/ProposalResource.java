@@ -694,7 +694,7 @@ public class ProposalResource extends ObjectResourceBase {
                 .build();
     }
 
-    private void overviewHTMLDocument(AbstractProposal proposal) throws IOException {
+    private void overviewHTMLDocument(AbstractProposal proposal, boolean excludeInvestigators) throws IOException {
 
         String html = "<!DOCTYPE html>\n" +
                 "<html>\n" +
@@ -703,14 +703,19 @@ public class ProposalResource extends ObjectResourceBase {
                 "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css\" integrity=\"sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm\" crossorigin=\"anonymous\">\n" +
                 "</head>\n" +
                 "<body style=\"padding:2%\">\n" +
-                    "<h1>" + htmlEsc(proposal.getTitle()) + "</h1><br/>\n" +
-                investigatorsTable(proposal.getInvestigators()) + "<br/>\n" +
-                "<h3>Summary</h3>\n" +
-                "<p>" + htmlEsc(proposal.getSummary()) + "</p><br/>\n" +
-                targetsTable(proposal.getTargets()) + "<br/>\n" +
-                technicalGoalsTable(proposal.getTechnicalGoals()) +  "<br/>\n" +
-                observationsTable(proposal.getObservations()) +
-                "</body>\n" + "</html>\n";
+                    "<h1>" + htmlEsc(proposal.getTitle()) + "</h1><br/>\n";
+
+        if (!excludeInvestigators) {
+            html += investigatorsTable(proposal.getInvestigators()) + "<br/>\n";
+
+        }
+
+        html += "<h3>Summary</h3>\n" +
+            "<p>" + htmlEsc(proposal.getSummary()) + "</p><br/>\n" +
+            targetsTable(proposal.getTargets()) + "<br/>\n" +
+            technicalGoalsTable(proposal.getTechnicalGoals()) +  "<br/>\n" +
+            observationsTable(proposal.getObservations()) +
+            "</body>\n" + "</html>\n";
 
         proposalDocumentStore.writeStringToFile(html, proposal.getId() + "/Overview.html");
     }
@@ -950,7 +955,7 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
 
-    public File CreateZipFile(String zipFileName, AbstractProposal proposal) throws IOException {
+    public File CreateZipFile(String zipFileName, AbstractProposal proposal, boolean anonymise) throws IOException {
         // Create zip file
         File myZipFile = new File(zipFileName);
         ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
@@ -958,42 +963,46 @@ public class ProposalResource extends ObjectResourceBase {
 
         // Write proposal data (if given)
         if(proposal != null) {
-            //json of Proposal
-            ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
-            if (proposal instanceof SubmittedProposal) {
-                jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
-                        + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
-                        + ".json";
+            if(!anonymise) {
+                //json of Proposal
+                ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
+                if (proposal instanceof SubmittedProposal) {
+                    jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
+                            + proposal.getTitle().substring(0, Math.min(proposal.getTitle().length(), 31))
+                            + ".json";
+                }
+
+                zipOs.putNextEntry(new ZipEntry(jsonFilename));
+
+                byte[] bytes = new byte[1024];
+                int length;
+                while ((length = bais.read(bytes)) >= 0) {
+                    zipOs.write(bytes, 0, length);
+                }
+                bais.close();
+
+                zipOs.flush();
+                zipOs.closeEntry();
             }
-
-            zipOs.putNextEntry(new ZipEntry(jsonFilename));
-
-            byte[] bytes = new byte[1024];
-            int length;
-            while ((length = bais.read(bytes)) >= 0) {
-                zipOs.write(bytes, 0, length);
-            }
-            bais.close();
-
-            zipOs.flush();
-            zipOs.closeEntry();
 
             // HTML overview page
-            overviewHTMLDocument(proposal);
+            overviewHTMLDocument(proposal, anonymise);
             zipOs.putNextEntry(new ZipEntry("Overview.html"));
             Files.copy(proposalDocumentStore.fetchFile(proposal.getId() + "/Overview.html").toPath(), zipOs);
             zipOs.flush();
             zipOs.closeEntry();
 
-            // Add all supporting documents
+            // Add all supporting documents unless anonymised, then only add compiled justification
             for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-                zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-                Files.copy(proposalDocumentStore
-                                .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
-                                        + doc.getTitle()).toPath(),
-                        zipOs);
-                zipOs.flush();
-                zipOs.closeEntry();
+                if(!anonymise || doc.getTitle().equals(justificationsResource.jobName+".pdf")) {
+                    zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+                    Files.copy(proposalDocumentStore
+                                    .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                            + doc.getTitle()).toPath(),
+                            zipOs);
+                    zipOs.flush();
+                    zipOs.closeEntry();
+                }
             }
         }
 
@@ -1015,7 +1024,7 @@ public class ProposalResource extends ObjectResourceBase {
                 + ".zip";
 
         File myZipFile = CreateZipFile(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
-                + "/" + filename,  proposalForExport);
+                + "/" + filename,  proposalForExport, false);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + filename)

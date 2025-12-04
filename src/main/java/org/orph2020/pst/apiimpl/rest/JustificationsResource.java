@@ -8,6 +8,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.io.FileUtils;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
@@ -17,6 +18,7 @@ import org.jboss.resteasy.reactive.RestQuery;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +43,12 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+    @Inject
+    ProposalResource proposalResource;
+    @Inject
+    SubjectMapResource subjectMapResource;
+    @Inject
+    JsonWebToken userInfo;
 
     @GET
     @Path("{which}")
@@ -162,14 +170,47 @@ public class JustificationsResource extends ObjectResourceBase {
     @POST
     @Path("ReviewPdf")
     @RolesAllowed({"tac_member", "tac_admin"})
-    @Operation(summary = "create an anonymised PDF summary of the whole proposal, for reviewers only")
+    @Operation(summary = "create and download an anonymised summary of the whole proposal in a zip with compiled justifications, for reviewers only")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response createReviewPDF(@PathParam("proposalCode") Long proposalCode)
             throws WebApplicationException, IOException
     {
         // Access permission check, is this user a reviewer for this submitted proposal?
-        return createPDFfile(proposalCode, false, true, texFileName);//texReviewFileName);
+        SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
+        AtomicBoolean foundReviewer = new AtomicBoolean(false);
+
+        // Check I'm a reviewer
+        proposal.getReviews().forEach(review -> {
+            if(Objects.equals(review.getReviewer().getPerson().getId(),
+                    subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId()))
+                foundReviewer.set(true);
+        });
+
+        if(!foundReviewer.get())
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+
+        // Create Zip file of anonymised proposal overview html doc and justifications pdf.
+        return createPDFfile(proposalCode, false, true, texFileName);
+    }
+
+    @POST
+    @Path("ReviewZip")
+    @RolesAllowed({"tac_member", "tac_admin"})
+    @Operation(summary = "create and download an anonymised summary in a zip with compiled justifications, for reviewers only")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response downloadReviewerZip(@PathParam("proposalCode") Long proposalCode)
+            throws WebApplicationException, IOException
+    {
+        createReviewPDF(proposalCode);
+
+        SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
+
+        return Response.ok(proposalResource.CreateZipFile("Review.zip", proposal, true ))
+                .header("Content-Disposition", "attachment; filename=" + "Review.zip")
+                .build();
+
     }
 
     @POST

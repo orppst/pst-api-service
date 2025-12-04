@@ -372,7 +372,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         justificationsResource.createTACAdminPDF(submittedProposalId);
 
         File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
-                + submittedProposalId + "/" + filename, proposal);
+                + submittedProposalId + "/" + filename, proposal, false);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + "Example.zip")
