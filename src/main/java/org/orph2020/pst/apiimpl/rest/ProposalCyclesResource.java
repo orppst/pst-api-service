@@ -52,7 +52,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public void checkUserOnTAC(ProposalCycle cycle)
             throws WebApplicationException
     {
-        // Get the logged in user details.
+        // Get the logged-in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
 
         // An observatory administrator can do _anything_
@@ -85,7 +85,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_member", "tac_admin"})
     public List<ObjectIdentifier> getMyTACMemberProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
-        // Get the logged in user details.
+        // Get the logged-in user details.
         Long personId = subjectMapResource.subjectMap(userInfo.getSubject()).getPerson().getId();
         List<ObjectIdentifier> matchedCycles = new ArrayList<>();
 
@@ -515,9 +515,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
     @GET
-    @Path("{cycleCode}/excel")
+    @Path("{cycleCode}/excelReviews")
+    @Operation(summary="Create and download an excel sheet of all submitted proposals and their review scores")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    public Response Excel(@PathParam("cycleCode") Long cycleCode) throws IOException {
+    public Response ExcelReviews(@PathParam("cycleCode") Long cycleCode) {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             // Get the whole proposal cycle
             ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
@@ -537,7 +538,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
             Row row = sheet.createRow(rowNum++);
             Cell cell = row.createCell(0);
-            cell.setCellValue((String) "Code");
+            cell.setCellValue("Code");
             Cell cellTitle = row.createCell(1);
             cellTitle.setCellValue("Title");
 
@@ -562,14 +563,17 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
             }
 
-            try (FileOutputStream out = new FileOutputStream(proposalDocumentStore.getStoreRoot()
-                    + "/Reviews for " + proposalCycle.getCode() + ".xlsx")) {
+            String filename = "/Reviews for " + proposalCycle.getCode() + ".xlsx";
+            try (FileOutputStream out = new FileOutputStream(proposalDocumentStore.getStoreRoot() + filename)) {
                 workbook.write(out);
             } catch (IOException e) {
-                e.printStackTrace();
+                // error writing excel workbook to file
+                return Response.status(500).build();
             }
 
-            return Response.ok().build();
+            return Response.ok(proposalDocumentStore.fetchFile(filename))
+                    .header("Content-Disposition", "attachment; filename=" + filename)
+                    .build();
         }
         catch (Exception e) {
             return Response.status(500).build();
