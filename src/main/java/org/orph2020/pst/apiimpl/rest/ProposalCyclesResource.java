@@ -8,6 +8,10 @@ import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.core.Response;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -22,6 +26,8 @@ import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,6 +42,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     SubjectMapResource subjectMapResource;
     @Inject
     JsonWebToken userInfo;
+    @Inject
+    ProposalDocumentStore proposalDocumentStore;
 
     public ProposalCyclesResource(Logger logger) {
         this.logger = logger;
@@ -504,6 +512,53 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         }
 
         return result;
+    }
+
+    @GET
+    @Path("{cycleCode}/excel")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response Excel(@PathParam("cycleCode") Long cycleCode) throws IOException {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            // Get the whole proposal cycle
+            ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+
+            // Create a sheet
+            XSSFSheet sheet = workbook.createSheet(proposalCycle.getCode());
+
+            // count the reviewers for the number of columns
+
+            // write headers
+            int rowNum = 0;
+
+            Row row = sheet.createRow(rowNum++);
+            Cell cell = row.createCell(0);
+            cell.setCellValue((String) "Code");
+            Cell cellTitle = row.createCell(1);
+            cellTitle.setCellValue("Title");
+
+            // write data
+            for(SubmittedProposal submittedProposal: proposalCycle.getSubmittedProposals()) {
+                int cellNum = 0;
+                Row submittedRow = sheet.createRow(rowNum++);
+                Cell code = submittedRow.createCell(cellNum++);
+                code.setCellValue(submittedProposal.getProposalCode());
+                Cell title = submittedRow.createCell(cellNum++);
+                title.setCellValue(submittedProposal.getTitle());
+            }
+
+            try (FileOutputStream out = new FileOutputStream(proposalDocumentStore.getStoreRoot()
+                    + "/Reviews for " + proposalCycle.getCode() + ".xlsx")) {
+                workbook.write(out);
+                System.out.println("xlsx written successfully.");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return Response.ok().build();
+        }
+        catch (Exception e) {
+            return Response.status(500).build();
+        }
     }
 
 }

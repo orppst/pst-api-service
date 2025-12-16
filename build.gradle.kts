@@ -32,6 +32,9 @@ dependencies {
     implementation("uk.ac.starlink:stil:4.1.4")
 
     implementation("commons-io:commons-io:2.15.1")
+
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
 }
 
 
