@@ -526,6 +526,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             XSSFSheet sheet = workbook.createSheet(proposalCycle.getCode());
 
             // count the reviewers for the number of columns
+            HashMap<Reviewer, Integer > allReviewers = new HashMap<>();
+            Integer reviewerColumnPos = 0;
+            for(SubmittedProposal submittedProposal : proposalCycle.getSubmittedProposals())
+                for(ProposalReview review : submittedProposal.getReviews())
+                    allReviewers.putIfAbsent(review.getReviewer(), reviewerColumnPos++);
 
             // write headers
             int rowNum = 0;
@@ -536,6 +541,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             Cell cellTitle = row.createCell(1);
             cellTitle.setCellValue("Title");
 
+            for(Reviewer reviewer : allReviewers.keySet()) {
+                Cell rCell = row.createCell(2 + allReviewers.get(reviewer));
+                rCell.setCellValue(reviewer.getPerson().getFullName());
+            }
+
             // write data
             for(SubmittedProposal submittedProposal: proposalCycle.getSubmittedProposals()) {
                 int cellNum = 0;
@@ -544,12 +554,17 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                 code.setCellValue(submittedProposal.getProposalCode());
                 Cell title = submittedRow.createCell(cellNum++);
                 title.setCellValue(submittedProposal.getTitle());
+                //Populate review scores
+                for(ProposalReview review : submittedProposal.getReviews()) {
+                    Cell reviewScore = submittedRow.createCell(cellNum + allReviewers.get(review.getReviewer()));
+                    reviewScore.setCellValue(review.getScore());
+                }
+
             }
 
             try (FileOutputStream out = new FileOutputStream(proposalDocumentStore.getStoreRoot()
                     + "/Reviews for " + proposalCycle.getCode() + ".xlsx")) {
                 workbook.write(out);
-                System.out.println("xlsx written successfully.");
             } catch (IOException e) {
                 e.printStackTrace();
             }
