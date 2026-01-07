@@ -20,7 +20,6 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.RoleScopeResource;
-import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -129,6 +128,7 @@ public class SubjectMapResource extends ObjectResourceBase {
     @GET
     @Path("{personId}/uid")
     @Operation(summary = "get the keycloak 'uid' related to the 'personId'")
+    @RolesAllowed({"observatory_admin"})
     public Response getSubjectMapUid(@PathParam("personId") Long personId)
     {
         SubjectMap subjectMap = findSubjectMap(personId);
@@ -139,6 +139,7 @@ public class SubjectMapResource extends ObjectResourceBase {
     @GET
     @Path("keycloakUserUIDs")
     @Operation(summary = "get the unique IDs of existing keycloak realm users")
+    @RolesAllowed({"observatory_admin"})
     public List<String> existingUserUIDs()
     {
         List<UserRepresentation> userRepresentations = realmOrppst.users().list();
@@ -336,13 +337,13 @@ public class SubjectMapResource extends ObjectResourceBase {
         List<RoleRepresentation> rolesRepresentationList = roleScopeResource.listAvailable();
 
         // if "role" does not exist in the realm this does nothing
-        for  (RoleRepresentation roleRepresentation : rolesRepresentationList) {
+        for (RoleRepresentation roleRepresentation : rolesRepresentationList) {
             if (roleRepresentation.getName().equals(role)) {
                 switch (roleAction) {
-                    case ASSIGN ->  roleScopeResource.add(List.of(roleRepresentation));
-                    case REVOKE ->   roleScopeResource.remove(List.of(roleRepresentation));
+                    case ASSIGN -> roleScopeResource.add(List.of(roleRepresentation));
+                    case REVOKE -> roleScopeResource.remove(List.of(roleRepresentation));
                 }
-                break; //from 'if'
+                break; //from 'for'
             }
         }
     }
