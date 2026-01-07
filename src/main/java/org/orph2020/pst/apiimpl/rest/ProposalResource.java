@@ -955,24 +955,28 @@ public class ProposalResource extends ObjectResourceBase {
     }
 
 
-    public File CreateZipFile(String zipFileName, AbstractProposal proposal, boolean anonymise) throws IOException {
+    public File CreateZipFile(String zipFileName, AbstractProposal proposal, boolean anonymise, boolean genericExportFilenames) throws IOException {
         // Create zip file
         File myZipFile = new File(zipFileName);
         ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
-        String jsonFilename = "proposal.json";
+        String projFilename = "proposal";
 
         // Write proposal data (if given)
         if(proposal != null) {
+            if (proposal instanceof SubmittedProposal) {
+                projFilename = ((SubmittedProposal) proposal).getProposalCode() + "."
+                        + proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                        .substring(0, Math.min(proposal.getTitle().length(), 30));
+            }
+            if (proposal instanceof ObservingProposal) {
+                projFilename = proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                        .substring(0, Math.min(proposal.getTitle().length(), 30));
+            }
+
             if(!anonymise) {
                 //json of Proposal
                 ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
-                if (proposal instanceof SubmittedProposal) {
-                    jsonFilename = ((SubmittedProposal) proposal).getProposalCode()
-                            + proposal.getTitle().substring(0, Math.min(proposal.getTitle().length(), 31))
-                            + ".json";
-                }
-
-                zipOs.putNextEntry(new ZipEntry(jsonFilename));
+                zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"propsal.json":projFilename+ ".json"));
 
                 byte[] bytes = new byte[1024];
                 int length;
@@ -987,19 +991,25 @@ public class ProposalResource extends ObjectResourceBase {
 
             // HTML overview page
             overviewHTMLDocument(proposal, anonymise);
-            zipOs.putNextEntry(new ZipEntry("Overview.html"));
+            zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"Overview.html":projFilename + ".html"));
             Files.copy(proposalDocumentStore.fetchFile(proposal.getId() + "/Overview.html").toPath(), zipOs);
             zipOs.flush();
             zipOs.closeEntry();
 
             // Add all supporting documents unless anonymised, then only add compiled justification
             for(SupportingDocument doc: proposal.getSupportingDocuments()) {
+                // If anonymise is true, only include the compiled justifications pdf
                 if(!anonymise || doc.getTitle().equals(justificationsResource.jobName+".pdf")) {
-                    zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-                    Files.copy(proposalDocumentStore
-                                    .fetchFile(proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
-                                            + doc.getTitle()).toPath(),
-                            zipOs);
+                    // If genericExportFilenames is false, rename compiled justifications pdf
+                    if(!genericExportFilenames && doc.getTitle().equals(justificationsResource.jobName+".pdf"))
+                        zipOs.putNextEntry(new ZipEntry(projFilename + ".pdf"));
+                     else
+                        zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+
+                    Files.copy(proposalDocumentStore.fetchFile(
+                            proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                        + doc.getTitle()).toPath(),
+                                zipOs);
                     zipOs.flush();
                     zipOs.closeEntry();
                 }
@@ -1020,11 +1030,12 @@ public class ProposalResource extends ObjectResourceBase {
             throws WebApplicationException, IOException {
         ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
         String filename = "Export."
-                + proposalForExport.getTitle().substring(0,  Math.min(proposalForExport.getTitle().length(), 31))
+                + proposalForExport.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                    .substring(0,  Math.min(proposalForExport.getTitle().length(), 30))
                 + ".zip";
 
         File myZipFile = CreateZipFile(proposalDocumentStore.getStoreRoot() + proposalCode.toString()
-                + "/" + filename,  proposalForExport, false);
+                + "/" + filename,  proposalForExport, false, true);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + filename)

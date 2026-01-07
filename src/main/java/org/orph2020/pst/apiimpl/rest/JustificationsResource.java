@@ -207,7 +207,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
         SubmittedProposal proposal = findObject(SubmittedProposal.class, proposalCode);
 
-        return Response.ok(proposalResource.CreateZipFile("Review.zip", proposal, true ))
+        return Response.ok(proposalResource.CreateZipFile("Review.zip", proposal, true, false ))
                 .header("Content-Disposition", "attachment; filename=" + "Review.zip")
                 .build();
 
