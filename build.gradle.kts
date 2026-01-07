@@ -1,7 +1,7 @@
 plugins {
     id("org.orph2020.pst.common-plugin")
 }
-version = "0.7"
+version = "1.0"
 
 dependencies {
     implementation("io.quarkus:quarkus-mailer")
@@ -17,6 +17,7 @@ dependencies {
     implementation("io.quarkus:quarkus-hibernate-orm")
     implementation("io.quarkus:quarkus-rest-client-reactive-jackson")
     implementation("io.quarkus:quarkus-hibernate-validator")
+    implementation("io.quarkus:quarkus-liquibase")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-kubernetes-service-binding")
 
