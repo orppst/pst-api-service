@@ -364,15 +364,16 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         SubmittedProposal proposal = findObject(SubmittedProposal.class, submittedProposalId);
 
-        String filename = proposal.getProposalCode()
-                + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
+        String filename = proposal.getProposalCode() + "."
+                + proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                    .substring(0,  Math.min(proposal.getTitle().length(), 30))
                 + ".zip";
 
         // Generate the Admin's pdf view of this submitted proposal
         justificationsResource.createTACAdminPDF(submittedProposalId);
 
         File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
-                + submittedProposalId + "/" + filename, proposal, false);
+                + submittedProposalId + "/" + filename, proposal, false, false);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + "Example.zip")
