@@ -128,7 +128,6 @@ public class SubjectMapResource extends ObjectResourceBase {
     @GET
     @Path("{personId}/uid")
     @Operation(summary = "get the keycloak 'uid' related to the 'personId'")
-    @RolesAllowed({"observatory_admin"})
     public Response getSubjectMapUid(@PathParam("personId") Long personId)
     {
         SubjectMap subjectMap = findSubjectMap(personId);
@@ -139,7 +138,6 @@ public class SubjectMapResource extends ObjectResourceBase {
     @GET
     @Path("keycloakUserUIDs")
     @Operation(summary = "get the unique IDs of existing keycloak realm users")
-    @RolesAllowed({"observatory_admin"})
     public List<String> existingUserUIDs()
     {
         List<UserRepresentation> userRepresentations = realmOrppst.users().list();

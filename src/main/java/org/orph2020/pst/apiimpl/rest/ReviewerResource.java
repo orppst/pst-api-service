@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -54,6 +55,20 @@ public class ReviewerResource extends ObjectResourceBase{
     public Reviewer addReviewer(Person person)
         throws WebApplicationException
     {
+        //check to see if the incoming Person is an existing Reviewer
+        String qlString = "select r from Reviewer r where r.person._id =: pid";
+
+        TypedQuery<Reviewer> query = em.createQuery(qlString, Reviewer.class);
+        query.setParameter("pid", person.getId());
+
+        //This list should be either empty or containing exactly one element.
+        List<Reviewer> ids = query.getResultList();
+
+        if (!ids.isEmpty()) {
+            throw new WebApplicationException(
+                    Response.status(Response.Status.CONFLICT).entity("Person already exists as a Reviewer").build());
+        }
+
         //we want the reviewer object and the 'reviewer' role to be added "atomically"
 
         Reviewer reviewer = persistObject(new Reviewer(person));
