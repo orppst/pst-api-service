@@ -5,8 +5,10 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.TypedQuery;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.Reviewer;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.ivoa.StringIdentifier ;
@@ -19,6 +21,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,6 +38,34 @@ public class PersonResource extends ObjectResourceBase {
          return getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o ORDER BY o.fullName");
       else
          return getObjectIdentifiers("SELECT o._id,o.fullName FROM Person o Where o.fullName like '"+name+"' ORDER BY o.fullName");
+   }
+
+   @GET
+   @Path("notReviewers")
+   @Operation(summary = "get a list of all the People who are not Reviewers")
+   @RolesAllowed({"tac_admin"})
+   public List<Person> getNotReviewers() {
+
+       TypedQuery<Person> queryPeople =
+               em.createQuery("select p from Person p", Person.class);
+
+       List<Person> people = queryPeople.getResultList();
+
+       TypedQuery<Reviewer> queryReviewers =
+               em.createQuery("select r from Reviewer r", Reviewer.class);
+
+       List<Reviewer> reviewers = queryReviewers.getResultList();
+
+       //filter on DB id for people
+       Set<Long> reviewerIDs = reviewers
+               .stream()
+               .map(reviewer -> reviewer.getPerson().getId())
+               .collect(Collectors.toSet());
+
+       return people
+               .stream()
+               .filter(person -> !reviewerIDs.contains(person.getId()))
+               .collect(Collectors.toList());
    }
 
    @GET
