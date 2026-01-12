@@ -79,7 +79,7 @@ public class TACResource extends ObjectResourceBase {
 
     @POST
     @Path("/members/{tacRole}")
-    @Operation(summary = "Add a new CommitteeMember to the TAC")
+    @Operation(summary = "Add a new CommitteeMember with the specified 'tacRole' to the TAC")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     @RolesAllowed({"tac_admin"})
