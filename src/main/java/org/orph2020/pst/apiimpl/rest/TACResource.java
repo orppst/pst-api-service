@@ -47,7 +47,7 @@ public class TACResource extends ObjectResourceBase {
         String roleLike = (memberRole == null) ? "" :
                 "and m.role = :mRole ";
 
-        String qlString = "select m._id,cast(m.role as string),m.member.person.fullName from ProposalCycle p "
+        String qlString = "select m._id,cast(m.member.person._id as string),cast(m.role as string) from ProposalCycle p "
                 + "inner join p.tac t inner join t.members m "
                 + "where p._id=" + cycleCode + " "
                 + nameLike + roleLike + "order by m.role";
