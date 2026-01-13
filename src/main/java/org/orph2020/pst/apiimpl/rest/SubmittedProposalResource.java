@@ -157,6 +157,42 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .toList();
     }
 
+
+    @GET
+    @Path("assignedTo/{personId}")
+    @RolesAllowed({"reviewer"})
+    @Operation(summary = "get all the (non-allocated) SubmittedProposals in the given cycle to which the given person has been assigned to review")
+    public List<ObjectIdentifier> getAssignedSubmittedProposals(
+            @PathParam("cycleCode")  Long cycleCode,
+            @PathParam("personId") Long personId
+    )  throws WebApplicationException
+    {
+        ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+        List<SubmittedProposal> submittedProposals = proposalCycle.getSubmittedProposals();
+        List<AllocatedProposal> allocatedProposals = proposalCycle.getAllocatedProposals();
+
+        List<SubmittedProposal> notAllocated = submittedProposals
+                .stream()
+                .filter(sp -> allocatedProposals.stream().noneMatch(
+                        ap -> sp.getId().equals(ap.getSubmitted().getId())))
+                .toList();
+
+        List<ObjectIdentifier> results = new ArrayList<>();
+
+        // there's likely some way of do this using streams and filters
+        for (SubmittedProposal submittedProposal : notAllocated) {
+            List<ProposalReview>  reviews = submittedProposal.getReviews();
+            for (ProposalReview review : reviews) {
+                if (review.getReviewer().getPerson().getId().equals(personId)) {
+                    results.add(new ObjectIdentifier(submittedProposal.getId(), submittedProposal.getTitle()));
+                    break; //from inner for - reviewers are distinct per SubmittedProposal
+                }
+            }
+        }
+
+        return results;
+    }
+
     /*
         Work around: Java Dates seem to use local timezone i.e., new Date(0L) gives
         "1970-01-01 01:00:00" rather than "1970-01-01 00:00:00" - when creating Dates
