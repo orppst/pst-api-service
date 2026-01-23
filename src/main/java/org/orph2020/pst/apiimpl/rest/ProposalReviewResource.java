@@ -10,6 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.ProposalReview;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.Date;
@@ -26,13 +27,20 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
     @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
     public List<ObjectIdentifier> getReviews(@PathParam("cycleCode") Long cycleCode,
-                                             @PathParam("submittedProposalId") Long submittedProposalId)
+                                             @PathParam("submittedProposalId") Long submittedProposalId,
+                                             @RestQuery String reviewerId
+    )
             throws WebApplicationException
     {
         String select = "select r._id,r.reviewer.person.fullName ";
         String from = "from ProposalCycle c ";
         String innerJoins = "inner join c.submittedProposals p inner join p.reviews r ";
         String where = "where c._id=" + cycleCode + " and p._id=" + submittedProposalId + " ";
+
+        if (reviewerId != null) {
+            where = where + "and r.reviewer._id =" + Long.parseLong(reviewerId) + " ";
+        }
+
         String orderBy = "order by r.reviewer.person.fullName";
 
         return getObjectIdentifiers(select + from + innerJoins + where + orderBy);

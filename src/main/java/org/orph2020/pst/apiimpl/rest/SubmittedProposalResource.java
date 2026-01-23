@@ -345,6 +345,14 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         return responseWrapper(submittedProposal, 200);
     }
 
+    @GET
+    @Path("{submittedProposalId}/completeDate")
+    @Operation(summary = "get the 'reviewsCompleteDate' of the given submitted proposal")
+    public Date getReviewsCompleteDate(@PathParam("submittedProposalId") Long submittedProposalId) {
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+        return submittedProposal.getReviewsCompleteDate();
+    }
+
     @PUT
     @Path("/{submittedProposalId}/completeDate")
     @RolesAllowed({"tac_admin", "tac_member"})
