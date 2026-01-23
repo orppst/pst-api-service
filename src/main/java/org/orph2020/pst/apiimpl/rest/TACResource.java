@@ -47,7 +47,7 @@ public class TACResource extends ObjectResourceBase {
         String roleLike = (memberRole == null) ? "" :
                 "and m.role = :mRole ";
 
-        String qlString = "select m._id,cast(m.role as string),m.member.person.fullName from ProposalCycle p "
+        String qlString = "select m._id,cast(m.member.person._id as string),cast(m.role as string) from ProposalCycle p "
                 + "inner join p.tac t inner join t.members m "
                 + "where p._id=" + cycleCode + " "
                 + nameLike + roleLike + "order by m.role";
@@ -79,7 +79,7 @@ public class TACResource extends ObjectResourceBase {
 
     @POST
     @Path("/members/{tacRole}")
-    @Operation(summary = "Add a new CommitteeMember to the TAC")
+    @Operation(summary = "Add a new CommitteeMember with the specified 'tacRole' to the TAC")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
     @RolesAllowed({"tac_admin"})
