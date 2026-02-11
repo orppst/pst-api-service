@@ -66,7 +66,8 @@ public class ReviewerResource extends ObjectResourceBase{
 
         if (!ids.isEmpty()) {
             throw new WebApplicationException(
-                    Response.status(Response.Status.CONFLICT).entity("Person already exists as a Reviewer").build());
+                    "Person already exists as a Reviewer", Response.Status.CONFLICT
+            );
         }
 
         //we want the reviewer object and the 'reviewer' role to be added "atomically"
