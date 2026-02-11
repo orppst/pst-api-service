@@ -19,7 +19,7 @@ import java.util.List;
 @Path("reviewers")
 @Tag(name = "reviewers")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"tac_admin"})
+@RolesAllowed({"reviewer"})
 public class ReviewerResource extends ObjectResourceBase{
 
     private final String reviewerRole = "reviewer";
@@ -52,6 +52,7 @@ public class ReviewerResource extends ObjectResourceBase{
     @Operation(summary = "add a new Reviewer")
     @Consumes(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
     public Reviewer addReviewer(Person person)
         throws WebApplicationException
     {
@@ -84,6 +85,7 @@ public class ReviewerResource extends ObjectResourceBase{
     @Path("/{reviewerId}")
     @Operation(summary = "Remove the Reviewer specified by 'reviewerId'")
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed ({"tac_admin"})
     public Response removeReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
     {
