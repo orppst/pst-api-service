@@ -69,7 +69,7 @@ public class PersonResource extends ObjectResourceBase {
    }
 
    @GET
-   @Path("email/{email}")
+   @Path("email")
    @RolesAllowed("default-roles-orppst")
    @Operation(summary = "get a Person with the provided email address, no match returns id:0 name:Not found")
    public ObjectIdentifier getPersonByEmail(@RestQuery String email)

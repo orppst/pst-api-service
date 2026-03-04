@@ -348,7 +348,13 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @GET
     @Path("{submittedProposalId}/completeDate")
     @Operation(summary = "get the 'reviewsCompleteDate' of the given submitted proposal")
-    public Date getReviewsCompleteDate(@PathParam("submittedProposalId") Long submittedProposalId) {
+    public Date getReviewsCompleteDate(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId
+    ) {
+        //ToDo: check submitted proposal belongs to the cycle
+        System.out.println(cycleCode);
+
         SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
         return submittedProposal.getReviewsCompleteDate();
     }
@@ -403,8 +409,15 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "Download a zip file of the proposal including TAC Admin's pdf and all supporting documents")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @RolesAllowed({"tac_admin"})
-    public Response downloadAdminZip(@PathParam("submittedProposalId") Long submittedProposalId)
+    public Response downloadAdminZip(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId
+    )
             throws WebApplicationException, IOException {
+
+        //TODO: check user is tac_adim for this cycle
+        //ToDO: check submitted proposals belongs to the cycle
+        System.out.println(cycleCode);
 
         SubmittedProposal proposal = findObject(SubmittedProposal.class, submittedProposalId);
 

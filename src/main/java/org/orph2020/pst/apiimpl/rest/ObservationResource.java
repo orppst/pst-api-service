@@ -250,10 +250,16 @@ public class ObservationResource extends ObjectResourceBase {
     @GET
     @Path("/{observationId}/constraints/{constraintId}")
     @Operation(summary = "get the constraint referenced by the 'constraintId' for the given observation")
-    public ObservingConstraint getConstraint(@PathParam("observationId") Long observationId,
-                                    @PathParam("constraintId") Long constraintId)
+    public ObservingConstraint getConstraint(
+            @PathParam("proposalCode")  Long proposalCode,
+            @PathParam("observationId") Long observationId,
+            @PathParam("constraintId") Long constraintId)
         throws WebApplicationException
     {
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalCode);
+
+        findObservation(proposal.getObservations(), observationId, proposalCode);
+
         return findChildByQuery(Observation.class, ObservingConstraint.class,
                 "constraints", observationId, constraintId);
     }
