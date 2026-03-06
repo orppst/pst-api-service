@@ -93,6 +93,7 @@ public class PersonResource extends ObjectResourceBase {
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Person createPerson(Person person)
    {
+      //TODO?: should we be checking uniqueness of emails here?
       return persistObject(person);
    }
 
@@ -147,6 +148,8 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateEMail(@PathParam("id") Long personId, String replacementEMail)
            throws WebApplicationException
    {
+      //TODO?: should we be checking uniqueness of emails here?
+
       Person person = findObject(Person.class, personId);
 
       person.setEMail(replacementEMail);
