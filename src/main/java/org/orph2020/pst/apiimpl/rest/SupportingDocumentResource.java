@@ -152,7 +152,10 @@ public class SupportingDocumentResource extends ObjectResourceBase {
                     );
 
             //save the uploaded file to the new destination
-            if (!proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
+            try {
+                proposalDocumentStore.moveFile(fileUpload.uploadedFile().toFile(), saveFileAs);
+            }
+            catch (RuntimeException e) {
                 throw new WebApplicationException("Unable to save file " + fileUpload.fileName(), 400);
             }
             //else all good, set the location for the newSupportingDocument
@@ -163,8 +166,11 @@ public class SupportingDocumentResource extends ObjectResourceBase {
         } else {
             //replacing an existing file i.e. overwrite the file
 
-            if(!proposalDocumentStore
-                    .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs)) {
+            try {
+                proposalDocumentStore
+                        .moveFile(fileUpload.uploadedFile().toFile(), saveFileAs);
+            }
+            catch (RuntimeException e) {
                 throw new WebApplicationException("Unable to overwrite file " + fileUpload.fileName(), 400);
             }
 

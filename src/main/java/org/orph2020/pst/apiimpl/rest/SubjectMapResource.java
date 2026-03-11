@@ -19,7 +19,9 @@ import org.jboss.resteasy.reactive.RestQuery;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.RoleScopeResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.orph2020.pst.apiimpl.entities.SubjectMap;
 
@@ -30,14 +32,24 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+
+
 @Path("subjectMap")
 @Tag(name="mapping between AAI user ids and People")
 @Produces(MediaType.APPLICATION_JSON)
 public class SubjectMapResource extends ObjectResourceBase {
 
+    public enum RoleAction {
+        ASSIGN,
+        REVOKE
+    }
+
     Keycloak keycloak;
 
     RealmResource realmOrppst;
+
+    @ConfigProperty(name = "polaris-realm-name")
+    String polarisRealmName;
 
     @ConfigProperty(name = "keycloak.admin-username")
     String admin_username;
@@ -59,7 +71,7 @@ public class SubjectMapResource extends ObjectResourceBase {
                 .password(admin_password)
                 .build();
 
-        realmOrppst = keycloak.realm("orppst");
+        realmOrppst = keycloak.realm(polarisRealmName);
     }
 
     @PreDestroy
@@ -165,7 +177,7 @@ public class SubjectMapResource extends ObjectResourceBase {
                         new Person( ur.getFirstName() + " " + ur.getLastName(),
                                     ur.getEmail(),
                                      organization,
-                                    new StringIdentifier("") //fixme: orchid id
+                                    new StringIdentifier("") //fixme: orcid id
                                    
                         )
                 );
@@ -191,22 +203,20 @@ public class SubjectMapResource extends ObjectResourceBase {
     {
         SubjectMap subjectMap = findSubjectMap(personId);
 
-        //this code doesn't seem to do anything in the keycloak realm
-        realmOrppst.users().get(subjectMap.uid).toRepresentation(true).setFirstName(firstName);
+        UserRepresentation userRepresentation = realmOrppst.users().get(subjectMap.uid).toRepresentation();
+        userRepresentation.setFirstName(firstName);
+
+        realmOrppst.users().get(subjectMap.uid).update(userRepresentation);
 
         Person person = findObject(Person.class, personId);
 
         String currentFullName = person.getFullName();
-
-        System.out.println("current name: " + currentFullName);
 
         String currentFirstName = currentFullName.substring(0, currentFullName.indexOf(" "));
 
         String newFullName = currentFullName.replaceFirst(currentFirstName, firstName);
 
         person.setFullName(newFullName);
-
-        System.out.println("new name: " + newFullName);
 
         return responseWrapper(person, 200);
     }
@@ -222,8 +232,10 @@ public class SubjectMapResource extends ObjectResourceBase {
     {
         SubjectMap subjectMap = findSubjectMap(personId);
 
-        //this code doesn't seem to do anything in the keycloak realm
-        keycloak.realm("orppst").users().get(subjectMap.uid).toRepresentation().setLastName(lastName);
+        UserRepresentation userRepresentation = realmOrppst.users().get(subjectMap.uid).toRepresentation();
+        userRepresentation.setLastName(lastName);
+
+        realmOrppst.users().get(subjectMap.uid).update(userRepresentation);
 
         Person person = findObject(Person.class, personId);
 
@@ -259,8 +271,10 @@ public class SubjectMapResource extends ObjectResourceBase {
 
         SubjectMap subjectMap = findSubjectMap(personId);
 
-        //this code doesn't seem to do anything in the keycloak realm
-        keycloak.realm("orppst").users().get(subjectMap.uid).toRepresentation().setEmail(emailAddress);
+        UserRepresentation userRepresentation = realmOrppst.users().get(subjectMap.uid).toRepresentation();
+        userRepresentation.setEmail(emailAddress);
+
+        realmOrppst.users().get(subjectMap.uid).update(userRepresentation);
 
         Person person = findObject(Person.class, personId);
 
@@ -288,7 +302,7 @@ public class SubjectMapResource extends ObjectResourceBase {
         credentialRepresentation.setTemporary(false); //just to be explicit
 
         // change the password in the keycloak realm
-        keycloak.realm("orppst").users().get(subjectMap.uid).resetPassword(credentialRepresentation);
+        realmOrppst.users().get(subjectMap.uid).resetPassword(credentialRepresentation);
 
         return emptyResponse204();
     }
@@ -300,4 +314,35 @@ public class SubjectMapResource extends ObjectResourceBase {
         return q.setParameter("id", personId).getSingleResult();
     }
 
+    //use PUT semantics here as we are not adding/removing an object only editing an existing Person
+
+    //this implementation was found on StackOverflow
+    // https://stackoverflow.com/questions/49110262/add-a-client-role-to-a-keycloak-user-using-java
+
+    /**
+     * Convenience function to assign or revoke the given "role" to the Person (User) specified.
+     * Does not check weather the Person already has the "role" assigned.
+     * @param personId Long ID of the person you are assigning/revoking the role
+     * @param role String name of the (realm) role to assign/revoke (check the list of available roles for the realm)
+     * @param roleAction RoleAction enum; either ASSIGN or REVOKE
+     *
+     */
+    public void roleManagement(Long personId, String role, RoleAction roleAction) {
+        SubjectMap subjectMap = findSubjectMap(personId);
+
+        RoleScopeResource roleScopeResource = realmOrppst.users().get(subjectMap.uid).roles().realmLevel();
+
+        List<RoleRepresentation> rolesRepresentationList = roleScopeResource.listAvailable();
+
+        // if "role" does not exist in the realm this does nothing
+        for (RoleRepresentation roleRepresentation : rolesRepresentationList) {
+            if (roleRepresentation.getName().equals(role)) {
+                switch (roleAction) {
+                    case ASSIGN -> roleScopeResource.add(List.of(roleRepresentation));
+                    case REVOKE -> roleScopeResource.remove(List.of(roleRepresentation));
+                }
+                break; //from 'for'
+            }
+        }
+    }
 }

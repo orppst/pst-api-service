@@ -1,7 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -11,6 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ProposalCycle;
 import org.ivoa.dm.proposal.management.ProposalReview;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.Date;
@@ -19,25 +19,28 @@ import java.util.List;
 @Path("proposalCycles/{cycleCode}/submittedProposals/{submittedProposalId}/reviews")
 @Tag(name = "proposalCycles-submitted-proposals-reviews")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
 public class ProposalReviewResource extends ObjectResourceBase{
-
-    @Inject
-    ProposalCyclesResource proposalCyclesResource;
 
     private static final String locked = "Reviews have been locked, no edits allowed";
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
+    @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
     public List<ObjectIdentifier> getReviews(@PathParam("cycleCode") Long cycleCode,
-                                             @PathParam("submittedProposalId") Long submittedProposalId)
+                                             @PathParam("submittedProposalId") Long submittedProposalId,
+                                             @RestQuery String reviewerId
+    )
+            throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         String select = "select r._id,r.reviewer.person.fullName ";
         String from = "from ProposalCycle c ";
         String innerJoins = "inner join c.submittedProposals p inner join p.reviews r ";
         String where = "where c._id=" + cycleCode + " and p._id=" + submittedProposalId + " ";
+
+        if (reviewerId != null) {
+            where = where + "and r.reviewer._id =" + Long.parseLong(reviewerId) + " ";
+        }
+
         String orderBy = "order by r.reviewer.person.fullName";
 
         return getObjectIdentifiers(select + from + innerJoins + where + orderBy);
@@ -46,12 +49,12 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @GET
     @Path("/{reviewId}")
     @Operation(summary = "get the specific review of the given SubmittedProposal")
+    @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
     public ProposalReview getReview(@PathParam("cycleCode") Long cycleCode,
                                     @PathParam("submittedProposalId") Long submittedProposalId,
                                     @PathParam("reviewId") Long reviewId)
+            throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         return findChildByQuery(SubmittedProposal.class, ProposalReview.class,
                 "reviews", submittedProposalId, reviewId);
     }
@@ -65,15 +68,12 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                     ProposalReview proposalReview)
         throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
-        //IMPL do not strictly need to do thi
         SubmittedProposal submittedProposal = findChildByQuery(ProposalCycle.class, SubmittedProposal.class,
                 "submittedProposals", cycleCode, submittedProposalId);
 
         //set the date to the posix epoch, user must confirm that the review is complete at which
         //point this date is updated to that at the point of confirmation, and the review becomes
-        //un-editable
+        //"locked"
         proposalReview.setReviewDate(new Date(0L));
 
         return addNewChildObject(submittedProposal, proposalReview, submittedProposal::addToReviews);
@@ -88,8 +88,6 @@ public class ProposalReviewResource extends ObjectResourceBase{
                                  @PathParam("reviewId") Long reviewId)
         throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         SubmittedProposal reviewedProposal = findChildByQuery(ProposalCycle.class,
               SubmittedProposal.class, "submittedProposals", cycleCode, reviewedProposalId);
 
@@ -126,8 +124,6 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
         throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
@@ -159,8 +155,6 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
             throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
@@ -193,8 +187,6 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
             throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", submittedProposalId, reviewId);
 
@@ -226,8 +218,6 @@ public class ProposalReviewResource extends ObjectResourceBase{
     )
         throws WebApplicationException
     {
-        proposalCyclesResource.checkUserOnTAC(findObject(ProposalCycle.class, cycleCode));
-
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 

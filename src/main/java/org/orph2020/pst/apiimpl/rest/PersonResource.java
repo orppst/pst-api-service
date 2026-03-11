@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.TypedQuery;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.ivoa.dm.proposal.management.Reviewer;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.Person;
 import org.ivoa.dm.ivoa.StringIdentifier ;
@@ -20,6 +21,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Produces(MediaType.APPLICATION_JSON)
@@ -38,7 +41,35 @@ public class PersonResource extends ObjectResourceBase {
    }
 
    @GET
-   @Path("email/{email}")
+   @Path("notReviewers")
+   @Operation(summary = "get a list of all the People who are not Reviewers")
+   @RolesAllowed({"tac_admin"})
+   public List<Person> getNotReviewers() {
+
+       TypedQuery<Person> queryPeople =
+               em.createQuery("select p from Person p", Person.class);
+
+       List<Person> people = queryPeople.getResultList();
+
+       TypedQuery<Reviewer> queryReviewers =
+               em.createQuery("select r from Reviewer r", Reviewer.class);
+
+       List<Reviewer> reviewers = queryReviewers.getResultList();
+
+       //filter on DB id for people
+       Set<Long> reviewerIDs = reviewers
+               .stream()
+               .map(reviewer -> reviewer.getPerson().getId())
+               .collect(Collectors.toSet());
+
+       return people
+               .stream()
+               .filter(person -> !reviewerIDs.contains(person.getId()))
+               .collect(Collectors.toList());
+   }
+
+   @GET
+   @Path("email")
    @RolesAllowed("default-roles-orppst")
    @Operation(summary = "get a Person with the provided email address, no match returns id:0 name:Not found")
    public ObjectIdentifier getPersonByEmail(@RestQuery String email)
@@ -130,6 +161,8 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateEMail(@PathParam("id") Long personId, String replacementEMail)
            throws WebApplicationException
    {
+      //TODO?: should we be checking uniqueness of emails here?
+
       Person person = findObject(Person.class, personId);
 
       person.setEMail(replacementEMail);

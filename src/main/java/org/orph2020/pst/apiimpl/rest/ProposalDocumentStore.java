@@ -8,10 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -69,11 +66,6 @@ public class ProposalDocumentStore {
     public String createLatexWorkingDirectory(
             Long proposalCode,
             String proposalTitle,
-            String proposalSummary,
-            String proposalInvestigators,
-            String proposalTargets,
-            String proposalTechnicalGoals,
-            String proposalObservations,
             String observingCycleName,
             String scientificText,
             String technicalText,
@@ -131,22 +123,6 @@ public class ProposalDocumentStore {
 
         writeStringToFile(technicalText, proposalCode + "/" + justificationsPath
                 + "technicalJustification.tex");
-
-        //Summary
-        writeStringToFile(proposalSummary, proposalCode + "/" + justificationsPath
-                + "summary.tex");
-        //Investigators
-        writeStringToFile(proposalInvestigators, proposalCode + "/" + justificationsPath
-                + "investigators.tex");
-        //Targets
-        writeStringToFile(proposalTargets, proposalCode + "/" + justificationsPath
-                + "targets.tex");
-        //Technical Goals
-        writeStringToFile(proposalTechnicalGoals, proposalCode + "/" + justificationsPath
-                 + "technicalGoals.tex");
-        //Observations
-        writeStringToFile(proposalObservations, proposalCode + "/" + justificationsPath
-                + "observations.tex");
 
         //image files are found using the '\graphicspath' latex command in "main.tex"
 
@@ -210,9 +186,9 @@ public class ProposalDocumentStore {
      * @param file "External" file to save to this DocumentStore (typically from a file upload)
      * @param saveFileAs the filePath you are saving the file as, note you are responsible for providing the
      *                   correct path of the subdirectories.
-     * @return boolean status of the save
+     * Throws a Runtime Exception if the move failed
      */
-    public Boolean moveFile(File file, String saveFileAs) throws RuntimeException {
+    public void moveFile(File file, String saveFileAs) throws RuntimeException {
         // renameTo does not create intermediate subdirectories so we need to check the input
         int lastSlash = saveFileAs.lastIndexOf("/");
         if (lastSlash != -1) {
@@ -227,14 +203,30 @@ public class ProposalDocumentStore {
 
        final File dest = fetchFile(saveFileAs);
         logger.debug("Moving file {}  exists {} to {}", file, file.exists(), dest );
+        if(dest.exists()) {
+            boolean result = dest.delete();
+            if(!result)
+                System.out.println("Delete existing file");
+            else
+                System.out.println("Failed? to delete existing file");
+        }
+       else
+           System.out.println("File " + dest.getAbsolutePath() + " does not exist");
+
        try {
           Files.move(file.toPath(),dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          return true;
+       } catch (DirectoryNotEmptyException e) {
+           System.err.println("Target directory is not empty.");
+       } catch (SecurityException e) {
+           System.err.println("Security exception.");
+       } catch (UnsupportedOperationException e) {
+           System.err.println("Unsupported operation.");
+       } catch (FileAlreadyExistsException e) {
+           System.err.println("File already exists.");
        } catch (IOException e) {
           throw new RuntimeException(e);
 
        }
-
     }
 
     /**

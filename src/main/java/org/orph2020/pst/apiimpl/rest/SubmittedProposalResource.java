@@ -157,6 +157,42 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 .toList();
     }
 
+
+    @GET
+    @Path("assignedTo/{personId}")
+    @RolesAllowed({"reviewer"})
+    @Operation(summary = "get all the (non-allocated) SubmittedProposals in the given cycle to which the given person has been assigned to review")
+    public List<ObjectIdentifier> getAssignedSubmittedProposals(
+            @PathParam("cycleCode")  Long cycleCode,
+            @PathParam("personId") Long personId
+    )  throws WebApplicationException
+    {
+        ProposalCycle proposalCycle = findObject(ProposalCycle.class, cycleCode);
+        List<SubmittedProposal> submittedProposals = proposalCycle.getSubmittedProposals();
+        List<AllocatedProposal> allocatedProposals = proposalCycle.getAllocatedProposals();
+
+        List<SubmittedProposal> notAllocated = submittedProposals
+                .stream()
+                .filter(sp -> allocatedProposals.stream().noneMatch(
+                        ap -> sp.getId().equals(ap.getSubmitted().getId())))
+                .toList();
+
+        List<ObjectIdentifier> results = new ArrayList<>();
+
+        // there's likely some way of do this using streams and filters
+        for (SubmittedProposal submittedProposal : notAllocated) {
+            List<ProposalReview>  reviews = submittedProposal.getReviews();
+            for (ProposalReview review : reviews) {
+                if (review.getReviewer().getPerson().getId().equals(personId)) {
+                    results.add(new ObjectIdentifier(submittedProposal.getId(), submittedProposal.getTitle()));
+                    break; //from inner for - reviewers are distinct per SubmittedProposal
+                }
+            }
+        }
+
+        return results;
+    }
+
     /*
         Work around: Java Dates seem to use local timezone i.e., new Date(0L) gives
         "1970-01-01 01:00:00" rather than "1970-01-01 00:00:00" - when creating Dates
@@ -309,6 +345,20 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         return responseWrapper(submittedProposal, 200);
     }
 
+    @GET
+    @Path("{submittedProposalId}/completeDate")
+    @Operation(summary = "get the 'reviewsCompleteDate' of the given submitted proposal")
+    public Date getReviewsCompleteDate(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId
+    ) {
+        //ToDo: check submitted proposal belongs to the cycle
+        System.out.println(cycleCode);
+
+        SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
+        return submittedProposal.getReviewsCompleteDate();
+    }
+
     @PUT
     @Path("/{submittedProposalId}/completeDate")
     @RolesAllowed({"tac_admin", "tac_member"})
@@ -359,23 +409,28 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Operation(summary = "Download a zip file of the proposal including TAC Admin's pdf and all supporting documents")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @RolesAllowed({"tac_admin"})
-    public Response downloadAdminZip(@PathParam("submittedProposalId") Long submittedProposalId)
+    public Response downloadAdminZip(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("submittedProposalId") Long submittedProposalId
+    )
             throws WebApplicationException, IOException {
+
+        //TODO: check user is tac_adim for this cycle
+        //ToDO: check submitted proposals belongs to the cycle
+        System.out.println(cycleCode);
 
         SubmittedProposal proposal = findObject(SubmittedProposal.class, submittedProposalId);
 
-        String filename = proposal.getProposalCode()
-                + proposal.getTitle().substring(0,  Math.min(proposal.getTitle().length(), 31))
+        String filename = proposal.getProposalCode() + "."
+                + proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                    .substring(0,  Math.min(proposal.getTitle().length(), 30))
                 + ".zip";
 
         // Generate the Admin's pdf view of this submitted proposal
-        justificationsResource.createPDFfile(submittedProposalId,
-                false,
-                true,
-                justificationsResource.texAdminFileName);
+        justificationsResource.createTACAdminPDF(submittedProposalId);
 
         File myZipFile = proposalResource.CreateZipFile(proposalDocumentStore.getStoreRoot()
-                + submittedProposalId + "/" + filename, proposal);
+                + submittedProposalId + "/" + filename, proposal, false, false);
 
         return Response.ok(myZipFile)
                 .header("Content-Disposition", "attachment; filename=" + "Example.zip")
