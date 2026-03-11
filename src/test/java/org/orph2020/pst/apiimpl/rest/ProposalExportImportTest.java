@@ -145,6 +145,30 @@ public class ProposalExportImportTest {
 
     }
 
+    @Test
+    void testImportWithMissingInvestigatorEmailReturns400() throws JsonProcessingException {
+        ObservingProposal exportedProposal =
+                given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle("Import with missing email");
+
+        // Set an investigator's email to null to trigger the 400
+        exportedProposal.getInvestigators().get(0).getPerson().setEMail(null);
+
+        given()
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportedProposal))
+                .header("Content-Type", MediaType.APPLICATION_JSON)
+                .when()
+                .post("proposals/import")
+                .then()
+                .statusCode(400);
+    }
+
     private static Investigator getInvestigator() {
         Organization newOrg = new Organization();
         newOrg.setName("New Org");
