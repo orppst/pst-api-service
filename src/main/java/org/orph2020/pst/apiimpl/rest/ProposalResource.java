@@ -1069,7 +1069,7 @@ public class ProposalResource extends ObjectResourceBase {
         HashMap<String, Person> existingPeopleMap = new HashMap<>();
         for (ObjectIdentifier pid: peopleIds) {
             Person personToAdd = personResource.getPerson(pid.dbid);
-            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+            existingPeopleMap.put(personToAdd.getEMail().toString(), personToAdd);
         }
 
         //Compare people and organisations to what's in the database only add new org is adding a new person
@@ -1078,8 +1078,8 @@ public class ProposalResource extends ObjectResourceBase {
             Person person = i.getPerson();
 
             //If this person exists, use that record, else add them
-            if(existingPeopleMap.containsKey(person.getOrcidId().toString())) {
-                i.setPerson(existingPeopleMap.get(person.getOrcidId().toString()));
+            if(existingPeopleMap.containsKey(person.getEMail().toString())) {
+                i.setPerson(existingPeopleMap.get(person.getEMail().toString()));
             } else {
                 //If organisation exists, use that record, else add it
                 Organization organization = person.getHomeInstitute();
@@ -1094,7 +1094,7 @@ public class ProposalResource extends ObjectResourceBase {
                 }
                 person.setXmlId("0");
                 i.setPerson(personResource.createPerson(person));
-                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+                existingPeopleMap.put(person.getEMail().toString(), i.getPerson());
             }
         }
 

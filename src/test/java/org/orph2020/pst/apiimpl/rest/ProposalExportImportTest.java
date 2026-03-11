@@ -101,7 +101,7 @@ public class ProposalExportImportTest {
                 .getInvestigators()
                 .get(0)
                 .getPerson()
-                .setOrcidId(new StringIdentifier("4444-4444-4444-4444"));
+                .setEMail("modified-" + exportedProposal.getInvestigators().get(0).getPerson().getEMail());
 
         exportedProposal
                 .getInvestigators()
