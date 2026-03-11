@@ -976,7 +976,7 @@ public class ProposalResource extends ObjectResourceBase {
             if(!anonymise) {
                 //json of Proposal
                 ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
-                zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"propsal.json":projFilename+ ".json"));
+                zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"proposal.json":projFilename+ ".json"));
 
                 byte[] bytes = new byte[1024];
                 int length;
