@@ -1069,17 +1069,27 @@ public class ProposalResource extends ObjectResourceBase {
         HashMap<String, Person> existingPeopleMap = new HashMap<>();
         for (ObjectIdentifier pid: peopleIds) {
             Person personToAdd = personResource.getPerson(pid.dbid);
-            existingPeopleMap.put(personToAdd.getOrcidId().toString(), personToAdd);
+            String existingEmail = personToAdd.getEMail();
+            if (existingEmail != null && !existingEmail.trim().isEmpty()) {
+                existingPeopleMap.put(existingEmail.trim().toLowerCase(Locale.ROOT), personToAdd);
+            }
         }
 
         //Compare people and organisations to what's in the database only add new org is adding a new person
         List<Investigator> investigators = newProposal.getInvestigators();
         for (Investigator i : investigators) {
             Person person = i.getPerson();
+            String importedEmail = person.getEMail();
+            if (importedEmail == null || importedEmail.trim().isEmpty()) {
+                throw new WebApplicationException(
+                        "Investigator '" + person.getFullName() + "' has no email address; email is required for import",
+                        400);
+            }
+            String emailKey = importedEmail.trim().toLowerCase(Locale.ROOT);
 
             //If this person exists, use that record, else add them
-            if(existingPeopleMap.containsKey(person.getOrcidId().toString())) {
-                i.setPerson(existingPeopleMap.get(person.getOrcidId().toString()));
+            if(existingPeopleMap.containsKey(emailKey)) {
+                i.setPerson(existingPeopleMap.get(emailKey));
             } else {
                 //If organisation exists, use that record, else add it
                 Organization organization = person.getHomeInstitute();
@@ -1094,7 +1104,7 @@ public class ProposalResource extends ObjectResourceBase {
                 }
                 person.setXmlId("0");
                 i.setPerson(personResource.createPerson(person));
-                existingPeopleMap.put(person.getOrcidId().toString(), i.getPerson());
+                existingPeopleMap.put(emailKey, i.getPerson());
             }
         }
 
