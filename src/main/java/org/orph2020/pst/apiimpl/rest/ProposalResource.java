@@ -1069,14 +1069,23 @@ public class ProposalResource extends ObjectResourceBase {
         HashMap<String, Person> existingPeopleMap = new HashMap<>();
         for (ObjectIdentifier pid: peopleIds) {
             Person personToAdd = personResource.getPerson(pid.dbid);
-            existingPeopleMap.put(personToAdd.getEMail().toString().trim().toLowerCase(Locale.ROOT), personToAdd);
+            String existingEmail = personToAdd.getEMail();
+            if (existingEmail != null && !existingEmail.trim().isEmpty()) {
+                existingPeopleMap.put(existingEmail.trim().toLowerCase(Locale.ROOT), personToAdd);
+            }
         }
 
         //Compare people and organisations to what's in the database only add new org is adding a new person
         List<Investigator> investigators = newProposal.getInvestigators();
         for (Investigator i : investigators) {
             Person person = i.getPerson();
-            String emailKey = person.getEMail().toString().trim().toLowerCase(Locale.ROOT);
+            String importedEmail = person.getEMail();
+            if (importedEmail == null || importedEmail.trim().isEmpty()) {
+                throw new WebApplicationException(
+                        "Investigator '" + person.getFullName() + "' has no email address; email is required for import",
+                        400);
+            }
+            String emailKey = importedEmail.trim().toLowerCase(Locale.ROOT);
 
             //If this person exists, use that record, else add them
             if(existingPeopleMap.containsKey(emailKey)) {
