@@ -31,6 +31,20 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PersonResource extends ObjectResourceBase {
 
+   private void checkEmail(String incomingEmail) {
+      String qlString = "select p.eMail from Person p";
+      TypedQuery<String> query = em.createQuery(qlString, String.class);
+
+      List<String> emails = query.getResultList();
+      //check for an existing duplicate email address
+      if (emails.stream().anyMatch(email -> email.equals(incomingEmail))) {
+         // the incoming email must be unique
+         throw new WebApplicationException(
+                 String.format("email: '%s' is already in use", incomingEmail),
+                 Response.Status.BAD_REQUEST);
+      }
+   }
+
    @GET
    @Operation(summary = "get People from the database, optionally provide a name to find all the people with that name")
    public List<ObjectIdentifier> getPeople(@RestQuery String name) {
@@ -94,20 +108,10 @@ public class PersonResource extends ObjectResourceBase {
    public Person createPerson(Person person)
            throws WebApplicationException
    {
+      //throws if email non-unique
+      checkEmail(person.getEMail());
 
-       String qlString = "select p.eMail from Person p";
-       TypedQuery<String> query = em.createQuery(qlString, String.class);
-
-       List<String> emails = query.getResultList();
-       //check for an existing duplicate email address
-       if (emails.stream().anyMatch(email -> email.equals(person.getEMail()))) {
-           // a new user (Person) must provide a unique email address
-           throw new WebApplicationException(
-                   String.format("email: '%s' is already in use", person.getEMail()),
-                   Response.Status.BAD_REQUEST);
-       }
-
-       return persistObject(person);
+      return persistObject(person);
    }
 
    @POST
@@ -161,7 +165,8 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateEMail(@PathParam("id") Long personId, String replacementEMail)
            throws WebApplicationException
    {
-      //TODO?: should we be checking uniqueness of emails here?
+      //throws if email not unique
+      checkEmail(replacementEMail);
 
       Person person = findObject(Person.class, personId);
 
