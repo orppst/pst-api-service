@@ -13,8 +13,11 @@ import io.restassured.internal.mapping.Jackson2Mapper;
 import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.ivoa.StringIdentifier;
 import org.ivoa.dm.proposal.prop.*;
-import org.ivoa.dm.stc.coords.*;
+
+import org.ivoa.dm.proposal.prop.coords.Mjd;
+import org.ivoa.dm.proposal.prop.coords.Polarization;
 import org.ivoa.vodml.stdtypes.Unit;
+import org.javastro.ivoacore.pgsphere.types.Point;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +60,7 @@ public class UseCasePiTest {
     private io.restassured.mapper.ObjectMapper raObjectMapper;
     private Unit ghz;
     private Unit degrees;
-    private SpaceSys ICRS_SYS;
+    private String ICRS_SYS;
     private static final Logger LOGGER = Logger.getLogger("UseCasePiTest");
 
     @BeforeEach
@@ -65,12 +68,7 @@ public class UseCasePiTest {
         raObjectMapper = new Jackson2Mapper(((type, charset) -> mapper));
         ghz = new Unit("ghz");
         degrees = new Unit("degrees");
-        ICRS_SYS = given()
-              .when()
-              .get("spaceSystems/ICRS")
-              .then()
-              .statusCode(200)
-              .extract().as(SpaceSys.class, raObjectMapper);
+        ICRS_SYS = "ICRS";
     }
 
     @Test
@@ -361,11 +359,9 @@ public class UseCasePiTest {
        // add Observations
         CelestialTarget target = CelestialTarget.createCelestialTarget((c) -> {
             c.sourceName = "imaginativeSourceName";
-            c.sourceCoordinates = new EquatorialPoint(
-                  new RealQuantity(12.5, degrees),
-                  new RealQuantity(78.4, degrees),
-                  ICRS_SYS);
-            c.positionEpoch = new Epoch("J2000.0");
+            c.coord = new CelestialPosition(new Point(12.5,78.4),
+                  ICRS_SYS, null);
+            c.positionEpoch =  new Mjd(51544.0);//FIXME - this is 2000.0 (actually half a day out?) - need to have nicer way of making this default - switch from EPOCH to MJD
         });
 
         CelestialTarget createdTarget =
@@ -403,7 +399,7 @@ public class UseCasePiTest {
                 sw.end = new RealQuantity(2.2, ghz);
                 sw.spectralResolution = new RealQuantity(0.3, ghz);
                 sw.isSkyFrequency = false;
-                sw.polarization = PolStateEnum.LR;
+                sw.polarization = Polarization.CIRCULAR;
             })), ScienceSpectralWindow.createScienceSpectralWindow((ssw) -> {
                 ssw.expectedSpectralLine = Collections.singletonList(
                         ExpectedSpectralLine.createExpectedSpectralLine((sl) -> {
@@ -416,7 +412,7 @@ public class UseCasePiTest {
                     sw.end = new RealQuantity(1.89, ghz);
                     sw.spectralResolution = new RealQuantity(120.0, new Unit("khz"));
                     sw.isSkyFrequency = false;
-                    sw.polarization = PolStateEnum.PP;
+                    sw.polarization = Polarization.LINEAR;
                 });
             }));
         });

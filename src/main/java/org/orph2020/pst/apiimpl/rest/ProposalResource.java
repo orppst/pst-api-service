@@ -17,7 +17,6 @@ import org.ivoa.dm.ivoa.RealQuantity;
 import org.ivoa.dm.proposal.management.ProposalManagementModel;
 import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.ivoa.dm.proposal.prop.*;
-import org.ivoa.dm.stc.coords.SpaceSys;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.ResponseStatus;
 import org.jboss.resteasy.reactive.RestForm;
@@ -511,7 +510,7 @@ public class ProposalResource extends ObjectResourceBase {
     private List<Target> getTargetListFromFile(
             java.nio.file.Path filePath,
             FileType fileType,
-            SpaceSys spaceSys,
+            String spaceSys,
             List<String> currentNames
     ) throws WebApplicationException {
         return switch (fileType) {
@@ -553,10 +552,8 @@ public class ProposalResource extends ObjectResourceBase {
             currentNames.add(target.getSourceName());
         }
 
-        //find the 'ICRS' SpaceSys
-        String queryStr = "select s from SpaceSys s where s.frame.spaceRefFrame='ICRS'";
-        TypedQuery<SpaceSys> query = em.createQuery(queryStr, SpaceSys.class);
-        SpaceSys spaceSys = query.getResultList().get(0);
+
+        String spaceSys = "ICRS"; // this is now a fixed constant TODO - should be make into static class constant
 
         // assume anything not '.txt' is STILTS compatible (STILTS will throw useful error message if not)
         FileType fileType = extension.equals("txt") ? FileType.PLAIN_TEXT : FileType.STAR_TABLE_FMT;
@@ -797,21 +794,16 @@ public class ProposalResource extends ObjectResourceBase {
                     proposalTargets.append(beginRow)
                             .append(htmlEsc(tt.getSourceName())).append(tableDelim);
 
-                    if (tt.getSourceCoordinates().getCoordSys() != null
-                            && tt.getSourceCoordinates().getCoordSys().getFrame() != null
-                            && tt.getSourceCoordinates().getCoordSys().getFrame().getSpaceRefFrame() != null)
+                    if (tt.getCoord().getReferenceFrame() != null)
                         proposalTargets
-                                .append(htmlEsc(tt.getSourceCoordinates()
-                                        .getCoordSys()
-                                        .getFrame()
-                                        .getSpaceRefFrame()))
+                                .append(htmlEsc(tt.getCoord().getReferenceFrame()))
                                 .append(tableDelim);
                     else
                         proposalTargets.append("Unknown").append(tableDelim);
 
-                    proposalTargets.append(htmlEsc(tt.getPositionEpoch().value())).append(tableDelim)
-                            .append(htmlEsc(tt.getSourceCoordinates().getLat().getValue().toString())).append(tableDelim)
-                            .append(htmlEsc(tt.getSourceCoordinates().getLon().getValue().toString())).append(endRow);
+                    proposalTargets.append(htmlEsc(tt.getPositionEpoch().value().toString())).append(tableDelim)
+                            .append(htmlEsc(tt.getCoord().getSourceCoordinates().getAlpha().toString())).append(tableDelim)
+                            .append(htmlEsc(tt.getCoord().getSourceCoordinates().getAlpha().toString())).append(endRow);
                 } else {
                     proposalTargets.append(beginRow)
                             .append("Unknown").append(tableDelim)

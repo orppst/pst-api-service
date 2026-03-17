@@ -7,9 +7,9 @@ import jakarta.annotation.security.RolesAllowed;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.ivoa.Ivoid;
 import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.prop.WikiDataId;
+import org.ivoa.vodml.stdtypes.Ivoid;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 

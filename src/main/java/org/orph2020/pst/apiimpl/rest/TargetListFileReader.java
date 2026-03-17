@@ -2,12 +2,12 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.ws.rs.WebApplicationException;
 import org.ivoa.dm.ivoa.RealQuantity;
+import org.ivoa.dm.proposal.prop.CelestialPosition;
 import org.ivoa.dm.proposal.prop.CelestialTarget;
 import org.ivoa.dm.proposal.prop.Target;
-import org.ivoa.dm.stc.coords.Epoch;
-import org.ivoa.dm.stc.coords.EquatorialPoint;
-import org.ivoa.dm.stc.coords.SpaceSys;
+import org.ivoa.dm.proposal.prop.coords.Mjd;
 import org.ivoa.vodml.stdtypes.Unit;
+import org.javastro.ivoacore.pgsphere.types.Point;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -57,7 +57,7 @@ public class TargetListFileReader {
 
     public static List<Target> readTargetListFile(
             File theFile,
-            SpaceSys spaceSys,
+            String spaceSys,
             List<String> existingNames
     ) throws WebApplicationException
     {
@@ -105,12 +105,11 @@ public class TargetListFileReader {
 
                         CelestialTarget target = CelestialTarget.createCelestialTarget(c -> {
                             c.sourceName = targetName;
-                            c.sourceCoordinates = new EquatorialPoint(
-                                    new RealQuantity(targetRA, new Unit("degrees")),
-                                    new RealQuantity(targetDEC, new Unit("degrees")),
-                                    spaceSys
+                            c.coord = new CelestialPosition(new Point(targetRA,targetDEC),
+                                    spaceSys,null
                             );
-                            c.positionEpoch = new Epoch("J2000.0");
+                            c.coordUnit = new Unit("degrees");
+                            c.positionEpoch = new Mjd(51544.0);//FIXME - this is 2000 - need to have nicer way of making this default - switch from EPOCH to MJD
 
                             //optionals
                             //notice that although the column may exist, the data entry may be null (represented
