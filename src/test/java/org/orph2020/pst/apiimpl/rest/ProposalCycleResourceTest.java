@@ -157,9 +157,9 @@ public class ProposalCycleResourceTest {
       ProposalCycle targetCycle = new ProposalCycle();
       targetCycle.setObservatory(sourceObservatory);
       targetCycle.setTitle("Test copy observing modes cycle");
-      targetCycle.setSubmissionDeadline(new Date());
-      targetCycle.setObservationSessionStart(new Date());
-      targetCycle.setObservationSessionEnd(new Date());
+      targetCycle.setSubmissionDeadline(new Date(System.currentTimeMillis() + 14 * 24 * 60 * 60 * 1000L));
+      targetCycle.setObservationSessionStart(new Date(System.currentTimeMillis() + 60 * 24 * 60 * 60 * 1000L));
+      targetCycle.setObservationSessionEnd(new Date(System.currentTimeMillis() + 180 * 24 * 60 * 60 * 1000L));
       targetCycle.setTac(new TAC());
 
       String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(targetCycle);

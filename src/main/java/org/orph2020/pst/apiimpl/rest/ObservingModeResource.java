@@ -158,7 +158,8 @@ public class ObservingModeResource extends ObjectResourceBase {
         Query query = em.createQuery(
                 "select om._id,om.name,om.description from ProposalCycle c "
                         + "inner join c.observingModes om "
-                        + "where c._id=" + cycleId + " order by om._id");
+                        + "where c._id = :cycleId order by om._id");
+        query.setParameter("cycleId", cycleId);
         return getObjectIdentifiersAlt(query);
     }
 }
