@@ -125,4 +125,63 @@ public class ProposalCycleResourceTest {
 
    }
 
+   @Test
+   void testCopyObservingModes() throws JsonProcessingException {
+      // Get an existing cycle which has observing modes from the FullExample initialization
+      long sourceCycleId = given()
+              .when()
+              .get("proposalCycles")
+              .then()
+              .statusCode(200)
+              .body("$.size()", greaterThanOrEqualTo(1))
+              .extract().jsonPath().getLong("[0].dbid");
+
+      // Get the number of observing modes in the source cycle
+      int sourceModeCount = given()
+              .when()
+              .get("proposalCycles/" + sourceCycleId + "/observingModes")
+              .then()
+              .statusCode(200)
+              .body("$.size()", greaterThan(0))
+              .extract().jsonPath().getList("$").size();
+
+      // Get the observatory for the source cycle
+      Observatory sourceObservatory = given()
+              .when()
+              .get("proposalCycles/" + sourceCycleId + "/observatory")
+              .then()
+              .statusCode(200)
+              .extract().as(Observatory.class, raObjectMapper);
+
+      // Create a new target cycle for the same observatory
+      ProposalCycle targetCycle = new ProposalCycle();
+      targetCycle.setObservatory(sourceObservatory);
+      targetCycle.setTitle("Test copy observing modes cycle");
+      targetCycle.setSubmissionDeadline(new Date());
+      targetCycle.setObservationSessionStart(new Date());
+      targetCycle.setObservationSessionEnd(new Date());
+      targetCycle.setTac(new TAC());
+
+      String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(targetCycle);
+
+      ProposalCycle createdCycle = given()
+              .when()
+              .body(body)
+              .contentType(JSON)
+              .post("proposalCycles/")
+              .then()
+              .statusCode(200)
+              .extract().as(ProposalCycle.class, raObjectMapper);
+
+      long targetCycleId = createdCycle.getId();
+
+      // Copy observing modes from source to the new target cycle
+      given()
+              .when()
+              .post("proposalCycles/" + targetCycleId + "/observingModes/copyFrom/" + sourceCycleId)
+              .then()
+              .statusCode(200)
+              .body("$.size()", equalTo(sourceModeCount));
+   }
+
 }
