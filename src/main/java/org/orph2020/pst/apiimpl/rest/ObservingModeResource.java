@@ -2,6 +2,8 @@ package org.orph2020.pst.apiimpl.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.Query;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Filter;
@@ -107,5 +109,57 @@ public class ObservingModeResource extends ObjectResourceBase {
         }
 
         return result;
+    }
+
+    @POST
+    @Path("copyFrom/{sourceCycleId}")
+    @Operation(summary = "copy all the observing modes from the source proposal cycle to this proposal cycle; "
+            + "both cycles must belong to the same observatory")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed("obs_administration")
+    public List<ObjectIdentifier> copyObservingModes(
+            @PathParam("cycleId") Long cycleId,
+            @PathParam("sourceCycleId") Long sourceCycleId)
+            throws WebApplicationException
+    {
+        if (cycleId.equals(sourceCycleId)) {
+            throw new WebApplicationException(
+                    "Source and target proposal cycles must be different",
+                    Response.Status.BAD_REQUEST);
+        }
+
+        ProposalCycle targetCycle = findObject(ProposalCycle.class, cycleId);
+        ProposalCycle sourceCycle = findObject(ProposalCycle.class, sourceCycleId);
+
+        if (!targetCycle.getObservatory().getId().equals(sourceCycle.getObservatory().getId())) {
+            throw new WebApplicationException(
+                    "Both proposal cycles must belong to the same observatory",
+                    Response.Status.BAD_REQUEST);
+        }
+
+        for (ObservingMode sourceMode : sourceCycle.getObservingModes()) {
+            Filter sourceFilter = sourceMode.getFilter();
+            Filter newFilter = new Filter(
+                    sourceFilter.getName(),
+                    sourceFilter.getDescription(),
+                    sourceFilter.getFrequencyCoverage()
+            );
+            ObservingMode newMode = new ObservingMode(
+                    sourceMode.getName(),
+                    sourceMode.getDescription(),
+                    sourceMode.getTelescope(),
+                    sourceMode.getInstrument(),
+                    newFilter,
+                    sourceMode.getBackend()
+            );
+            addNewChildObject(targetCycle, newMode, targetCycle::addToObservingModes);
+        }
+
+        Query query = em.createQuery(
+                "select om._id,om.name,om.description from ProposalCycle c "
+                        + "inner join c.observingModes om "
+                        + "where c._id = :cycleId order by om._id");
+        query.setParameter("cycleId", cycleId);
+        return getObjectIdentifiersAlt(query);
     }
 }
