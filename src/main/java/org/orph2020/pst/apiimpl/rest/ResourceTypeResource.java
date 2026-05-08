@@ -1,8 +1,6 @@
 package org.orph2020.pst.apiimpl.rest;
 
-import io.quarkus.hibernate.orm.runtime.cdi.QuarkusArcBeanContainer;
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.inject.Inject;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
@@ -21,9 +19,6 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
 public class ResourceTypeResource extends ObjectResourceBase{
-
-    @Inject
-    QuarkusArcBeanContainer quarkusArcBeanContainer;
 
     @GET
     @Operation(summary = "get all the ResourceTypes that have been defined in the App, or provide a specific query on type name")
