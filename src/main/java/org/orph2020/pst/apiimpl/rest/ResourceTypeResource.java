@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.ResourceType;
+import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import java.util.List;
@@ -20,9 +21,16 @@ import java.util.List;
 public class ResourceTypeResource extends ObjectResourceBase{
 
     @GET
-    @Operation(summary = "get all the ResourceTypes that have been defined in the App")
-    public List<ObjectIdentifier> getAllResourceTypes() {
-        return getObjectIdentifiers("select r._id,r.name from ResourceType r");
+    @Operation(summary = "get all the ResourceTypes that have been defined in the App, or provide a specific query on type name")
+    public List<ObjectIdentifier> getAllResourceTypes(@RestQuery String resourceTypeName)
+    {
+        String baseStr = "select r._id,r.name from ResourceType r ";
+        String queryStr = "where r.name like '"+resourceTypeName+"'";
+        if (resourceTypeName == null) {
+            return getObjectIdentifiers(baseStr);
+        } else {
+            return getObjectIdentifiers(baseStr + queryStr);
+        }
     }
 
     @GET

@@ -112,6 +112,75 @@ public class ObservingModeResource extends ObjectResourceBase {
     }
 
     @POST
+    @Operation(summary = "add a new ObservingMode (with its Filter) to the given ProposalCycle")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("obs_administration")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ObservingMode addNewObservingMode(
+            @PathParam("cycleId") Long cycleId,
+            ObservingMode observingMode)
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleId);
+        return addNewChildObject(cycle, observingMode, cycle::addToObservingModes);
+    }
+
+    @PUT
+    @Path("{modeId}")
+    @Operation(summary = "update the name and description of the ObservingMode specified by 'modeId'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("obs_administration")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ObservingMode updateObservingMode(
+            @PathParam("cycleId") Long cycleId,
+            @PathParam("modeId") Long modeId,
+            ObservingMode replacement)
+            throws WebApplicationException
+    {
+        ObservingMode mode = findObservingModeByQuery(cycleId, modeId);
+        mode.setName(replacement.getName());
+        mode.setDescription(replacement.getDescription());
+        return mode;
+    }
+
+    @PUT
+    @Path("{modeId}/filter")
+    @Operation(summary = "update the Filter of the ObservingMode specified by 'modeId'")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("obs_administration")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Filter updateObservingModeFilter(
+            @PathParam("cycleId") Long cycleId,
+            @PathParam("modeId") Long modeId,
+            Filter replacement)
+            throws WebApplicationException
+    {
+        ObservingMode mode = findObservingModeByQuery(cycleId, modeId);
+        Filter filter = mode.getFilter();
+        filter.setName(replacement.getName());
+        filter.setDescription(replacement.getDescription());
+        if (replacement.getFrequencyCoverage() != null) {
+            filter.setFrequencyCoverage(replacement.getFrequencyCoverage());
+        }
+        return filter;
+    }
+
+    @DELETE
+    @Path("{modeId}")
+    @Operation(summary = "remove the ObservingMode specified by 'modeId' from the ProposalCycle, also deletes the linked Filter")
+    @RolesAllowed("obs_administration")
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public Response deleteObservingMode(
+            @PathParam("cycleId") Long cycleId,
+            @PathParam("modeId") Long modeId)
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleId);
+        ObservingMode mode = findObservingModeByQuery(cycleId, modeId);
+        return deleteChildObject(cycle, mode, cycle::removeFromObservingModes);
+    }
+
+    @POST
     @Path("copyFrom/{sourceCycleId}")
     @Operation(summary = "copy all the observing modes from the source proposal cycle to this proposal cycle; "
             + "both cycles must belong to the same observatory")
