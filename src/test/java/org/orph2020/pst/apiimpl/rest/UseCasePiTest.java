@@ -361,7 +361,8 @@ public class UseCasePiTest {
             c.sourceName = "imaginativeSourceName";
             c.coord = new CelestialPosition(new Point(12.5,78.4),
                   ICRS_SYS, null);
-            c.positionEpoch =  new Mjd(51544.0);//FIXME - this is 2000.0 (actually half a day out?) - need to have nicer way of making this default - switch from EPOCH to MJD
+            c.coordUnit = new Unit("degrees");
+            c.positionEpoch =  new Mjd(51544.5);//FIXME - this is noon 1/1/2000 need to have nicer way of making this default - switch from EPOCH to MJD
         });
 
         CelestialTarget createdTarget =
