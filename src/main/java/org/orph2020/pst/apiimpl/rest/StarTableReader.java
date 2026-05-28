@@ -144,7 +144,7 @@ public class StarTableReader {
                                   spaceSys,null
                             );
                             c.coordUnit = new Unit("degrees");
-                            c.positionEpoch = new Mjd(51544.0);//FIXME - this is 2000 - need to have nicer way of making this default - switch from EPOCH to MJD
+                            c.positionEpoch = new Mjd(51544.5);// == J2000.0 default this?
 
                     //optional stuff
                             c.pmRA = pmRaIndex == -1 ? null : Objects.equals(pmRaObj.toString(), "NaN") ? null :
