@@ -305,16 +305,22 @@ public class JustificationsResource extends ObjectResourceBase {
                             .append(String.join("\n", errors));
                 }
 
+                if (!bibWarnings.isEmpty()) {
+                    errorsStringBuilder
+                            .append("You have citation warnings:\n")
+                            .append(String.join("\n", bibWarnings));
+                }
+
                 //also check the BibTex log file for problems, if it exists
                 File bibTexLogFile = proposalDocumentStore.fetchFile(
                         justificationsPath(proposalCode) + "/out/" + jobName + ".blg");
 
                 if (bibTexLogFile.exists()) {
-                    List<String> bibTexWarnings = scanBibTexLogForDetails(Files.readString(bibTexLogFile.toPath()));
+                    List<String> bibTexWarnings = scanBibTexLogForDetails(bibTexLogFile);
 
                     if (!bibTexWarnings.isEmpty()) {
                         errorsStringBuilder
-                                .append("Your bibliography file has issues (renamed to 'refs.bib' for compilation):\n")
+                                .append("\nBibliography issues:\n")
                                 .append(String.join("\n", bibTexWarnings));
                     }
                 }
@@ -499,7 +505,7 @@ public class JustificationsResource extends ObjectResourceBase {
         List<String> list = new ArrayList<>();
         //remove any literal newlines
         while (matcher.find()) {
-            list.add(matcher.group().replaceAll("\n", ""));
+            list.add(matcher.group().replace("\n", ""));
         }
         return list.stream().distinct().toList();
     }
@@ -561,16 +567,23 @@ public class JustificationsResource extends ObjectResourceBase {
         }
     }
 
-    private List<String> scanBibTexLogForDetails(String searchStr) throws WebApplicationException {
-        Matcher matcher = Pattern
-                .compile("^I was expecting .*$", Pattern.MULTILINE)
-                .matcher(searchStr);
-        List<String> list = new ArrayList<>();
-        //the message is on the same line
-        while (matcher.find()) {
-            list.add(matcher.group());
+    private List<String> scanBibTexLogForDetails(File file) throws WebApplicationException {
+        try {
+            Scanner scanner = new Scanner(file);
+            List<String> list = new ArrayList<>();
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if (line.contains("I was expecting")) {
+                    list.add(line);
+                } else if (line.contains("White space in argument")) {
+                    list.add("White space in argument" + scanner.nextLine());
+                }
+            }
+            scanner.close();
+            return list.stream().distinct().toList();
+        } catch (FileNotFoundException e) {
+            throw new WebApplicationException(e);
         }
-        return list.stream().distinct().toList();
     }
 
 

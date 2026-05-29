@@ -5,7 +5,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.ivoa.dm.stc.coords.SpaceFrame;
+
 
 import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.GET;
@@ -22,11 +22,10 @@ public class SpaceFrameResource extends ObjectResourceBase {
    @GET
    @Operation(summary = "get a space frame")
    @Path("{frameCode}")
-   public SpaceFrame getSpaceFrame(@PathParam("frameCode") String frameCode)
+   public String getSpaceFrame(@PathParam("frameCode") String frameCode)
    {
-      TypedQuery<SpaceFrame> q = em.createQuery("select o From SpaceFrame o where o.spaceRefFrame = :fn", SpaceFrame.class);
-      q.setParameter("fn",frameCode);
-      return queryObject(q);
+
+      return "ICRS";// FIXME this whole class should no longer be needed
    }
 
 
