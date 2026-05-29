@@ -109,7 +109,7 @@ public class TargetListFileReader {
                                     spaceSys,null
                             );
                             c.coordUnit = new Unit("degrees");
-                            c.positionEpoch = new Mjd(51544.0);//FIXME - this is 2000 - need to have nicer way of making this default - switch from EPOCH to MJD
+                            c.positionEpoch = new Mjd(51544.5);// == J2000.0, default?
 
                             //optionals
                             //notice that although the column may exist, the data entry may be null (represented
