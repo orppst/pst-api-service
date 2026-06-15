@@ -129,7 +129,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @GET
     @Path("/{submittedProposalId}")
     @Operation(summary = "get the SubmittedProposal specified by 'submittedProposalId'")
-    @RolesAllowed({"tac_admin", "tac_member"})
+    @RolesAllowed({"tac_admin", "tac_member", "reviewer"})
     public SubmittedProposal getSubmittedProposal(@PathParam("cycleCode") Long cycleCode,
                                                 @PathParam("submittedProposalId") Long submittedProposalId)
     {
@@ -139,7 +139,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @GET
     @Path("/notYetAllocated")
-    @RolesAllowed({"tac_admin", "tac_member"})
+    @RolesAllowed({"tac_admin", "tac_member", "reviewer"})
     @Operation(summary = "get the Submitted Proposal Ids that have yet to be Allocated in the given cycle")
     public List<ObjectIdentifier> getSubmittedNotYetAllocated(@PathParam("cycleCode") Long cycleCode)
         throws WebApplicationException
@@ -205,7 +205,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @GET
     @Path("allReviewsLocked")
-    @RolesAllowed({"tac_admin", "tac_member"})
+    @RolesAllowed({"tac_admin", "tac_member", "reviewer"})
     @Operation(summary = "check that the reviews for all submitted proposals have been locked")
     public boolean checkAllReviewsLocked(@PathParam("cycleCode") Long cycleCode)
         throws WebApplicationException
