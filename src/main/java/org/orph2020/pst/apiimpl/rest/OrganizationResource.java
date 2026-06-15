@@ -5,7 +5,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.prop.Organization;
 import org.ivoa.dm.proposal.prop.WikiDataId;
-import org.ivoa.dm.ivoa.Ivoid;
+import org.ivoa.vodml.stdtypes.Ivoid;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
 import jakarta.transaction.Transactional;

@@ -31,6 +31,20 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PersonResource extends ObjectResourceBase {
 
+   private void checkEmail(String incomingEmail) {
+      String qlString = "select p.eMail from Person p";
+      TypedQuery<String> query = em.createQuery(qlString, String.class);
+
+      List<String> emails = query.getResultList();
+      //check for an existing duplicate email address
+      if (emails.stream().anyMatch(email -> email.equals(incomingEmail))) {
+         // the incoming email must be unique
+         throw new WebApplicationException(
+                 String.format("email: '%s' is already in use", incomingEmail),
+                 Response.Status.BAD_REQUEST);
+      }
+   }
+
    @GET
    @Operation(summary = "get People from the database, optionally provide a name to find all the people with that name")
    public List<ObjectIdentifier> getPeople(@RestQuery String name) {
@@ -69,7 +83,7 @@ public class PersonResource extends ObjectResourceBase {
    }
 
    @GET
-   @Path("email/{email}")
+   @Path("email")
    @RolesAllowed("default-roles-orppst")
    @Operation(summary = "get a Person with the provided email address, no match returns id:0 name:Not found")
    public ObjectIdentifier getPersonByEmail(@RestQuery String email)
@@ -92,7 +106,11 @@ public class PersonResource extends ObjectResourceBase {
    @Consumes(MediaType.APPLICATION_JSON)
    @Transactional(rollbackOn = {WebApplicationException.class})
    public Person createPerson(Person person)
+           throws WebApplicationException
    {
+      //throws if email non-unique
+      checkEmail(person.getEMail());
+
       return persistObject(person);
    }
 
@@ -147,6 +165,9 @@ public class PersonResource extends ObjectResourceBase {
    public Response updateEMail(@PathParam("id") Long personId, String replacementEMail)
            throws WebApplicationException
    {
+      //throws if email not unique
+      checkEmail(replacementEMail);
+
       Person person = findObject(Person.class, personId);
 
       person.setEMail(replacementEMail);

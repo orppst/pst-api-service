@@ -54,6 +54,7 @@ public class ReviewerResource extends ObjectResourceBase{
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"tac_admin"})
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed({"tac_admin"})
     public Reviewer addReviewer(Person person)
         throws WebApplicationException
     {
@@ -68,7 +69,8 @@ public class ReviewerResource extends ObjectResourceBase{
 
         if (!ids.isEmpty()) {
             throw new WebApplicationException(
-                    Response.status(Response.Status.CONFLICT).entity("Person already exists as a Reviewer").build());
+                    "Person already exists as a Reviewer", Response.Status.CONFLICT
+            );
         }
 
         //we want the reviewer object and the 'reviewer' role to be added "atomically"
@@ -86,6 +88,7 @@ public class ReviewerResource extends ObjectResourceBase{
     @RolesAllowed({"tac_admin"})
     @Operation(summary = "Remove the Reviewer specified by 'reviewerId'")
     @Transactional(rollbackOn = {WebApplicationException.class})
+    @RolesAllowed ({"tac_admin"})
     public Response removeReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
     {
