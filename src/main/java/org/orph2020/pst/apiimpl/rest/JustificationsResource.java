@@ -169,7 +169,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @POST
     @Path("ReviewPdf")
-    @RolesAllowed({"tac_member", "tac_admin"})
+    @RolesAllowed({"tac_member", "tac_admin", "reviewer"})
     @Operation(summary = "create and download an anonymised summary of the whole proposal in a zip with compiled justifications, for reviewers only")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional(rollbackOn = {WebApplicationException.class})
@@ -196,7 +196,7 @@ public class JustificationsResource extends ObjectResourceBase {
 
     @POST
     @Path("ReviewZip")
-    @RolesAllowed({"tac_member", "tac_admin"})
+    @RolesAllowed({"tac_member", "tac_admin", "reviewer"})
     @Operation(summary = "create and download an anonymised summary in a zip with compiled justifications, for reviewers only")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Transactional(rollbackOn = {WebApplicationException.class})

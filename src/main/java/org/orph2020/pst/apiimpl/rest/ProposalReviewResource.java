@@ -25,7 +25,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
-    @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
+    @RolesAllowed({"tac_admin", "tac_member", "obs_administration", "reviewer"})
     public List<ObjectIdentifier> getReviews(@PathParam("cycleCode") Long cycleCode,
                                              @PathParam("submittedProposalId") Long submittedProposalId,
                                              @RestQuery String reviewerId
@@ -49,7 +49,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
     @GET
     @Path("/{reviewId}")
     @Operation(summary = "get the specific review of the given SubmittedProposal")
-    @RolesAllowed({"tac_admin", "tac_member", "obs_administration"})
+    @RolesAllowed({"tac_admin", "tac_member", "obs_administration", "reviewer"})
     public ProposalReview getReview(@PathParam("cycleCode") Long cycleCode,
                                     @PathParam("submittedProposalId") Long submittedProposalId,
                                     @PathParam("reviewId") Long reviewId)
