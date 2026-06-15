@@ -19,7 +19,6 @@ import java.util.List;
 @Path("reviewers")
 @Tag(name = "reviewers")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"reviewer"})
 public class ReviewerResource extends ObjectResourceBase{
 
     private final String reviewerRole = "reviewer";
@@ -28,6 +27,7 @@ public class ReviewerResource extends ObjectResourceBase{
     SubjectMapResource subjectMapResource;
 
     @GET
+    @RolesAllowed({"reviewer"})
     @Operation(summary = "Get a list of Reviewer identities")
     public List<ObjectIdentifier> getReviewers()
         throws WebApplicationException
@@ -41,6 +41,7 @@ public class ReviewerResource extends ObjectResourceBase{
 
     @GET
     @Path("/{reviewerId}")
+    @RolesAllowed({"tac_admin"})
     @Operation(summary = "Get the Reviewer specified by 'reviewerId'")
     public Reviewer getReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
@@ -83,9 +84,9 @@ public class ReviewerResource extends ObjectResourceBase{
 
     @DELETE
     @Path("/{reviewerId}")
+    @RolesAllowed({"tac_admin"})
     @Operation(summary = "Remove the Reviewer specified by 'reviewerId'")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed ({"tac_admin"})
     public Response removeReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
     {

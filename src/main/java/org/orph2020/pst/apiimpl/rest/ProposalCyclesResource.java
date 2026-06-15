@@ -146,7 +146,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @GET
     @Path("{cycleCode}")
     @Operation(summary = "get the given proposal cycle")
-    @RolesAllowed({"tac_member", "tac_admin", "obs_administration"})
+    @RolesAllowed({"tac_member", "tac_admin", "obs_administration", "reviewer"})
     public ProposalCycle getProposalCycle(@PathParam("cycleCode") long cycleId) {
         return findObject(ProposalCycle.class,cycleId);
     }
