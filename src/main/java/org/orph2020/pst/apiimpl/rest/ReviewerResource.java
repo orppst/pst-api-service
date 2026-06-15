@@ -52,7 +52,6 @@ public class ReviewerResource extends ObjectResourceBase{
     @POST
     @Operation(summary = "add a new Reviewer")
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed({"tac_admin"})
     @Transactional(rollbackOn = {WebApplicationException.class})
     @RolesAllowed({"tac_admin"})
     public Reviewer addReviewer(Person person)
@@ -88,7 +87,6 @@ public class ReviewerResource extends ObjectResourceBase{
     @RolesAllowed({"tac_admin"})
     @Operation(summary = "Remove the Reviewer specified by 'reviewerId'")
     @Transactional(rollbackOn = {WebApplicationException.class})
-    @RolesAllowed ({"tac_admin"})
     public Response removeReviewer(@PathParam("reviewerId") Long reviewerId)
         throws WebApplicationException
     {
