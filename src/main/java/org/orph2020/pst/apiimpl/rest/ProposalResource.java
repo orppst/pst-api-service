@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.ZipEntry;
@@ -1075,7 +1076,13 @@ public class ProposalResource extends ObjectResourceBase {
     @Path("/importXml")
     @Consumes(MediaType.APPLICATION_XML)
     @Transactional(rollbackOn = {WebApplicationException.class})
-    public ObservingProposal importProposalXml(String xmlBody) {
+    public ObservingProposal importProposalXml(InputStream xmlStream) {
+        String xmlBody;
+        try {
+            xmlBody = new String(xmlStream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new WebApplicationException("Failed to read XML body: " + e.getMessage(), 400);
+        }
         if(xmlBody == null || xmlBody.isBlank()){
             throw new WebApplicationException("No XML body provided", 400);
         }
