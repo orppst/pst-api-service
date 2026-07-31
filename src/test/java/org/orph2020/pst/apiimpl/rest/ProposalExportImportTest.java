@@ -2,6 +2,7 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.quarkus.test.security.oidc.Claim;
@@ -30,8 +31,220 @@ import static org.hamcrest.Matchers.equalTo;
 public class ProposalExportImportTest {
     @Inject
     protected ObjectMapper mapper;
+    @Inject
+    protected XmlMapper xmlMapper;
     private Integer proposalId;
     private io.restassured.mapper.ObjectMapper raObjectMapper;
+
+    @BeforeEach
+    void setup() {
+        raObjectMapper = new Jackson2Mapper(((type, charset) -> {
+            return mapper;
+        }));
+        proposalId = given()
+                .when()
+                .get("proposals")
+                .then()
+                .statusCode(200)
+                .body(
+                        "$.size()", greaterThanOrEqualTo(1)
+                )
+                .extract().jsonPath().getInt("[0].code");
+    }
+
+    @Test
+    void testExportThenImportProposal() throws JsonProcessingException {
+        //export example proposal them import and check it's there
+        String importExportProposalName = "Import of exported proposal";
+
+        ObservingProposal exportedProposal =
+                 given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle(importExportProposalName);
+
+        given()
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportedProposal))
+                .header("Content-Type", MediaType.APPLICATION_JSON)
+                .when()
+                .post("proposals/import")
+                .then()
+                .statusCode(200)
+                .body(
+                        containsString(importExportProposalName)
+                );
+
+    }
+
+    @Test
+    void testExportImportWithModifiedInvestigators() throws JsonProcessingException {
+        //export example proposal them import and check it's there
+        String importExportModifiedProposal = "Imported proposal with changed investigators";
+
+        ObservingProposal exportedProposal =
+                given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle(importExportModifiedProposal);
+
+        //Add a new investigator and organisation
+        Investigator newInvestigator = getInvestigator();
+        exportedProposal.addToInvestigators(newInvestigator);
+
+        //Update details of an existing person, should create a new investigator with the same name!
+        exportedProposal
+                .getInvestigators()
+                .get(0)
+                .getPerson()
+                .setEMail("modified-" + exportedProposal.getInvestigators().get(0).getPerson().getEMail());
+
+        exportedProposal
+                .getInvestigators()
+                .get(0)
+                .getPerson()
+                .setFullName("Updated Person");
+
+        //Import the altered proposal
+        given()
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportedProposal))
+                .header("Content-Type", MediaType.APPLICATION_JSON)
+                .when()
+                .post("proposals/import")
+                .then()
+                .statusCode(200)
+                .body(
+                        containsString(importExportModifiedProposal)
+                );
+
+        //Check new investigator has been added to database
+        given()
+                .when()
+                .param("name", "New Imported Person")
+                .get("people")
+                .then()
+                .statusCode(200)
+                .body(
+                    containsString("\"name\":\"New Imported Person\"")
+                );
+
+        //Check a duplicate investigator has been added
+        given()
+                .when()
+                .param("name", "Updated Person")
+                .get("people")
+                .then()
+                .statusCode(200)
+                .body(
+                        "$.size()", equalTo(1)
+                );
+
+    }
+
+    @Test
+    void testImportWithMissingInvestigatorEmailReturns400() throws JsonProcessingException {
+        ObservingProposal exportedProposal =
+                given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle("Import with missing email");
+
+        // Set an investigator's email to null to trigger the 400
+        exportedProposal.getInvestigators().get(0).getPerson().setEMail(null);
+
+        given()
+                .body(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(exportedProposal))
+                .header("Content-Type", MediaType.APPLICATION_JSON)
+                .when()
+                .post("proposals/import")
+                .then()
+                .statusCode(400);
+    }
+
+    @Test
+    void testExportThenImportProposalAsXml() throws Exception {
+        //export example proposal as XML then import and check it's there
+        String importExportXmlProposalName = "Import of XML exported proposal";
+
+        ObservingProposal exportedProposal =
+                given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle(importExportXmlProposalName);
+
+        String xmlBody = xmlMapper.writeValueAsString(exportedProposal);
+
+        given()
+                .body(xmlBody)
+                .header("Content-Type", MediaType.APPLICATION_XML)
+                .when()
+                .post("proposals/importXml")
+                .then()
+                .statusCode(200)
+                .body(
+                        containsString(importExportXmlProposalName)
+                );
+    }
+
+    @Test
+    void testXmlImportWithMissingInvestigatorEmailReturns400() throws Exception {
+        ObservingProposal exportedProposal =
+                given()
+                        .when()
+                        .get("proposals/" + proposalId)
+                        .then()
+                        .statusCode(200)
+                        .extract().as(ObservingProposal.class, raObjectMapper);
+
+        exportedProposal.setTitle("XML Import with missing email");
+
+        // Set an investigator's email to null to trigger the 400
+        exportedProposal.getInvestigators().get(0).getPerson().setEMail(null);
+
+        String xmlBody = xmlMapper.writeValueAsString(exportedProposal);
+
+        given()
+                .body(xmlBody)
+                .header("Content-Type", MediaType.APPLICATION_XML)
+                .when()
+                .post("proposals/importXml")
+                .then()
+                .statusCode(400);
+    }
+
+    private static Investigator getInvestigator() {
+        Organization newOrg = new Organization();
+        newOrg.setName("New Org");
+        newOrg.setAddress("1 Avenue, A Town");
+        Person newPerson = new Person();
+        newPerson.setHomeInstitute(newOrg);
+        newPerson.setEMail("a.n.other@unreal.not.email");
+        newPerson.setFullName("New Imported Person");
+        StringIdentifier orchidId = new StringIdentifier("8888-1234-5678-9012");
+        newPerson.setOrcidId(orchidId);
+        Investigator newInvestigator = new Investigator();
+        newInvestigator.setPerson(newPerson);
+        newInvestigator.setType(InvestigatorKind.COI);
+        return newInvestigator;
+    }
+
+}
+
 
     @BeforeEach
     void setup() {
