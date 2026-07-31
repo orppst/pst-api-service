@@ -141,7 +141,7 @@ abstract public class ObjectResourceBase {
     {
         try {
             return xmlMapper.readValue(xml, type);
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new WebApplicationException("Invalid XML: " + e.getMessage(), 400);
         }
     }
