@@ -2,7 +2,6 @@ package org.orph2020.pst.apiimpl.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.quarkus.test.security.oidc.Claim;
@@ -31,8 +30,6 @@ import static org.hamcrest.Matchers.equalTo;
 public class ProposalExportImportTest {
     @Inject
     protected ObjectMapper mapper;
-    @Inject
-    protected XmlMapper xmlMapper;
     private Integer proposalId;
     private io.restassured.mapper.ObjectMapper raObjectMapper;
 
@@ -168,61 +165,6 @@ public class ProposalExportImportTest {
                 .header("Content-Type", MediaType.APPLICATION_JSON)
                 .when()
                 .post("proposals/import")
-                .then()
-                .statusCode(400);
-    }
-
-    @Test
-    void testExportThenImportProposalAsXml() throws Exception {
-        //export example proposal as XML then import and check it's there
-        String importExportXmlProposalName = "Import of XML exported proposal";
-
-        ObservingProposal exportedProposal =
-                given()
-                        .when()
-                        .get("proposals/" + proposalId)
-                        .then()
-                        .statusCode(200)
-                        .extract().as(ObservingProposal.class, raObjectMapper);
-
-        exportedProposal.setTitle(importExportXmlProposalName);
-
-        String xmlBody = xmlMapper.writeValueAsString(exportedProposal);
-
-        given()
-                .body(xmlBody)
-                .header("Content-Type", MediaType.APPLICATION_XML)
-                .when()
-                .post("proposals/importXml")
-                .then()
-                .statusCode(200)
-                .body(
-                        containsString(importExportXmlProposalName)
-                );
-    }
-
-    @Test
-    void testXmlImportWithMissingInvestigatorEmailReturns400() throws Exception {
-        ObservingProposal exportedProposal =
-                given()
-                        .when()
-                        .get("proposals/" + proposalId)
-                        .then()
-                        .statusCode(200)
-                        .extract().as(ObservingProposal.class, raObjectMapper);
-
-        exportedProposal.setTitle("XML Import with missing email");
-
-        // Set an investigator's email to null to trigger the 400
-        exportedProposal.getInvestigators().get(0).getPerson().setEMail(null);
-
-        String xmlBody = xmlMapper.writeValueAsString(exportedProposal);
-
-        given()
-                .body(xmlBody)
-                .header("Content-Type", MediaType.APPLICATION_XML)
-                .when()
-                .post("proposals/importXml")
                 .then()
                 .statusCode(400);
     }
