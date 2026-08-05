@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.arc.ArcUndeclaredThrowableException;
+import org.ivoa.dm.proposal.prop.AbstractProposal;
+import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
