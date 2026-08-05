@@ -3,6 +3,7 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.arc.ArcUndeclaredThrowableException;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
@@ -24,6 +25,9 @@ abstract public class ObjectResourceBase {
 
     @Inject
     protected ObjectMapper mapper;
+
+    @Inject
+    protected XmlMapper xmlMapper;
 
 
     protected static final String NON_ASSOCIATE_ID =
@@ -118,6 +122,28 @@ abstract public class ObjectResourceBase {
             throw new WebApplicationException(e.getMessage(), 422);
         }
         return jsonObject;
+    }
+
+    protected <T> String writeAsXmlString(T object)
+            throws WebApplicationException
+    {
+        String xmlObject;
+        try {
+            xmlObject = xmlMapper.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            throw new WebApplicationException(e.getMessage(), 422);
+        }
+        return xmlObject;
+    }
+
+    protected <T> T readFromXmlString(String xml, Class<T> type)
+            throws WebApplicationException
+    {
+        try {
+            return xmlMapper.readValue(xml, type);
+        } catch (Exception e) {
+            throw new WebApplicationException("Invalid XML: " + e.getMessage(), 400);
+        }
     }
 
     protected <T> Response responseWrapper(T object, int statusCode) {

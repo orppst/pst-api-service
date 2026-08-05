@@ -35,6 +35,8 @@ dependencies {
 
     implementation("commons-io:commons-io:2.15.1")
 
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+
     implementation("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 }
