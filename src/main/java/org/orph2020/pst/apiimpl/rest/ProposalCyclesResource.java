@@ -597,4 +597,16 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         }
     }
 
+    /// **** XML UI Observatory Specific Additional Information **** ///
+
+    // end point to upload the "template" XML file defining the observatory-specific questions
+    // requires: cycleCode
+
+    // end point to serve the XML file (as HTML?) to the front end client
+    // requires: cycleCode
+
+    // end point to save the responses as a new XML file, but belonging to the ObservingProposal
+    // as a SupportingDocument (these are then copied on Submission to the cycle)
+    // requires: cycleCode, proposalCode, the XML as text(?)
+
 }
