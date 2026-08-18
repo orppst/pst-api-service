@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<questions>
+    <question>
+        <id>1</id>
+        <label>Observatory name</label>
+        <description>Please provide the well-known name</description>
+        <query>What is the name of the observatory?</query>
+        <response>Replace with actual answer</response>
+    </question>
+    <question>
+        <id>2</id>
+        <label>Observatory address</label>
+        <description>City and country only</description>
+        <query>What is the observatory's address?</query>
+        <response>Replace with actual answer</response>
+    </question>
+</questions>
