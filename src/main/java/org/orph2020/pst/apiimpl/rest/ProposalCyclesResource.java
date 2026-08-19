@@ -3,6 +3,8 @@ package org.orph2020.pst.apiimpl.rest;
  * Created on 20/04/2023 by Paul Harrison (paul.harrison@manchester.ac.uk).
  */
 
+import freemarker.template.TemplateException;
+import io.quarkiverse.freemarker.TemplatePath;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.persistence.Query;
@@ -28,13 +30,16 @@ import jakarta.ws.rs.core.MediaType;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+
+import freemarker.template.Template;
 
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"default-roles-orppst"})
+//@RolesAllowed({"default-roles-orppst"})
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -44,6 +49,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     JsonWebToken userInfo;
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    @Inject
+    @TemplatePath("hello.ftl")
+    Template hello;
 
     private static final String notOnTACmsg = "This endpoint is restricted to TAC members only";
 
@@ -598,6 +607,15 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     }
 
     /// **** XML UI Observatory Specific Additional Information **** ///
+
+    @GET
+    @Path("hello")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String hello(@QueryParam("name") String name) throws IOException, TemplateException {
+        StringWriter sw = new StringWriter();
+        hello.process(Map.of("name", name), sw);
+        return sw.toString();
+    }
 
     // end point to upload the "template" XML file defining the observatory-specific questions
     // requires: cycleCode

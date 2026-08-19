@@ -22,6 +22,8 @@ dependencies {
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-kubernetes-service-binding")
 
+    implementation("io.quarkiverse.freemarker:quarkus-freemarker:1.3.0")
+
 //    implementation("io.quarkiverse.helm:quarkus-helm:0.1.2")
 
     implementation("io.quarkus:quarkus-arc")
