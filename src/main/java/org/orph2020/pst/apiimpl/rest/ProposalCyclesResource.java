@@ -28,13 +28,17 @@ import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.StringWriter;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import freemarker.template.Template;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
@@ -616,6 +620,41 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         hello.process(Map.of("name", name), sw);
         return sw.toString();
     }
+
+    private Map<String, String> xmlMap(String resourcePath) throws IOException, XMLStreamException {
+        XMLInputFactory factory = XMLInputFactory.newInstance();
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
+        XMLStreamReader input = null;
+        try (FileInputStream file = new FileInputStream(resourcePath)) {
+            input = factory.createXMLStreamReader(file);
+
+            Map<String, String> map = new HashMap<>();
+            while (input.hasNext()) {
+                input.next();
+
+                //TODO: Change tag names to the ones we're using
+                if (input.isStartElement()) {
+                    if (input.getLocalName().equals("heading")) {
+                        map.put("heading", input.getElementText());
+                    }
+                    if (input.getLocalName().equals("from")) {
+                        map.put("from", String.format("from: %s", input.getElementText()));
+                    }
+                    if (input.getLocalName().equals("content")) {
+                        map.put("content", input.getElementText());
+                    }
+                }
+            }
+            return map;
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+        }
+    }
+
+
 
     // end point to upload the "template" XML file defining the observatory-specific questions
     // requires: cycleCode
