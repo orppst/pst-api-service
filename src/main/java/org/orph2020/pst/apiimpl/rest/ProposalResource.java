@@ -36,6 +36,7 @@ import jakarta.ws.rs.core.Response;
 import org.orph2020.pst.common.json.ProposalValidation;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.ZipEntry;
@@ -691,6 +692,21 @@ public class ProposalResource extends ObjectResourceBase {
                 .build();
     }
 
+    @GET
+    @Operation(summary="export a proposal as an XML file")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Path(proposalRoot+"/exportXml")
+    public Response exportProposalXml(@PathParam("proposalCode")Long proposalCode)
+            throws WebApplicationException {
+        ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
+
+        return Response
+                .status(Response.Status.OK)
+                .header("Content-Disposition", "attachment;filename=" + "proposal.xml")
+                .entity(writeAsXmlString(proposalForExport))
+                .build();
+    }
+
     private void overviewHTMLDocument(AbstractProposal proposal, boolean excludeInvestigators) throws IOException {
 
         String html = "<!DOCTYPE html>\n" +
@@ -950,66 +966,65 @@ public class ProposalResource extends ObjectResourceBase {
     public File CreateZipFile(String zipFileName, AbstractProposal proposal, boolean anonymise, boolean genericExportFilenames) throws IOException {
         // Create zip file
         File myZipFile = new File(zipFileName);
-        ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile));
         String projFilename = "proposal";
-
-        // Write proposal data (if given)
-        if(proposal != null) {
-            if (proposal instanceof SubmittedProposal) {
-                projFilename = ((SubmittedProposal) proposal).getProposalCode() + "."
-                        + proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
-                        .substring(0, Math.min(proposal.getTitle().length(), 30));
-            }
-            if (proposal instanceof ObservingProposal) {
-                projFilename = proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
-                        .substring(0, Math.min(proposal.getTitle().length(), 30));
-            }
-
-            if(!anonymise) {
-                //json of Proposal
-                ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes());
-                zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"proposal.json":projFilename+ ".json"));
-
-                byte[] bytes = new byte[1024];
-                int length;
-                while ((length = bais.read(bytes)) >= 0) {
-                    zipOs.write(bytes, 0, length);
+        try (ZipOutputStream zipOs = new ZipOutputStream(new FileOutputStream(myZipFile))) {
+            // Write proposal data (if given)
+            if(proposal != null) {
+                if (proposal instanceof SubmittedProposal) {
+                    projFilename = ((SubmittedProposal) proposal).getProposalCode() + "."
+                            + proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                            .substring(0, Math.min(proposal.getTitle().length(), 30));
                 }
-                bais.close();
+                if (proposal instanceof ObservingProposal) {
+                    projFilename = proposal.getTitle().replaceAll("[\\\\/:*?\"<>|]", "_")
+                            .substring(0, Math.min(proposal.getTitle().length(), 30));
+                }
 
-                zipOs.flush();
-                zipOs.closeEntry();
-            }
+                if(!anonymise) {
+                    //json of Proposal
+                    try (ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes())) {
+                        zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"proposal.json":projFilename+ ".json"));
 
-            // HTML overview page
-            overviewHTMLDocument(proposal, anonymise);
-            zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"Overview.html":projFilename + ".html"));
-            Files.copy(proposalDocumentStore.fetchFile(proposal.getId() + "/Overview.html").toPath(), zipOs);
-            zipOs.flush();
-            zipOs.closeEntry();
+                        byte[] bytes = new byte[1024];
+                        int length;
+                        while ((length = bais.read(bytes)) >= 0) {
+                            zipOs.write(bytes, 0, length);
+                        }
+                    }
 
-            // Add all supporting documents unless anonymised, then only add compiled justification
-            for(SupportingDocument doc: proposal.getSupportingDocuments()) {
-                // If anonymise is true, only include the compiled justifications pdf
-                if(!anonymise || doc.getTitle().equals(justificationsResource.jobName+".pdf")) {
-                    // If genericExportFilenames is false, rename compiled justifications pdf
-                    if(!genericExportFilenames && doc.getTitle().equals(justificationsResource.jobName+".pdf"))
-                        zipOs.putNextEntry(new ZipEntry(projFilename + ".pdf"));
-                     else
-                        zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
-
-                    Files.copy(proposalDocumentStore.fetchFile(
-                            proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
-                                        + doc.getTitle()).toPath(),
-                                zipOs);
                     zipOs.flush();
                     zipOs.closeEntry();
                 }
+
+                // HTML overview page
+                overviewHTMLDocument(proposal, anonymise);
+                zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"Overview.html":projFilename + ".html"));
+                Files.copy(proposalDocumentStore.fetchFile(proposal.getId() + "/Overview.html").toPath(), zipOs);
+                zipOs.flush();
+                zipOs.closeEntry();
+
+                // Add all supporting documents unless anonymised, then only add compiled justification
+                for(SupportingDocument doc: proposal.getSupportingDocuments()) {
+                    // If anonymise is true, only include the compiled justifications pdf
+                    if(!anonymise || doc.getTitle().equals(justificationsResource.jobName+".pdf")) {
+                        // If genericExportFilenames is false, rename compiled justifications pdf
+                        if(!genericExportFilenames && doc.getTitle().equals(justificationsResource.jobName+".pdf"))
+                            zipOs.putNextEntry(new ZipEntry(projFilename + ".pdf"));
+                         else
+                            zipOs.putNextEntry(new ZipEntry(doc.getTitle()));
+
+                        Files.copy(proposalDocumentStore.fetchFile(
+                                proposalDocumentStore.getSupportingDocumentsPath(proposal.getId())
+                                            + doc.getTitle()).toPath(),
+                                    zipOs);
+                        zipOs.flush();
+                        zipOs.closeEntry();
+                    }
+                }
             }
+
+            zipOs.finish();
         }
-
-        zipOs.finish();
-
         return myZipFile;
     }
 
@@ -1044,7 +1059,29 @@ public class ProposalResource extends ObjectResourceBase {
         if(importProposal==null){
             throw new WebApplicationException("No file uploaded",400);
         }
+        return processImportedProposal(importProposal);
+    }
 
+    @POST
+    @Operation(summary="import a proposal from an XML file")
+    @Path("/importXml")
+    @Consumes(MediaType.APPLICATION_XML)
+    @Transactional(rollbackOn = {WebApplicationException.class})
+    public ObservingProposal importProposalXml(InputStream xmlStream) {
+        String xmlBody;
+        try {
+            xmlBody = new String(xmlStream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new WebApplicationException("Failed to read XML body: " + e.getMessage(), 400);
+        }
+        if(xmlBody == null || xmlBody.isBlank()){
+            throw new WebApplicationException("No XML body provided", 400);
+        }
+        ObservingProposal importProposal = readFromXmlString(xmlBody, ObservingProposal.class);
+        return processImportedProposal(importProposal);
+    }
+
+    private ObservingProposal processImportedProposal(ObservingProposal importProposal) {
         new ProposalManagementModel().createContext();
         ObservingProposal newProposal = new ObservingProposal(importProposal);
 
