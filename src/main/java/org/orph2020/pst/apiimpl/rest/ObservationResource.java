@@ -106,6 +106,9 @@ public class ObservationResource extends ObjectResourceBase {
                 proposalCode, observationId);
     }
 
+    /*
+        Checks that the start time is before the end time
+     */
     private void CheckTimingWindow(TimingWindow timingWindow) throws WebApplicationException
     {
         if(timingWindow.getStartTime().getTime() > timingWindow.getEndTime().getTime()) {
@@ -326,11 +329,10 @@ public class ObservationResource extends ObjectResourceBase {
     {
         CheckTimingWindow(replacementWindow);
 
-        Observation observation = findChildByQuery(ObservingProposal.class, Observation.class,
-                "observations", proposalCode, observationId);
-
-        TimingWindow window = findChildByQuery(Observation.class, TimingWindow.class,
-                "constraints", observationId, timingWindowId);
+        if (!(findChildByQuery(Observation.class, ObservingConstraint.class,
+                "constraints", observationId, timingWindowId) instanceof TimingWindow window)) {
+            throw new WebApplicationException("The given constraint id is not a TimingWindow");
+        }
 
         //WORK-AROUND: changes to 'isAvoidConstraint' and/or 'note' fields only won't update the window,
         //so we nudge the 'endTime' (or could use startTime) by a millisecond to get the window to update
