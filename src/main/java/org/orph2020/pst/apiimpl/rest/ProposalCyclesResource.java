@@ -23,6 +23,7 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.CycleObservingTimeTotal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ObservatoryQuestion;
 import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 
 import jakarta.ws.rs.*;
@@ -33,9 +34,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import freemarker.template.Template;
-import org.xml.sax.SAXException;
 
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
@@ -621,49 +620,69 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return sw.toString();
     }
 
-    private Map<String, String> xmlMap(String resourcePath) throws IOException, XMLStreamException {
+    private List<ObservatoryQuestion> parseQuestionsXml(String resourcePath)
+            throws IOException, XMLStreamException {
+
         XMLInputFactory factory = XMLInputFactory.newInstance();
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
         factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
-        XMLStreamReader input = null;
+
+        List<ObservatoryQuestion> questions = new ArrayList<>();
+        XMLStreamReader reader = null;
+
         try (FileInputStream file = new FileInputStream(resourcePath)) {
-            input = factory.createXMLStreamReader(file);
+            reader = factory.createXMLStreamReader(file);
+            ObservatoryQuestion current = null;
 
-            Map<String, String> map = new HashMap<>();
-            while (input.hasNext()) {
-                input.next();
+            while (reader.hasNext()) {
+                int event = reader.next();
 
-                //TODO: Change tag names to the ones we're using
-                if (input.isStartElement()) {
-                    if (input.getLocalName().equals("heading")) {
-                        map.put("heading", input.getElementText());
+                if (event == XMLStreamReader.START_ELEMENT) {
+                    String tag = reader.getLocalName();
+                    switch (tag) {
+                        case "question" -> current = new ObservatoryQuestion();
+                        case "id"          -> { if (current != null) current.id = Integer.parseInt(reader.getElementText()); }
+                        case "label"       -> { if (current != null) current.label = reader.getElementText(); }
+                        case "description" -> { if (current != null) current.description = reader.getElementText(); }
+                        case "query"       -> { if (current != null) current.query = reader.getElementText(); }
+                        case "response"    -> { if (current != null) current.response = reader.getElementText(); }
                     }
-                    if (input.getLocalName().equals("from")) {
-                        map.put("from", String.format("from: %s", input.getElementText()));
-                    }
-                    if (input.getLocalName().equals("content")) {
-                        map.put("content", input.getElementText());
-                    }
+                } else if (event == XMLStreamReader.END_ELEMENT
+                        && "question".equals(reader.getLocalName())
+                        && current != null) {
+                    questions.add(current);
+                    current = null;
                 }
             }
-            return map;
         } finally {
-            if (input != null) {
-                input.close();
-            }
+            if (reader != null) reader.close();
         }
+        return questions;
     }
 
+    @GET
+    @Path("{cycleCode}/observatoryQuestions")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get the observatory-specific questions for the given proposal cycle")
+    public List<ObservatoryQuestion> getObservatoryQuestions(
+            @PathParam("cycleCode") Long cycleCode) throws IOException, XMLStreamException {
 
+        // TODO: Resolve the XML file for the given cycle
+        String xmlPath = "src/main/resources/observatorySpecifics/example-xml-questions.xml";
+        return parseQuestionsXml(xmlPath);
+    }
 
-    // end point to upload the "template" XML file defining the observatory-specific questions
-    // requires: cycleCode
+    @POST
+    @Path("{cycleCode}/observatoryQuestions")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Submit answered observatory-specific questions for the given proposal cycle")
+    public Response saveObservatoryQuestions(
+            @PathParam("cycleCode") Long cycleCode,
+            List<ObservatoryQuestion> answeredQuestions) {
 
-    // end point to serve the XML file (as HTML?) to the front end client
-    // requires: cycleCode
-
-    // end point to save the responses as a new XML file, but belonging to the ObservingProposal
-    // as a SupportingDocument (these are then copied on Submission to the cycle)
-    // requires: cycleCode, proposalCode, the XML as text(?)
-
+        // TODO: persist answeredQuestions (e.g. store in DB or attach as file to proposal)
+        logger.infof("Received %d answered questions for cycle %d", answeredQuestions.size(), cycleCode);
+        return Response.ok().build();
+    }
 }
