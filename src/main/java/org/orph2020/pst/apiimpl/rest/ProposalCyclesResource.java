@@ -646,6 +646,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                         case "description" -> { if (current != null) current.description = reader.getElementText(); }
                         case "query"       -> { if (current != null) current.query = reader.getElementText(); }
                         case "response"    -> { if (current != null) current.response = reader.getElementText(); }
+                        case "minChar"     -> { if (current != null) current.minChar = Integer.parseInt(reader.getElementText()); }
+                        case "maxChar"     -> { if (current != null) current.maxChar = Integer.parseInt(reader.getElementText()); }
                     }
                 } else if (event == XMLStreamReader.END_ELEMENT
                         && "question".equals(reader.getLocalName())
