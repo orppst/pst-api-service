@@ -1,3 +1,4 @@
+
 plugins {
     id("org.orph2020.pst.common-plugin")
 }
@@ -39,6 +40,12 @@ dependencies {
 
     implementation("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+    constraints {
+        implementation("org.javastro.ivoa.core:pgsphere:0.9.2-SNAPSHOT") {
+            because("previous version fails function registration")
+        }
+    }
 }
 
 
