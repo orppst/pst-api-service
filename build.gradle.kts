@@ -1,9 +1,11 @@
+
 plugins {
     id("org.orph2020.pst.common-plugin")
 }
 version = "1.0"
 
 dependencies {
+    implementation("org.orph2020.pst:pst-lib")
     implementation("io.quarkus:quarkus-mailer")
 
     implementation("io.quarkiverse.qute.web:quarkus-qute-web")
@@ -15,7 +17,7 @@ dependencies {
     implementation("io.quarkus:quarkus-oidc")
 
     implementation("io.quarkus:quarkus-hibernate-orm")
-    implementation("io.quarkus:quarkus-rest-client-reactive-jackson")
+    implementation("io.quarkus:quarkus-rest-client-jackson")
     implementation("io.quarkus:quarkus-hibernate-validator")
     implementation("io.quarkus:quarkus-liquibase")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
@@ -24,8 +26,8 @@ dependencies {
 //    implementation("io.quarkiverse.helm:quarkus-helm:0.1.2")
 
     implementation("io.quarkus:quarkus-arc")
-    implementation("io.quarkus:quarkus-keycloak-admin-client-reactive")
-    implementation("io.quarkus:quarkus-resteasy-reactive-jackson")
+    implementation("io.quarkus:quarkus-keycloak-admin-rest-client")
+    implementation("io.quarkus:quarkus-rest-jackson")
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("io.quarkus:quarkus-test-security-oidc")
     testImplementation("io.quarkus:quarkus-test-security")
@@ -34,8 +36,16 @@ dependencies {
 
     implementation("commons-io:commons-io:2.15.1")
 
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+
     implementation("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+    constraints {
+        implementation("org.javastro.ivoa.core:pgsphere:0.9.2-SNAPSHOT") {
+            because("previous version fails function registration")
+        }
+    }
 }
 
 
