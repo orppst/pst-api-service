@@ -31,6 +31,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -462,8 +464,8 @@ public class UseCasePiTest {
 
         //create a TimingWindow constraint - notice we do not allow 'null' Dates
         TimingWindow timingWindow = TimingWindow.createTimingWindow((tw) -> {
-            tw.startTime = new Date(0); // posix epoch
-            tw.endTime = new Date(1000); // 1 second after posix epoch
+            tw.startTime = new Date(0).toInstant().atZone(ZoneOffset.UTC); // posix epoch
+            tw.endTime = tw.startTime.plusSeconds(1); // 1 second after posix epoch
             tw.isAvoidConstraint = false;
             tw.note = "number 1";
         });
@@ -491,8 +493,8 @@ public class UseCasePiTest {
 
         //create a new timing window to update the one just posted
         TimingWindow timingWindowUpdate = TimingWindow.createTimingWindow((tw) -> {
-            tw.startTime = new Date(1000);
-            tw.endTime = new Date(5000);
+            tw.startTime = new Date(1000).toInstant().atZone(ZoneOffset.UTC);
+            tw.endTime = new Date(5000).toInstant().atZone(ZoneOffset.UTC);
             tw.note = "number 1 update";
             tw.isAvoidConstraint = true;
         });
@@ -602,7 +604,7 @@ public class UseCasePiTest {
                 .body("title", equalTo("Cycle 19"))
                 .extract().as(ProposalCycleSynopsis.class, raObjectMapper);
 
-        boolean afterDeadline = cycleDates.submissionDeadline.before(new Date());
+        boolean afterDeadline = cycleDates.submissionDeadline.isBefore(ZonedDateTime.now(ZoneOffset.UTC));
 
         LOGGER.info("withdraw submitted proposal id=" + submittedId);
         given()

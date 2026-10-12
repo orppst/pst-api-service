@@ -27,17 +27,27 @@ import org.orph2020.pst.common.json.SubmittedProposalMailData;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import io.quarkus.logging.Log;
 
+/**
+ *
+ FIXME - Date(0) was used as a special date for working out if a review has happened - might not have survived the transfer to ZonedDateTime
+ *
+ * */
 @Path("proposalCycles/{cycleCode}/submittedProposals")
 @Tag(name="proposalCycles-submitted-proposals")
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"default-roles-orppst"})
 public class SubmittedProposalResource extends ObjectResourceBase{
+
+    public static final java.time.ZonedDateTime UNIX_EPOCH = new Date(0).toInstant().atZone(ZoneOffset.UTC);
 
     @Inject
     ProposalDocumentStore proposalDocumentStore;
@@ -207,6 +217,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @Path("allReviewsLocked")
     @RolesAllowed({"tac_admin", "tac_member", "reviewer"})
     @Operation(summary = "check that the reviews for all submitted proposals have been locked")
+
     public boolean checkAllReviewsLocked(@PathParam("cycleCode") Long cycleCode)
         throws WebApplicationException
     {
@@ -216,7 +227,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         return submittedProposals
                 .stream()
-                .noneMatch(sp -> compareDatesOnly(sp.getReviewsCompleteDate(), new Date(0L)));
+                .noneMatch(sp -> sp.getReviewsCompleteDate() == UNIX_EPOCH);
     }
 
 
@@ -264,7 +275,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         //FIXME need to gather the config
 
         // TODO Double check all references are updated correctly
-        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, proposalCodeGenerator.generateProposalCode(cycle), configMappings, new Date(), false, new Date(0L), null );
+        SubmittedProposal submittedProposal = new SubmittedProposal(proposal, proposalCodeGenerator.generateProposalCode(cycle), configMappings, Instant.now().atZone(ZoneOffset.UTC), false, UNIX_EPOCH, null );
         submittedProposal.updateClonedReferences();
         em.persist(submittedProposal);
         submittedProposal.addToRelatedProposals(new RelatedProposal(proposal));
@@ -328,7 +339,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
         //the success state of a proposal may only be changed once ALL currently assigned reviews are complete
         boolean allReviewsComplete = true;
         for (ProposalReview review : submittedProposal.getReviews()) {
-            if (review.getReviewDate().compareTo(new Date(0L)) == 0) {
+            if (review.getReviewDate().compareTo(UNIX_EPOCH) == 0) {
                 allReviewsComplete = false;
                 break;
             }
@@ -348,7 +359,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
     @GET
     @Path("{submittedProposalId}/completeDate")
     @Operation(summary = "get the 'reviewsCompleteDate' of the given submitted proposal")
-    public Date getReviewsCompleteDate(
+    public ZonedDateTime getReviewsCompleteDate(
             @PathParam("cycleCode") Long cycleCode,
             @PathParam("submittedProposalId") Long submittedProposalId
     ) {
@@ -374,13 +385,13 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         //check that the reviews have actually been submitted before setting the complete date
         if (submittedProposal.getReviews().stream()
-                .anyMatch(review -> review.getReviewDate().compareTo(new Date(0L)) == 0)) {
+                .anyMatch(review -> review.getReviewDate().compareTo(UNIX_EPOCH) == 0)) {
             throw new WebApplicationException(
                     "Not all reviews have been submitted", 400
             );
         }
 
-        submittedProposal.setReviewsCompleteDate(new Date());
+        submittedProposal.setReviewsCompleteDate(ZonedDateTime.now(ZoneOffset.UTC));
 
         return responseWrapper(submittedProposal, 200);
     }
@@ -399,7 +410,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
                 "submittedProposals", cycleCode, submittedProposalId);
 
         //reset date to the posix epoch (use as an "undo" after setting the complete date)
-        submittedProposal.setReviewsCompleteDate(new Date(0L));
+        submittedProposal.setReviewsCompleteDate(UNIX_EPOCH);
 
         return responseWrapper(submittedProposal, 200);
     }
@@ -453,7 +464,7 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
         //all dates are initialised to the posix epoch, meaning that if they equal to that date they've
         //yet to be updated.
-        if (submittedProposal.getReviewsCompleteDate().compareTo(new Date(0L)) == 0) {
+        if (submittedProposal.getReviewsCompleteDate().compareTo(UNIX_EPOCH) == 0) {
             throw new WebApplicationException(
                     "You may only send TAC result emails after the reviews have been finalised for this proposal"
             );
