@@ -3,10 +3,9 @@ package org.orph2020.pst.apiimpl.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import io.quarkus.arc.ArcUndeclaredThrowableException;
-import org.ivoa.dm.proposal.prop.AbstractProposal;
-import org.ivoa.dm.proposal.prop.ObservingProposal;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
 import org.ivoa.vodml.jaxb.XmlIdManagement;
 import org.jboss.logging.Logger;
 import org.orph2020.pst.common.json.ObjectIdentifier;
@@ -17,6 +16,10 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+
+import javax.xml.transform.stream.StreamSource;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -29,7 +32,7 @@ abstract public class ObjectResourceBase {
     protected ObjectMapper mapper;
 
     @Inject
-    protected XmlMapper xmlMapper;
+    protected JAXBContext jaxbContext;
 
 
     protected static final String NON_ASSOCIATE_ID =
@@ -131,18 +134,21 @@ abstract public class ObjectResourceBase {
     {
         String xmlObject;
         try {
-            xmlObject = xmlMapper.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
+            final StringWriter writer = new StringWriter();
+            jaxbContext.createMarshaller().marshal(object, writer);
+            xmlObject = writer.toString();
+        } catch (JAXBException e) {
             throw new WebApplicationException(e.getMessage(), 422);
         }
-        return xmlObject;
+       return xmlObject;
     }
 
     protected <T> T readFromXmlString(String xml, Class<T> type)
             throws WebApplicationException
     {
         try {
-            return xmlMapper.readValue(xml, type);
+            var retval =  jaxbContext.createUnmarshaller().unmarshal(new StreamSource(new StringReader(xml)), type);
+            return retval.getValue();
         } catch (Exception e) {
             throw new WebApplicationException("Invalid XML: " + e.getMessage(), 400);
         }
