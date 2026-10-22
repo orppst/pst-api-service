@@ -111,7 +111,7 @@ public class ObservationResource extends ObjectResourceBase {
      */
     private void CheckTimingWindow(TimingWindow timingWindow) throws WebApplicationException
     {
-        if(timingWindow.getStartTime().getTime() > timingWindow.getEndTime().getTime()) {
+        if(timingWindow.getStartTime().isAfter(timingWindow.getEndTime())) {
             throw new WebApplicationException("Start time cannot be after end time");
         }
     }
@@ -336,15 +336,15 @@ public class ObservationResource extends ObjectResourceBase {
 
         //WORK-AROUND: changes to 'isAvoidConstraint' and/or 'note' fields only won't update the window,
         //so we nudge the 'endTime' (or could use startTime) by a millisecond to get the window to update
-        if (window.getStartTime().getTime() == replacementWindow.getStartTime().getTime() &&
-                window.getEndTime().getTime() == replacementWindow.getEndTime().getTime())
+        if (window.getStartTime() == replacementWindow.getStartTime() &&
+                window.getEndTime() == replacementWindow.getEndTime())
         {
             Date d = new Date();
 
             //randomise the sign of the nudge such that the long term mean is zero
             long nudge = d.getTime() % 2 == 0 ? 1L : -1L;
 
-            replacementWindow.setEndTime(new Date(replacementWindow.getEndTime().getTime() + nudge));
+            replacementWindow.setEndTime(replacementWindow.getEndTime().plusNanos(nudge * 1_000_000L)); //nudge by 1 millisecond
         }
 
         window.updateUsing(replacementWindow);

@@ -38,6 +38,7 @@ import org.orph2020.pst.common.json.ProposalValidation;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -295,8 +296,8 @@ public class ProposalResource extends ObjectResourceBase {
             ProposalCycleSynopsis theCycleDates = proposalCyclesResource.getProposalCycleDetails(cycleId);
 
             //Has proposal cycle submission deadline passed?
-            Date now = new Date();
-            if(now.after(theCycleDates.submissionDeadline)) {
+            Instant now = Instant.now();
+            if(now.isAfter(theCycleDates.submissionDeadline.toInstant())) {
                 valid = false;
                 error.append("The submission deadline has passed.<br/>");
             }
