@@ -8,6 +8,7 @@ import io.quarkus.test.security.oidc.Claim;
 import io.quarkus.test.security.oidc.OidcSecurity;
 import io.quarkus.test.security.oidc.UserInfo;
 import io.restassured.internal.mapping.Jackson2Mapper;
+import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import org.ivoa.dm.ivoa.StringIdentifier;
@@ -15,9 +16,16 @@ import org.ivoa.dm.proposal.prop.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @TestSecurity(user = "pi", roles = "default-roles-orppst")
@@ -75,6 +83,50 @@ public class ProposalExportImportTest {
                         containsString(importExportProposalName)
                 );
 
+    }
+
+    @Test
+    void testExportProposalXml() {
+        String proposalTitle = currentProposal().getTitle();
+
+        given()
+                .when()
+                .get("proposals/" + proposalId + "/exportXml")
+                .then()
+                .statusCode(200)
+                .header("Content-Disposition", containsString("proposal.xml"))
+                .body(containsString(proposalTitle));
+    }
+
+    @Test
+    void testExportZipIncludesXmlProposal() throws IOException {
+        String proposalTitle = currentProposal().getTitle();
+        Response response = given()
+                .when()
+                .get("proposals/" + proposalId + "/exportZip")
+                .then()
+                .statusCode(200)
+                .extract()
+                .response();
+
+        boolean foundXmlEntry = false;
+        String xmlEntryContent = null;
+
+        try (ZipInputStream zipInputStream = new ZipInputStream(
+                new ByteArrayInputStream(response.asByteArray()), StandardCharsets.UTF_8)) {
+            ZipEntry zipEntry;
+            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+                if (zipEntry.getName().endsWith(".xml")) {
+                    foundXmlEntry = true;
+                    xmlEntryContent = new String(zipInputStream.readAllBytes(), StandardCharsets.UTF_8);
+                    break;
+                }
+            }
+        }
+
+        assertTrue(foundXmlEntry, "Expected exported zip to contain an XML proposal entry");
+        assertNotNull(xmlEntryContent);
+        assertTrue(xmlEntryContent.contains(proposalTitle));
     }
 
     @Test
@@ -183,6 +235,16 @@ public class ProposalExportImportTest {
         newInvestigator.setPerson(newPerson);
         newInvestigator.setType(InvestigatorKind.COI);
         return newInvestigator;
+    }
+
+    private ObservingProposal currentProposal() {
+        return given()
+                .when()
+                .get("proposals/" + proposalId)
+                .then()
+                .statusCode(200)
+                .extract()
+                .as(ObservingProposal.class, raObjectMapper);
     }
 
 }

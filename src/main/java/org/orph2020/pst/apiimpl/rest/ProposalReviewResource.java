@@ -13,6 +13,9 @@ import org.ivoa.dm.proposal.management.SubmittedProposal;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
 
@@ -22,6 +25,7 @@ import java.util.List;
 public class ProposalReviewResource extends ObjectResourceBase{
 
     private static final String locked = "Reviews have been locked, no edits allowed";
+    public static final java.time.ZonedDateTime UNIX_EPOCH = new Date(0L).toInstant().atZone(ZoneOffset.UTC);
 
     @GET
     @Operation(summary = "get the ObjectIdentifiers of the reviews of the given SubmittedProposal")
@@ -74,7 +78,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
         //set the date to the posix epoch, user must confirm that the review is complete at which
         //point this date is updated to that at the point of confirmation, and the review becomes
         //"locked"
-        proposalReview.setReviewDate(new Date(0L));
+        proposalReview.setReviewDate(UNIX_EPOCH);
 
         return addNewChildObject(submittedProposal, proposalReview, submittedProposal::addToReviews);
     }
@@ -129,14 +133,14 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
 
-        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+        if (submittedProposal.getReviewsCompleteDate().isAfter(UNIX_EPOCH)) {
             throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setComment(replacementComment);
 
         //any change indicated by resetting the review date to posix epoch,
-        proposalReview.setReviewDate(new Date(0L));
+        proposalReview.setReviewDate(UNIX_EPOCH);
 
         em.merge(proposalReview);
 
@@ -160,14 +164,14 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
 
-        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+        if (submittedProposal.getReviewsCompleteDate().isAfter(UNIX_EPOCH)) {
             throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setScore(replacementScore);
 
         //any change indicated by resetting the review date to posix epoch,
-        proposalReview.setReviewDate(new Date(0L));
+        proposalReview.setReviewDate(UNIX_EPOCH);
 
         em.merge(proposalReview);
 
@@ -192,14 +196,14 @@ public class ProposalReviewResource extends ObjectResourceBase{
 
         SubmittedProposal submittedProposal = findObject(SubmittedProposal.class, submittedProposalId);
 
-        if (submittedProposal.getReviewsCompleteDate().after(new Date(0L))) {
+        if (submittedProposal.getReviewsCompleteDate().isAfter(UNIX_EPOCH)) {
             throw new WebApplicationException(locked, 400);
         }
 
         proposalReview.setTechnicalFeasibility(replacementFeasibility);
 
         //any change indicated by resetting the review date to posix epoch,
-        proposalReview.setReviewDate(new Date(0L));
+        proposalReview.setReviewDate(UNIX_EPOCH);
 
         em.merge(proposalReview);
 
@@ -221,7 +225,7 @@ public class ProposalReviewResource extends ObjectResourceBase{
         ProposalReview proposalReview = findChildByQuery(SubmittedProposal.class,
                 ProposalReview.class, "reviews", reviewedProposalId, reviewId);
 
-        proposalReview.setReviewDate(new Date());
+        proposalReview.setReviewDate(Instant.now().atZone(ZoneId.of("UTC")));
 
         em.merge(proposalReview);
 
