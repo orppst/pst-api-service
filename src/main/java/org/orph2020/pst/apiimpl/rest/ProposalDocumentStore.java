@@ -53,6 +53,20 @@ public class ProposalDocumentStore {
     }
 
     /**
+     * Creates the subdirectory structure for the storage of proposal cycle specific documents.
+     * This should be called when creating a new proposal cycle. (The pun is unintentional, honest.)
+     * @param cycleCode the related proposal cycle ID for which you are creating the store
+     * @throws IOException I/O exception
+     */
+    public void createCyclePaths(Long cycleCode) throws IOException {
+        Files.createDirectories(Paths.get(
+                proposalStoreRoot,
+                "proposalCycles",
+                cycleCode.toString()
+        ));
+    }
+
+    /**
      * Creates the working directory for 'latexmk' to produce PDF output from the given Justifications data.
      * @param proposalCode the ID of the proposal
      * @param proposalTitle the title of the proposal (inserted into the header)
@@ -284,6 +298,7 @@ public class ProposalDocumentStore {
             String observingProposalName
     )
             throws IOException {
+        //TODO: replace the hard-coded strings below with configuration values
         String proposalTitleTarget = "PROPOSAL-TITLE-HERE";
         String cycleCodeTarget = "CYCLE-ID-HERE";
 

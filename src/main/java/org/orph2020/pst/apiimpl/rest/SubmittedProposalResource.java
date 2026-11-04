@@ -13,6 +13,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.apache.commons.io.FileUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -66,6 +68,9 @@ public class SubmittedProposalResource extends ObjectResourceBase{
 
     @Inject
     JustificationsResource justificationsResource;
+
+    @ConfigProperty(name = "answered.observatoryQuestions.filename")
+    String answeredObservatoryQuestionsFileName;
 
     @CheckedTemplate
     static class Templates {
@@ -293,6 +298,34 @@ public class SubmittedProposalResource extends ObjectResourceBase{
             throw new WebApplicationException(e);
         }
         //************************************************************
+
+        // we keep the observatory specific questions separate from the other supporting documents for
+        // privacy reasons, so we need to copy them over to the submitted proposal's document store here.
+        // path to the answered questions is:
+        // proposalStoreRoot/proposalCycles/<cycleId>/<proposalId>/<filename>
+        String sourceLocation = proposalDocumentStore.getStoreRoot() + "/proposalCycles/" + cycleId + "/" + proposalId;
+        String xmlFilename = answeredObservatoryQuestionsFileName;
+
+        String destinationLocation = proposalDocumentStore.getStoreRoot() + "/" + submittedProposal.getId() +
+                "/supportingDocuments";
+
+        // observatory specific questions are optional so we only copy them if they exist
+        File sourceFile = new File(sourceLocation, xmlFilename);
+        if (sourceFile.isFile()) {
+            // ** copy the observatory specific questions to the submitted proposal's document store **
+            try {
+                FileUtils.copyFile(sourceFile, new File(destinationLocation, xmlFilename));
+            } catch (IOException e) {
+                throw new WebApplicationException(e);
+            }
+        }
+
+        // update the submitted proposal's supporting documents to include the copied observatory specific questions
+        addNewChildObject(
+                submittedProposal,
+                new SupportingDocument(xmlFilename, destinationLocation),
+                submittedProposal::addToSupportingDocuments
+        );
 
         cycle.addToSubmittedProposals(submittedProposal);
         em.merge(cycle);
