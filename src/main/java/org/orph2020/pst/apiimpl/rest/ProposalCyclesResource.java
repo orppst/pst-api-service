@@ -32,6 +32,8 @@ import jakarta.ws.rs.core.MediaType;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.io.*;
 import java.util.*;
@@ -680,6 +682,9 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             String cycleTitle, String proposalTitle
     )
             throws IOException {
+
+        Files.createDirectories(Paths.get(resourcePath).getParent());
+
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(resourcePath))) {
             writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
             writer.write("<!-- Generated for proposal cycle: " + cycleTitle + " -->\n");

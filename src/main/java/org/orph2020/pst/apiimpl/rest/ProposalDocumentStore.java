@@ -29,11 +29,14 @@ public class ProposalDocumentStore {
     @ConfigProperty(name = "document-store.root")
     String proposalStoreRoot;
 
-    @ConfigProperty(name = "document-store.supportingDocuments-path")
+    @ConfigProperty(name = "document-store.supportingDocuments.path")
     String supportingDocumentsPath;
 
-    @ConfigProperty(name = "document-store.justifications-path")
+    @ConfigProperty(name = "document-store.justifications.path")
     String justificationsPath;
+
+    @ConfigProperty(name = "document-store.proposalCycles.path")
+    String proposalCyclesPath;
 
 
     /**
@@ -54,14 +57,16 @@ public class ProposalDocumentStore {
 
     /**
      * Creates the subdirectory structure for the storage of proposal cycle specific documents.
-     * This should be called when creating a new proposal cycle. (The pun is unintentional, honest.)
+     * For example, any observatory specific questions related to a proposal cycle will be stored
+     * in this directory.
+     * This should be called when creating a new proposal cycle only.
      * @param cycleCode the related proposal cycle ID for which you are creating the store
      * @throws IOException I/O exception
      */
     public void createCyclePaths(Long cycleCode) throws IOException {
         Files.createDirectories(Paths.get(
                 proposalStoreRoot,
-                "proposalCycles",
+                proposalCyclesPath,
                 cycleCode.toString()
         ));
     }
