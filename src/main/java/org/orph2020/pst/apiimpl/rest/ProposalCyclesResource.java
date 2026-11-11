@@ -708,7 +708,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     /**
      * Save the observatory-specific questions for the given proposal cycle. This is intended to be used
      * by the observatory administrator to set up the template for the cycle. The questions are saved
-     * to an XML file in the proposal document store, under "proposalCycles/cycleCode/observatoryQuestions.xml".
+     * to an XML file in the proposal document store, under "proposalCycles/<cycleCode>/observatoryQuestions.xml".
      */
     @POST
     @Path("{cycleCode}/observatoryQuestions")
