@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.MediaType;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -287,7 +288,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleDeadline(
             @PathParam("cycleCode") Long cycleCode,
-            Date replacementDeadline
+            ZonedDateTime replacementDeadline
     )
         throws WebApplicationException
     {
@@ -311,7 +312,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleSessionStart(
             @PathParam("cycleCode") Long cycleCode,
-            Date replacementStart
+            ZonedDateTime replacementStart
     )
             throws WebApplicationException
     {
@@ -334,7 +335,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     public Response replaceCycleSessionEnd(
             @PathParam("cycleCode") Long cycleCode,
-            Date replacementEnd
+            ZonedDateTime replacementEnd
     )
             throws WebApplicationException
     {
