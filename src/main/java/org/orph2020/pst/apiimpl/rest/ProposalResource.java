@@ -699,7 +699,8 @@ public class ProposalResource extends ObjectResourceBase {
     @Path(proposalRoot+"/exportXml")
     public Response exportProposalXml(@PathParam("proposalCode")Long proposalCode)
             throws WebApplicationException {
-        ObservingProposal proposalForExport = singleObservingProposal(proposalCode);
+        ProposalModel proposalForExport = new ProposalModel();
+        proposalForExport.addContent(singleObservingProposal(proposalCode));
 
         return Response
                 .status(Response.Status.OK)
@@ -982,9 +983,11 @@ public class ProposalResource extends ObjectResourceBase {
                 }
 
                 if(!anonymise) {
-                    //json of Proposal
-                    try (ByteArrayInputStream bais = new ByteArrayInputStream(writeAsJsonString(proposal).getBytes())) {
-                        zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"proposal.json":projFilename+ ".json"));
+                    //xml of Proposal
+                    ProposalModel proposalForExport = new ProposalModel();
+                    proposalForExport.addContent(proposal);
+                    try (ByteArrayInputStream bais = new ByteArrayInputStream(writeAsXmlString(proposalForExport).getBytes())) {
+                        zipOs.putNextEntry(new ZipEntry(genericExportFilenames?"proposal.xml":projFilename+ ".xml"));
 
                         byte[] bytes = new byte[1024];
                         int length;
