@@ -672,9 +672,20 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         return questions;
     }
 
+    /*
+        It would be nice to be able to edit the "response" tag value of a specific question in the XML file;
+        one way to do this is to parse the XML as a DOM, identify the specific "question" node, loop over
+        the child nodes to find the "repsonse" node, then replace its text. Rewriting the entire XML file is
+        okay for small files, but could become inefficient for larger files. For now, the XML files are
+        expected to be small, so this is acceptable. This is also something to bear in mind if you want to
+        implement a "save-as-you-type" feature in the front-end UI (currently save-on-demand is implemented,
+        i.e. when the user clicks the "save" button).
+     */
+
     /**
-     * A strightforward method to save the answered questions to an XML file. The "reponse" field of
-     * each question should be at most "maxChars" long. The file is saved to the given resourcePath.
+     * A strightforward method to save the answered questions to an XML file by (re)writing the entire file.
+     * The "reponse" field of each question should be at most "maxChars" long. The file is saved to the
+     * given resourcePath.
      */
     private void saveObservatoryQuestionsToFile(
             String resourcePath,
@@ -691,7 +702,7 @@ public class ProposalCyclesResource extends ObjectResourceBase {
             if(!proposalTitle.equals("Template")) writer.write("<!-- Proposal: " + proposalTitle + " -->\n");
             writer.write("<questions>");
             for (ObservatoryQuestion question : observatoryQuestions) {
-                writer.write("<question>");
+                writer.write("<question id=\"" + question.id + "\">");
                 writer.write("<id>" + question.id + "</id>");
                 writer.write("<label>" + question.label + "</label>");
                 writer.write("<description>" + question.description + "</description>");
