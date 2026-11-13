@@ -143,7 +143,10 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
-    public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
+    public List<ObjectIdentifier> getProposalCycles(
+            @RestQuery boolean includeClosed,
+            @RestQuery long observatoryId,
+            @RestQuery boolean hasQuestionsTemplate) {
         String select = "SELECT o._id,o.title FROM ProposalCycle o ";
         String where = "";
         String order = "ORDER BY o.submissionDeadline";
@@ -157,7 +160,14 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                 where = "WHERE o.observatory._id = "+observatoryId+" ";
         }
 
-        return super.getObjectIdentifiers(select + where + order);
+        List<ObjectIdentifier> result = getObjectIdentifiers(select + where + order);
+
+        if (hasQuestionsTemplate) {
+            result.removeIf(o -> !proposalDocumentStore.fetchFile("proposalCycles/"
+                    + o.dbid + "/" + templateObservatoryQuestionsFileName).isFile());
+        }
+
+        return result;
     }
 
 
@@ -190,6 +200,38 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         }
 
         return persistedCycle;
+    }
+
+    ///********* COPY Observatory Questions **********
+
+    @POST
+    @Path("{cycleCode}/copyObservatoryQuestions/{sourceCycleCode}")
+    @Operation(summary = "copy the observatory-specific questions from one proposal cycle to another")
+    @RolesAllowed("obs_administration")
+    public Response copyObservatoryQuestions(
+            @PathParam("cycleCode") Long targetCycleCode,
+            @PathParam("sourceCycleCode") Long sourceCycleCode)
+            throws WebApplicationException, IOException
+    {
+       File previousQuestions =  proposalDocumentStore.fetchFile(
+                "proposalCycles/" +
+                        sourceCycleCode +
+                        "/" + templateObservatoryQuestionsFileName);
+        if (!previousQuestions.isFile()) {
+            throw new WebApplicationException(
+                    "Source questions file not found",
+                    Response.Status.NOT_FOUND);
+        }
+
+        File newQuestions =  proposalDocumentStore.fetchFile(
+                "proposalCycles/" +
+                        targetCycleCode +
+                        "/" + templateObservatoryQuestionsFileName);
+
+        Files.copy(previousQuestions.toPath(), newQuestions.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        return Response.ok().build();
     }
 
     ///********* TITLE **********
