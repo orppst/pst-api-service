@@ -12,30 +12,41 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.*;
 import org.ivoa.dm.proposal.management.Observatory;
+import org.ivoa.dm.proposal.prop.ObservingProposal;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.CycleObservingTimeTotal;
 import org.orph2020.pst.common.json.ObjectIdentifier;
+import org.orph2020.pst.common.json.ObservatoryQuestion;
 import org.orph2020.pst.common.json.ProposalCycleSynopsis;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 @Path("proposalCycles")
 @Tag(name="proposalCycles")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed({"default-roles-orppst"})
+//@RolesAllowed({"default-roles-orppst"})
 public class ProposalCyclesResource extends ObjectResourceBase {
     private final Logger logger;
 
@@ -45,6 +56,12 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     JsonWebToken userInfo;
     @Inject
     ProposalDocumentStore proposalDocumentStore;
+
+    @ConfigProperty(name = "answered.observatoryQuestions.filename")
+    String answeredObservatoryQuestionsFileName;
+
+    @ConfigProperty(name = "template.observatoryQuestions.filename")
+    String templateObservatoryQuestionsFileName;
 
     private static final String notOnTACmsg = "This endpoint is restricted to TAC members only";
 
@@ -126,7 +143,11 @@ public class ProposalCyclesResource extends ObjectResourceBase {
 
     @GET
     @Operation(summary = "list the proposal cycles, optionally filter by observatory id and closed (passed submission deadline)")
-    public List<ObjectIdentifier> getProposalCycles(@RestQuery boolean includeClosed, @RestQuery long observatoryId) {
+    public List<ObjectIdentifier> getProposalCycles(
+            @RestQuery boolean includeClosed,
+            @RestQuery long observatoryId,
+            @RestQuery boolean hasQuestionsTemplate
+    ) {
         String select = "SELECT o._id,o.title FROM ProposalCycle o ";
         String where = "";
         String order = "ORDER BY o.submissionDeadline";
@@ -140,7 +161,14 @@ public class ProposalCyclesResource extends ObjectResourceBase {
                 where = "WHERE o.observatory._id = "+observatoryId+" ";
         }
 
-        return super.getObjectIdentifiers(select + where + order);
+        List<ObjectIdentifier> result = getObjectIdentifiers(select + where + order);
+
+        if (hasQuestionsTemplate) {
+            result.removeIf(o -> !proposalDocumentStore.fetchFile("proposalCycles/"
+                    + o.dbid + "/" + templateObservatoryQuestionsFileName).isFile());
+        }
+
+        return result;
     }
 
 
@@ -159,7 +187,52 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     @Transactional(rollbackOn = {WebApplicationException.class})
     @RolesAllowed("obs_administration")
     public ProposalCycle createProposalCycle(ProposalCycle cycle) {
-        return persistObject(cycle);
+
+        ProposalCycle persistedCycle = persistObject(cycle);
+
+        // Create a directory for the proposal cycle in the document store.
+        // This is intended for the "working" location of the observatory-specific
+        // questions for the cycle, and any other cycle-specific documents.
+
+        try {
+            proposalDocumentStore.createCyclePaths(persistedCycle.getId());
+        } catch (IOException e) {
+            throw new WebApplicationException(e);
+        }
+
+        return persistedCycle;
+    }
+
+    ///********* COPY Observatory Questions **********
+
+    @POST
+    @Path("{cycleCode}/copyObservatoryQuestions/{sourceCycleCode}")
+    @Operation(summary = "copy the observatory-specific questions from one proposal cycle to another")
+    @RolesAllowed("obs_administration")
+    public Response copyObservatoryQuestions(
+            @PathParam("cycleCode") Long targetCycleCode,
+            @PathParam("sourceCycleCode") Long sourceCycleCode)
+            throws WebApplicationException, IOException
+    {
+       File previousQuestions =  proposalDocumentStore.fetchFile(
+                "proposalCycles/" +
+                        sourceCycleCode +
+                        "/" + templateObservatoryQuestionsFileName);
+        if (!previousQuestions.isFile()) {
+            throw new WebApplicationException(
+                    "Source questions file not found",
+                    Response.Status.NOT_FOUND);
+        }
+
+        File newQuestions =  proposalDocumentStore.fetchFile(
+                "proposalCycles/" +
+                        targetCycleCode +
+                        "/" + templateObservatoryQuestionsFileName);
+
+        Files.copy(previousQuestions.toPath(), newQuestions.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        return Response.ok().build();
     }
 
     ///********* TITLE **********
@@ -598,4 +671,201 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         }
     }
 
+    /// **** XML UI Observatory Specific Additional Information **** ///
+
+    private List<ObservatoryQuestion> parseQuestionsXml(String resourcePath)
+            throws IOException, XMLStreamException {
+
+        XMLInputFactory factory = XMLInputFactory.newInstance();
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
+
+        List<ObservatoryQuestion> questions = new ArrayList<>();
+        XMLStreamReader reader = null;
+
+        try (FileInputStream file = new FileInputStream(resourcePath)) {
+            reader = factory.createXMLStreamReader(file);
+            ObservatoryQuestion current = null;
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                if (event == XMLStreamReader.START_ELEMENT) {
+                    String tag = reader.getLocalName();
+                    switch (tag) {
+                        case "question" -> current = new ObservatoryQuestion();
+                        case "id"          -> { if (current != null) current.id = Integer.parseInt(reader.getElementText()); }
+                        case "label"       -> { if (current != null) current.label = reader.getElementText(); }
+                        case "description" -> { if (current != null) current.description = reader.getElementText(); }
+                        case "query"       -> { if (current != null) current.query = reader.getElementText(); }
+                        case "response"    -> { if (current != null) current.response = reader.getElementText(); }
+                        case "minChar"     -> { if (current != null) current.minChar = Integer.parseInt(reader.getElementText()); }
+                        case "maxChar"     -> { if (current != null) current.maxChar = Integer.parseInt(reader.getElementText()); }
+                    }
+                } else if (event == XMLStreamReader.END_ELEMENT
+                        && "question".equals(reader.getLocalName())
+                        && current != null) {
+                    questions.add(current);
+                    current = null;
+                }
+            }
+        } finally {
+            if (reader != null) reader.close();
+        }
+        return questions;
+    }
+
+    /*
+        It would be nice to be able to edit the "response" tag value of a specific question in the XML file;
+        one way to do this is to parse the XML as a DOM, identify the specific "question" node, loop over
+        the child nodes to find the "repsonse" node, then replace its text. Rewriting the entire XML file is
+        okay for small files, but could become inefficient for larger files. For now, the XML files are
+        expected to be small, so this is acceptable. This is also something to bear in mind if you want to
+        implement a "save-as-you-type" feature in the front-end UI (currently save-on-demand is implemented,
+        i.e. when the user clicks the "save" button).
+     */
+
+    /**
+     * A strightforward method to save the answered questions to an XML file by (re)writing the entire file.
+     * The "reponse" field of each question should be at most "maxChars" long. The file is saved to the
+     * given resourcePath.
+     */
+    private void saveObservatoryQuestionsToFile(
+            String resourcePath,
+            List<ObservatoryQuestion> observatoryQuestions,
+            String cycleTitle, String proposalTitle
+    )
+            throws IOException {
+
+        Files.createDirectories(Paths.get(resourcePath).getParent());
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(resourcePath))) {
+            writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            writer.write("<!-- Generated for proposal cycle: " + cycleTitle + " -->\n");
+            if(!proposalTitle.equals("Template")) writer.write("<!-- Proposal: " + proposalTitle + " -->\n");
+            writer.write("<questions>");
+            for (ObservatoryQuestion question : observatoryQuestions) {
+                writer.write("<question id=\"" + question.id + "\">");
+                writer.write("<id>" + question.id + "</id>");
+                writer.write("<label>" + question.label + "</label>");
+                writer.write("<description>" + question.description + "</description>");
+                writer.write("<query>" + question.query + "</query>");
+                writer.write("<response>" + question.response + "</response>");
+                writer.write("<minChar>" + question.minChar + "</minChar>");
+                writer.write("<maxChar>" + question.maxChar + "</maxChar>");
+                writer.write("</question>");
+            }
+            writer.write("</questions>");
+        }
+    }
+
+    /**
+     * Save the observatory-specific questions for the given proposal cycle. This is intended to be used
+     * by the observatory administrator to set up the template for the cycle. The questions are saved
+     * to an XML file in the proposal document store, under "proposalCycles/<cycleCode>/observatoryQuestions.xml".
+     */
+    @POST
+    @Path("{cycleCode}/observatoryQuestions")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Save observatory-specific questions for the given proposal cycle")
+    public Response saveObservatoryQuestionsTemplate(
+            @PathParam("cycleCode") Long cycleCode,
+            List<ObservatoryQuestion> questions)
+            throws WebApplicationException
+    {
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        // location of template for the cycle:
+        // storeroot/proposalCycles/cycleCode/observatoryQuestions.xml
+        String xmlPath = proposalDocumentStore.fetchFile(
+                "proposalCycles/" + cycleCode + "/" + templateObservatoryQuestionsFileName)
+                .getAbsolutePath();
+        try {
+            saveObservatoryQuestionsToFile(xmlPath, questions, cycle.getTitle(), "Template");
+        } catch (IOException e) {
+            logger.error("Error saving observatory questions template to file: " + e.getMessage());
+            throw new WebApplicationException("Error saving observatory questions template to file",
+                    Response.Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok().build();
+    }
+
+    @GET
+    @Path("{cycleCode}/observatoryQuestions")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get the observatory-specific questions for the given proposal cycle")
+    public List<ObservatoryQuestion> getObservatoryQuestions(
+            @PathParam("cycleCode") Long cycleCode,
+            @RestQuery Long proposalId
+    ) throws IOException, XMLStreamException {
+
+        // location of template for the cycle:
+        // storeroot/proposalCycles/cycleCode/observatoryQuestions.xml
+        // location of answered questions for the proposal:
+        // storeroot/proposalCycles/cycleCode/proposalId/answeredObservatoryQuestions.xml
+
+        // If "answeredObservatoryQuestions.xml" exists for the query proposal, return that.
+        // Otherwise, if the template exists, return the template. Finally, if neither exists,
+        // return an empty list (observatory questions are optional).
+
+        File templateFile = proposalDocumentStore.fetchFile(
+                "proposalCycles/" + cycleCode + "/" + templateObservatoryQuestionsFileName);
+
+        File questionsFile = proposalId == null ?
+                templateFile
+                :
+                proposalDocumentStore.fetchFile(
+                "proposalCycles/" + cycleCode + "/" + proposalId +
+                        "/" + answeredObservatoryQuestionsFileName);
+
+        if (questionsFile.isFile()) {
+            return parseQuestionsXml(questionsFile.getAbsolutePath());
+        } else if (templateFile.isFile()) {
+            return parseQuestionsXml(templateFile.getAbsolutePath());
+        } else {
+            return new ArrayList<>(); // Return an empty list if neither file exists
+        }
+    }
+
+    @POST
+    @Path("{cycleCode}/observatoryQuestions/{proposalId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Save answered observatory-specific questions for the given proposal cycle and proposal")
+    public Response saveObservatoryQuestions(
+            @PathParam("cycleCode") Long cycleCode,
+            @PathParam("proposalId") Long proposalId,
+            List<ObservatoryQuestion> answeredQuestions)
+            throws WebApplicationException
+    {
+        ObservingProposal proposal = findObject(ObservingProposal.class, proposalId);
+        ProposalCycle cycle = findObject(ProposalCycle.class, cycleCode);
+
+        String xmlFilename = answeredObservatoryQuestionsFileName;
+
+        // This is the "working" location of the answered questions for the proposal being submitted to
+        // the specific proposal cycle. It will be copied to the (submitted) proposal's supporting documents
+        // directory when the proposal is submitted.
+        String location = proposalDocumentStore
+                .fetchFile("proposalCycles/" + cycleCode + "/" + proposalId).getAbsolutePath();
+
+        // Write the answers to an XML file in the proposal's working directory
+        try {
+            saveObservatoryQuestionsToFile(
+                    location + "/" + xmlFilename,
+                    answeredQuestions,
+                    cycle.getTitle(),
+                    proposal.getTitle());
+        } catch (IOException e) {
+            logger.error("Error saving answered questions to file: " + e.getMessage());
+            throw new WebApplicationException("Error saving answered questions to file",
+                    Response.Status.INTERNAL_SERVER_ERROR);
+        }
+        logger.infof(
+                "Answered observatory-specific questions for proposal %d in cycle %d saved to %s",
+                proposalId, cycleCode, location + "/" + xmlFilename
+        );
+
+        return Response.ok().build();
+    }
 }
