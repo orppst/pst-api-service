@@ -146,7 +146,8 @@ public class ProposalCyclesResource extends ObjectResourceBase {
     public List<ObjectIdentifier> getProposalCycles(
             @RestQuery boolean includeClosed,
             @RestQuery long observatoryId,
-            @RestQuery boolean hasQuestionsTemplate) {
+            @RestQuery boolean hasQuestionsTemplate
+    ) {
         String select = "SELECT o._id,o.title FROM ProposalCycle o ";
         String where = "";
         String order = "ORDER BY o.submissionDeadline";
