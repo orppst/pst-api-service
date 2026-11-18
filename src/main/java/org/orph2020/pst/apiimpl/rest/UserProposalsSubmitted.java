@@ -25,6 +25,7 @@ import org.orph2020.pst.common.json.SubmittedProposalMailData;
 import org.orph2020.pst.common.json.SubmittedProposalSynopsis;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -123,7 +124,7 @@ public class UserProposalsSubmitted extends ObjectResourceBase {
             throw new WebApplicationException("You are not a PI on this submitted proposal", Response.Status.FORBIDDEN);
         }
 
-        if (proposalCyclesResource.getProposalCycleDetails(cycleCode).submissionDeadline.before(new Date())) {
+        if (proposalCyclesResource.getProposalCycleDetails(cycleCode).submissionDeadline.isBefore(ZonedDateTime.now())) {
             throw new WebApplicationException("You may not withdraw your proposal as the submission date has been surpassed. Please contact the TAC if you want to withdraw",
                     Response.Status.CONFLICT);
         }

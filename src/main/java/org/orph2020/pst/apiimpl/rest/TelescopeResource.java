@@ -6,9 +6,10 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.ivoa.dm.proposal.management.Observatory;
 import org.ivoa.dm.proposal.management.Telescope;
 import org.ivoa.dm.proposal.prop.WikiDataId;
-import org.ivoa.dm.stc.coords.CoordSys;
-import org.ivoa.dm.stc.coords.CartesianPoint;
+
+
 import org.ivoa.dm.ivoa.RealQuantity;
+import org.ivoa.dm.proposal.prop.coords.CartesianPoint;
 import org.jboss.resteasy.reactive.RestQuery;
 import org.orph2020.pst.common.json.ObjectIdentifier;
 
@@ -257,9 +258,7 @@ public class TelescopeResource extends ObjectResourceBase{
     {
         Telescope telescope = findTelescopeByQuery(observatoryId, telescopeId);
 
-        CoordSys coordSys = findObject(CoordSys.class, coordinateSystemId);
-
-        telescope.getLocation().setCoordSys(coordSys);
+        telescope.getLocation().setRefpos("GEOCENTER");
 
         return responseWrapper(telescope, 201);
     }

@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.inject.Inject;
 
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 import static io.restassured.RestAssured.given;
@@ -70,9 +73,9 @@ public class ProposalCycleResourceTest {
       ProposalCycle newCycle = new ProposalCycle();
       newCycle.setObservatory(lookHere);
       newCycle.setTitle("Test observing cycle");
-      newCycle.setSubmissionDeadline(new Date());
-      newCycle.setObservationSessionStart(new Date());
-      newCycle.setObservationSessionEnd(new Date());
+      newCycle.setSubmissionDeadline(ZonedDateTime.now(ZoneOffset.UTC));
+      newCycle.setObservationSessionStart(ZonedDateTime.now(ZoneOffset.UTC));
+      newCycle.setObservationSessionEnd(ZonedDateTime.now(ZoneOffset.UTC));
       newCycle.setTac(new TAC());
 
       String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(newCycle);
@@ -157,9 +160,9 @@ public class ProposalCycleResourceTest {
       ProposalCycle targetCycle = new ProposalCycle();
       targetCycle.setObservatory(sourceObservatory);
       targetCycle.setTitle("Test copy observing modes cycle");
-      targetCycle.setSubmissionDeadline(new Date(System.currentTimeMillis() + 14 * 24 * 60 * 60 * 1000L));
-      targetCycle.setObservationSessionStart(new Date(System.currentTimeMillis() + 60 * 24 * 60 * 60 * 1000L));
-      targetCycle.setObservationSessionEnd(new Date(System.currentTimeMillis() + 180 * 24 * 60 * 60 * 1000L));
+      targetCycle.setSubmissionDeadline(ZonedDateTime.now(ZoneOffset.UTC).plusDays(14));
+      targetCycle.setObservationSessionStart(ZonedDateTime.now(ZoneOffset.UTC).plusDays(60));
+      targetCycle.setObservationSessionEnd(ZonedDateTime.now(ZoneOffset.UTC).plusDays(180));
       targetCycle.setTac(new TAC());
 
       String body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(targetCycle);
