@@ -34,6 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZonedDateTime;
 import java.io.*;
 import java.util.*;
@@ -811,12 +812,23 @@ public class ProposalCyclesResource extends ObjectResourceBase {
         File templateFile = proposalDocumentStore.fetchFile(
                 "proposalCycles/" + cycleCode + "/" + templateObservatoryQuestionsFileName);
 
+        BasicFileAttributes templateAttributes = Files.readAttributes(templateFile.toPath(),
+                BasicFileAttributes.class);
+
         File questionsFile = proposalId == null ?
                 templateFile
                 :
                 proposalDocumentStore.fetchFile(
                 "proposalCycles/" + cycleCode + "/" + proposalId +
                         "/" + answeredObservatoryQuestionsFileName);
+
+        BasicFileAttributes questionAttributes = Files.readAttributes(questionsFile.toPath(),
+                BasicFileAttributes.class);
+
+        // if the answered questions file exists but is older than the template, return the template questions
+        if (questionAttributes.lastModifiedTime().toMillis() < templateAttributes.lastModifiedTime().toMillis()) {
+            return parseQuestionsXml(templateFile.getAbsolutePath());
+        }
 
         if (questionsFile.isFile()) {
             return parseQuestionsXml(questionsFile.getAbsolutePath());
