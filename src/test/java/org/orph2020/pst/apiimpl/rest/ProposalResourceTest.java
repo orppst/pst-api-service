@@ -70,6 +70,7 @@ public class ProposalResourceTest {
               .when()
               .get("people/"+coiInvestigatorId)
               .then()
+              .log().body()
               .statusCode(200)
               .extract().as(Person.class, raObjectMapper);
     }

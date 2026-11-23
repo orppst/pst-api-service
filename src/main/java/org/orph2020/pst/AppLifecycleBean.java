@@ -56,9 +56,9 @@ public class AppLifecycleBean {
             List<ProposalCycle> cycles = fullExample.getManagementModel().getContent(ProposalCycle.class);
             LocalDate now = LocalDate.now();
             for (ProposalCycle cycle : cycles) {
-                cycle.setSubmissionDeadline(new Date(now.plusWeeks(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
-                cycle.setObservationSessionStart(new Date(now.plusMonths(2).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
-                cycle.setObservationSessionEnd(new Date(now.plusMonths(6).atStartOfDay().atOffset(ZoneOffset.UTC).toEpochSecond()*1000));
+                cycle.setSubmissionDeadline(now.plusWeeks(2).atStartOfDay().atOffset(ZoneOffset.UTC).toZonedDateTime());
+                cycle.setObservationSessionStart(now.plusMonths(2).atStartOfDay().atOffset(ZoneOffset.UTC).toZonedDateTime());
+                cycle.setObservationSessionEnd(now.plusMonths(6).atStartOfDay().atOffset(ZoneOffset.UTC).toZonedDateTime());
             }
             fullExample.saveTodB(em);
 
